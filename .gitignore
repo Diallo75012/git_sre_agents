@@ -1,0 +1,43 @@
+# envs
+dev_git_agent_venv/
+dev_git_agent_venv/**
+.env
+*venv/**
+*_venv
+*env*
+.vars
+*vars*
+
+#backup
+.BAK
+.bak
+*bak
+BAK_*
+BAK.*
+*BAK*
+
+# logs
+.log
+*.log
+*log*
+
+# cache
+cache
+.cache
+*cache*
+*__pycache__
+__pycache__.*
+*__pycache__*
+
+# sonarqube
+*/.scannerwork/*
+
+# logs
+trained_agents_data*
+*.pkl
+
+# other
+dump.rdb
+*.rdb
+*dump*
+dump.*
