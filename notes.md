@@ -9,13 +9,13 @@ The workflow stops when the agent team has created the application.
 
 ## RULES
 - `Worker Git Agents`:
-  - have knowledge about project objective and their piece of work and how it plugges with others works.
+  - have knowledge about project objective and their piece of work and how it plug with others works.
   - just working in their branch and adding work and committing work. **NO PUSH**
   - doesn't know about other branches and other agents existance
   - Notifies the `PR Agents` after each commit.
   - Have their own git repo folder and working inside that one
 - `PR Agents`:
-  -  have knowledge about project objective and their piece of work and how it plugges with others works.
+  - have knowledge about project objective and their piece of work and how it plugges with others works.
   - know only their counterpart `upstream` `Worker Git Agent` and pull the work to review it
   - when good: notifies the `Main Agent` to merge the `Worker Git Agent` work.
   - when not good: notifies the `Worker Git Agent` which will modify appropriately and commit/notify again
@@ -66,6 +66,7 @@ git checkout PR_Feature_AgentX
 git pull agentX agentX_feature --no-edit 
 
 # OR instead of `git pull` with `--no-edit` option, if you want custom message set use:
+# this will merge it to `main` branch as well
 # git fetch agentX agentX_feature
 # git merge FETCH_HEAD -m "Pulled AgentX changes"   # btu probably won't do that!!
 ```
@@ -89,5 +90,19 @@ git add ., git commit -m "<commit message>"
 ```
 
 
+## Discord OutBound Messages Webhook
+source:[Get messages from Discord Sent to App.. Outbound...](https://discord.com/developers/docs/interactions/receiving-and-responding#receiving-an-interaction)
 
+## Project Diagram Plan
+source: [diagram of project but have pictures already screenshot](https://excalidraw.com/#json=vG0g5K8Lsu8KzCVmBh52N,Nud51HI7opt692OI9FBJjw)
 
+## Cerebras inference url (use Curl command doc so easy to Rustify)
+source: [documentation Cerebras](https://inference-docs.cerebras.ai/api-reference/chat-completions)
+source: [models overview](https://inference-docs.cerebras.ai/api-reference/models)
+
+## Rust dependencies
+- `Serde`
+- `Tokio`
+- `Reqwest`
+- `Anyhow`
+- `Thiserror`
