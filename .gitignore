@@ -41,3 +41,8 @@ dump.rdb
 *.rdb
 *dump*
 dump.*
+
+
+# Added by cargo
+
+/target

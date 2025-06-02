@@ -338,6 +338,11 @@ kubectl port-forward pod/nginx-585f69b946-qw57t 8080:80
 - [x] have prometheus already deployed, this will be the infra side
 - [x] have the application deployed a static html page with a custom message and nginx to serve it
 - [x] prepare the repository of the agents with all the yaml files and the setup of the git flow. Main repo should have all commit history. DONE!
+- [] see past `requwest` project used to make calls using that so we don't use many dependencies.
+- [] consider using `dotenv` the RUST one for environment variables.
+- [] consider using channels and threads so that the communication can be parallelized if multi tool call
+- [] use loop for tool call until getting the answer fully done (so maybe create this until it work and then integrate in project)
+- [] study the api returned messages/tool use/error to be able to `deserialize` what we want properly
 - [] prepare a RUST workspace in the model of previous project and here modularize the flow of actions having each agentif flow on its own
      and one core unit and bunble the applicaiton with only one app binary.
 - [] start creating agentic flow in RUST starting with the external agent that will be link between human request and the start of agents 
@@ -345,3 +350,364 @@ kubectl port-forward pod/nginx-585f69b946-qw57t 8080:80
 - [] do the the pr agent
 - [] do the main agent
 - [] make sure tools are used as intended so have a list and agent can choose which tool is best depending on request1 
+- [] build http client layer...
+- [] implement proper JSON handling (`serde` san)
+- [] create kind of conversation management (`state`, `files` OR `env vars`)
+- [] mimmic tool execution logic in RUST in the model of what we have done with `langgraph`
+
+
+## `Cerebras` Compeltion API study
+**`CHAT` COMPLETION API** and **NOT** `COMPLETION`
+
+### CALL to `serialize`
+- parameters that might be needed for API call to be made
+**model**: string `required`
+  - Available options:
+    - llama-4-scout-17b-16e-instruct
+    - llama3.1-8b
+    - llama-3.3-70b
+    - qwen-3-32b
+**max_completion_tokens**: integer | null
+**response_format**: object | null
+  Controls the format of the model response.
+  The primary option is structured outputs with schema enforcement,
+  which ensures the model returns valid JSON adhering to your defined schema structure.
+  Setting to enforce schema compliance.
+  The schema must follow standard JSON Schema format with the following properties:
+```json
+{ 
+  "type": "json_schema",
+  "json_schema": { 
+    "name": "schema_name", # `response_format.json_schema.name`: string , optional name for schema
+    "strict": true,        # `response_format.json_schema.strict`: boolean
+    "schema": {...}        # `response_format.json_schema.schema`: object, the desired response JSON schema
+  } 
+}
+```
+​
+- `curl` api calll example
+```bash
+curl --location 'https://api.cerebras.ai/v1/chat/completions' \
+--header 'Content-Type: application/json' \                      # .header(reqwest::header::CONTENT_TYPE, "application/json") or just .json()
+--header "Authorization: Bearer ${CEREBRAS_API_KEY}" \           # .bearer_auth()
+--data '{                                                        # .body()
+  "model": "llama3.1-8b",
+  "stream": false,
+  "messages": [{"content": "Hello!", "role": "user"}],
+  "temperature": 0,
+  "max_completion_tokens": -1,
+  "seed": 0,
+  "top_p": 1
+}'                                                               # .send().await()
+```
+**temperature**: number | null
+**tool_choice**: string | object,
+  - `none`(no tool),
+  - `auto`(model have the choice tool or not)
+  - `required`(model have to use one tool or more) 
+    (Specifying a particular tool via:
+     `{"type": "function", "function": {"name": "my_function"}}` forces the model to call that tool.)
+**tools**: object | null, A list of tools the model may call.
+  - `tools.function.description`: string
+​  - `tools.function.name`: string , max length of 64 characters.
+  - `tools.function.parameters`: object, list of paramter or empty list
+  - `tools.type`: string, type of the tool. Currently, only `function` is supported.
+
+### RESPONSE to `deserialize`
+- parameters that might be needed for response from API call,
+**choices**(`NEED`): object[] `required`, The list of completion choices the model generated for the input prompt.
+  - **finish_reason** (`maybe`):  string | null, The reason the model stopped generating tokens.
+  - **message**(`NEED`): object, have the content and the role so the response
+    - **content**(`NEED`): string, this is the compeltion response
+    - **role**: string, this is the role like `assistant` for eg.
+**object** (`NEED`): string, defines the type of call `chat.completion` or ...
+
+- api call response example
+```bash
+{
+  "id": "chatcmpl-292e278f-514e-4186-9010-91ce6a14168b",
+  "choices": [
+    { # `NEED` to check if finished properly or `error`
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        # `NEED` `response.choices[0].message.content`
+        "content": "Hello! How can I assist you today?",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1723733419,
+  "model": "llama3.1-8b",
+  "system_fingerprint": "fp_70185065a4",
+  # `NEED` to differente tools call and normal completion
+  "object": "chat.completion",
+  "usage": {
+    "prompt_tokens": 12,
+    "completion_tokens": 10,
+    "total_tokens": 22
+  },
+  "time_info": {
+    "queue_time": 0.000073161,
+    "prompt_time": 0.0010744798888888889,
+    "completion_time": 0.005658071111111111,
+    "total_time": 0.022224903106689453,
+    "created": 1723733419
+  }
+}
+```
+
+### STRUCTRED OUTPUT CALL
+source: [cerebras structured output](https://inference-docs.cerebras.ai/resources/openrouter-cerebras#structured-outputs)
+It is `python` but gives us a good idea of how to transform this to a curl liek so use `reqwest` in `Rust`
+
+```python
+# `define our structured output`
+movie_schema = {
+    "type": "object",
+    "properties": {
+        "title": {"type": "string"},
+        "director": {"type": "string"},
+        "year": {"type": "integer"}
+    },
+    "required": ["title", "director", "year"],
+    "additionalProperties": False
+}
+
+# `define the payload sent`
+data = {
+    "model": "meta-llama/llama-3.3-70b-instruct",
+    "provider": {
+        "only": ["Cerebras"]
+    },
+    "messages": [
+        {"role": "system", "content": "You are a helpful assistant that generates movie recommendations."},
+        {"role": "user", "content": "Suggest a sci-fi movie from the 1990s."}
+    ],
+    # `inject our structured output request format here`
+    "response_format": {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "movie_schema",
+            "strict": True,
+            "schema": movie_schema
+        }
+    }
+}
+
+# `Parse result`
+response = requests.post(url, headers=headers, json=data)
+result = response.json()
+movie_data = json.loads(result['choices'][0]['message']['content'])
+print(json.dumps(movie_data, indent=2))
+```
+
+### TOOL CALL
+source: [cerebras tool call](https://inference-docs.cerebras.ai/resources/openrouter-cerebras#tool-calls)
+
+Here we use the example of `python` but would adapt it to `Rust` passing through `curl` like call
+We can probably put this in a loop so that it loop and exits only if the tools are not called anymore
+and also saved messages accumulating those with a kind of `VecDeque` so limited length otherwise we
+are going to pass over context length limits.
+```python
+# `Define tool` `NEED`
+tools = [{
+  "type": "function",
+  "function": {
+    "name": "calculator",
+    "description": "Performs mathematical calculations.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "expression": {
+          "type": "string",
+           "description": "A mathematical expression to evaluate, e.g., 'sqrt(16)'"
+         }
+      },
+      "required": ["expression"]
+    }
+  }
+}]
+
+# `create message list that would grow if tool is still called storing history of messages
+  and passing it to model again until tool is not called anymore` `NEED`
+messages = [
+  {"role": "system", "content": "You are a helpful assistant capable of performing mathematical calculations using the calculator tool."},
+  {"role": "user", "content": "Is the square root of 16 equal to 4?"},
+]
+
+# `create payload` `NEED`
+data = {
+    "model": "meta-llama/llama-3.3-70b-instruct",
+    "provider": {
+        "only": ["Cerebras"]
+    },
+    "messages": messages,
+    "tools": tools,
+    "tool_choice": "auto"
+}
+
+# Send the POST request
+response = requests.post(url, headers=headers, json=data)
+# Parse the response
+result = response.json()
+
+# `Extract the tool call` `NEED`
+tool_calls = result['choices'][0]['message'].get('tool_calls', [])
+if tool_calls:
+  for tool_call in tool_calls:
+  # `... do some stuff and can store response formatted in a certain way to store it later in messages history`
+      tool_response = f"The result of {expression} is {calculation_result}."
+            
+    except Exception as e:
+      tool_response = f"Error evaluating expression: {e}"
+
+    # `Append the tool's response to the message history`
+    messages.append({
+     "role": "tool",
+     "tool_call_id": tool_call['id'],
+     "content": tool_response
+    })
+
+  # `create a payload again to send it to the api as tool have been called so model will check if complete`
+  data = {
+    "model": "meta-llama/llama-3.3-70b-instruct",
+    "provider": {
+      "only": ["Cerebras"]
+    },
+    "messages": messages
+  }
+
+  response = requests.post(url, headers=headers, json=data)
+  final_result = response.json()
+  assistant_reply = final_result['choices'][0]['message']['content']
+  print(assistant_reply)
+else:
+  print("No tool calls were made by the model.")
+```
+
+## REQWEST 
+- Pass in headers (diffent ways)
+```rust
+use reqwest::header::CONTENT_TYPE;
+
+client
+    .post("https://api.cerebras.ai/v1/chat/completions")
+    .header(CONTENT_TYPE, "application/json")
+```
+
+```rust
+use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE, AUTHORIZATION};
+
+let mut headers = HeaderMap::new();
+headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+headers.insert(AUTHORIZATION, HeaderValue::from_str("Bearer your_api_key")?);
+
+client.post(url).headers(headers)
+```
+
+```rust
+or just use `.json()` which will set automatically the `Content-Type: application/json` header
+.json(&content)
+```
+
+- Body can be something like
+```rust
+#[derive(Serialize)]
+struct YourRequest {
+    model: String,
+    messages: Vec<Message>,
+}
+
+client
+    .post(url)
+    .json(&YourRequest { model: "llama3".into(), messages }) // sets automatically content-type..
+```
+
+- Full example of a call
+```rust
+use reqwest::Client;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+#[derive(Serialize)]
+struct Tool {
+    #[serde(rename = "type")]
+    tool_type: String,
+    function: Function,
+}
+
+#[derive(Serialize)]
+struct Function {
+    name: String,
+    description: String,
+    parameters: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Serialize)]
+struct Message {
+    role: String,
+    content: String,
+}
+
+#[derive(Serialize)]
+struct ChatRequest {
+    model: String,
+    messages: Vec<Message>,
+    tools: Vec<Tool>,
+    tool_choice: String,
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Client::new();
+    let url = "https://api.cerebras.ai/v1/chat/completions";
+    let api_key = "your_api_key_here";
+
+    // tool parameters schema
+    let mut parameters = HashMap::new();
+    parameters.insert("location".to_string(), serde_json::json!({"type": "string"}));
+
+    // tool list
+    let tools = vec![Tool {
+        tool_type: "function".to_string(),
+        function: Function {
+            name: "get_weather".to_string(),
+            description: "Get the current weather for a location.".to_string(),
+            parameters,
+        },
+    }];
+
+    let messages = vec![Message {
+        role: "user".to_string(),
+        content: "What's the weather in Paris?".to_string(),
+    }];
+
+    let request = ChatRequest {
+        model: "llama3-8b".to_string(),
+        messages,
+        tools,
+        tool_choice: "auto".to_string(),
+    };
+
+    let res = client
+        .post(url)
+        .bearer_auth(api_key)
+        .json(&request)
+        .send()
+        .await?;
+
+    let body = res.text().await?;
+    println!("{}", body);
+
+    Ok(())
+}
+```
+
+# CORE COMMUNICATION USING TOKIO
+| Role            | Input Channel                       | Output Channel(s)                                                                           |
+| --------------- | ----------------------------------- | ------------------------------------------------------------------------------------------- |
+| Worker Agent(s) | —                                   | `mpsc::Sender<AgentMsg>` → PR Agent                                                         |
+| PR Agent        | `mpsc::Receiver<AgentMsg>`          | `mpsc::Sender<AgentMsg>` → Main Agent<br>`mpsc::Sender<AgentMsg>` → Worker Agent (feedback) |
+| Main Agent      | `mpsc::Receiver<AgentMsg>`          | Waits for Human input via `stdin` channel                                                   |
+| Human           | Terminal input (`tokio::io::stdin`) | — (signals Main Agent to resume or stop)                                                    |

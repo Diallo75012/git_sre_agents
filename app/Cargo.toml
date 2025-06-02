@@ -1,0 +1,18 @@
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "app"
+path = "src/main.rs"
+
+[dependencies]
+core              = { path = "../core" }
+main-agent        = { path = "../agents/main_agent" }
+pr-agent          = { path = "../agents/pr_agent" }
+sre1-worker-agent = { path = "../agents/sre1_worker_agent" }
+sre2-worker-agent = { path = "../agents/sre2_worker_agent" }
+tokio   = { workspace = true }
+serde   = { workspace = true }
+anyhow  = { workspace = true }
