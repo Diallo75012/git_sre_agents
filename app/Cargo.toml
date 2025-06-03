@@ -16,3 +16,4 @@ sre2-worker-agent = { path = "../agents/sre2_worker_agent" }
 tokio   = { workspace = true }
 serde   = { workspace = true }
 anyhow  = { workspace = true }
+thiserror = { workspace = true }

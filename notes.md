@@ -338,7 +338,7 @@ kubectl port-forward pod/nginx-585f69b946-qw57t 8080:80
 - [x] have prometheus already deployed, this will be the infra side
 - [x] have the application deployed a static html page with a custom message and nginx to serve it
 - [x] prepare the repository of the agents with all the yaml files and the setup of the git flow. Main repo should have all commit history. DONE!
-- [] see past `requwest` project used to make calls using that so we don't use many dependencies.
+- [] see past `reqwest` project used to make calls using that so we don't use many dependencies.
 - [] consider using `dotenv` the RUST one for environment variables.
 - [] consider using channels and threads so that the communication can be parallelized if multi tool call
 - [] use loop for tool call until getting the answer fully done (so maybe create this until it work and then integrate in project)
@@ -711,3 +711,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 | PR Agent        | `mpsc::Receiver<AgentMsg>`          | `mpsc::Sender<AgentMsg>` → Main Agent<br>`mpsc::Sender<AgentMsg>` → Worker Agent (feedback) |
 | Main Agent      | `mpsc::Receiver<AgentMsg>`          | Waits for Human input via `stdin` channel                                                   |
 | Human           | Terminal input (`tokio::io::stdin`) | — (signals Main Agent to resume or stop)                                                    |
+
+
+# Manage Custom Errors
+I usually get some errors as i want my function to return `Result`
+as it is easier to manage thereafter in next function.
+so errors like : `expected () got ....` or `AppError does not implement.... or std library Error can use AppError`
+So here we will list ways to manage custom error when created:
+- function return error always matchign the `enum` `field` of `AppError` (our custom error `enum`)
+**Best Practice:** Use `?` with `Result<_, AppError>` 
+When a function can fail and return a `Result<_, SomeError>`, the idiomatic way is:
+```rust
+let value = env::var("MY_ENV")?;
+
+// if `env::var` returns Err, it's forwarded, …but you must convert the error type
+```
+- `.map_err(...)` to map standard errors to our `AppError`
+This is clean and preserves your custom error format.
+```rust
+let value = env::var("city").map_err(|e| AppError::Env(e.to_string()))?;
+```
+- Implement `From` for conversions
+We can teach Rust how to automatically convert `standard errors` into `AppError`:
+```rust
+impl From<std::env::VarError> for AppError {
+    fn from(e: std::env::VarError) -> Self {
+        AppError::Env(e.to_string())
+    }
+}
+```
+Now this works:
+```rust
+// auto-converted into AppError via `From`
+// But only if your function returns `Result<_, AppError>`,
+let value = env::var("city")?;
+```
+
+Summary Tabelu:
+| What We Want To Do                       | What To Write                                              |
+| ---------------------------------------- | ---------------------------------------------------------- |
+| Return custom error from a standard call | \`env::var(...).map\_err(| e | AppError::Env(e.to\_string()))?\` |
+| Propagate error with `?`                 | Implement `From<T>` for each error type into `AppError`    |
+| Manually return an error                 | `return Err(AppError::Cli("Invalid command".to_string()))` |
+| Use a Result-returning block safely      | `Result<T, AppError>` everywhere + use `?` on subcalls     |
+
+
