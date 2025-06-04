@@ -22,6 +22,7 @@ pub enum AppError {
   Exit(String),
   #[error("cli error: {0}")]
   Cli(String),
+  /// implemented `std::env:VarError`
   #[error("Env Var Error:{0}")]
   Env(String),
   #[error("Stream Error:{0}")]
@@ -29,4 +30,24 @@ pub enum AppError {
   #[error("Input Error:{0}")]
   Input(String),
   /* ADD AS MANY CUSTOM ERROR TYPES AS NEEDED */
+  #[error("Read File Error:{0}")]
+  FileRead(String),
+  /// implemented `reqwest::Error`
+  #[error("Discord Notifier Error:{0}")]
+  Notify(String),
+}
+
+/// this is to teach `Rust` about our custom error by implementing `std` errors
+/// or dependencies crates errors like here `reqwest::Error` mapped to `AppError::Notify`
+impl From<reqwest::Error> for AppError {
+  fn from(e: reqwest::Error) -> Self {
+    AppError::Notify(e.to_string())
+  }
+}
+
+/// here mapping `std::env:VarError` to our custom `AppError::Env`
+impl From<std::env::VarError> for AppError {
+ fn from(e: std::env::VarError) -> Self {
+   AppError::Env(e.to_string())
+ }
 }

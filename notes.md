@@ -31,6 +31,7 @@ The workflow stops when the agent team has created the application.
   - Need just to know how to review a project and have a higher level view on how everything should work
   - Provides feedback to the `Main Agent`
   - Uses a keyword when the project is satisfactory to stop the agent flow
+  - Human just `clone/fork` the main repo to get the updated workspace and just `pull` updates, then interact with the prompt file.
 
 ## Potential Improvements
 - Have an agent that saved successful run in a database with each agents workspace history or to a version control
@@ -89,6 +90,12 @@ git commit -m "Initial commit from agentX"
 git add ., git commit -m "<commit message>"
 ```
 
+- HUMAN REPO: CLONING ONLY MAIN REPO
+Here we just get what the main agent see in the main repo so that human can from anywhere check.
+```bash
+cd ~/dev-git-agent-team/project_git_repos/human_side/cloned_main_repo
+git clone /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/main_repo
+```
 
 ## Discord OutBound Messages Webhook
 source:[Get messages from Discord Sent to App.. Outbound...](https://discord.com/developers/docs/interactions/receiving-and-responding#receiving-an-interaction)
@@ -338,8 +345,13 @@ kubectl port-forward pod/nginx-585f69b946-qw57t 8080:80
 - [x] have prometheus already deployed, this will be the infra side
 - [x] have the application deployed a static html page with a custom message and nginx to serve it
 - [x] prepare the repository of the agents with all the yaml files and the setup of the git flow. Main repo should have all commit history. DONE!
-- [] see past `reqwest` project used to make calls using that so we don't use many dependencies.
-- [] consider using `dotenv` the RUST one for environment variables.
+- [x] see past `reqwest` project used to make calls using that so we don't use many dependencies.
+- [x] consider using `dotenv` the RUST one for environment variables.
+- [x] create function to manage env vars, get and override.
+- [x] create function to send notification to discord.
+- [x] improve custom error enum and do some implementations to teach rust that our field can be mapped to standard library error types.
+- [x] create a file reader to be able to get the `Human` prompt at the beginning of the app.
+- [x] clone the `main repo` in the `human side` same as if the human had cloned that repo and want to check the changes from agents.
 - [] consider using channels and threads so that the communication can be parallelized if multi tool call
 - [] use loop for tool call until getting the answer fully done (so maybe create this until it work and then integrate in project)
 - [] study the api returned messages/tool use/error to be able to `deserialize` what we want properly
@@ -755,6 +767,34 @@ Summary Tabelu:
 | Manually return an error                 | `return Err(AppError::Cli("Invalid command".to_string()))` |
 | Use a Result-returning block safely      | `Result<T, AppError>` everywhere + use `?` on subcalls     |
 
+- use `map_err()` to get thsoe errors from api calls
+```rust
+let response = client
+  .post("https://api.cerebras.ai/v1/chat/completions")
+  .json(&payload) // serialize the JSON correctly
+  .send()
+  .await
+  .map_err(|e| AppError::Notify(e.to_string()))?;  // mapping to our custom error
+
+if response.status() != StatusCode::OK {
+  return Err(AppError::Notify(response.status().to_string()));
+}
+```
+
+- formatting `e` in `Err(e)` in order to see its content in patterm matching
+I have the case of Discord returning nothing when a message it successfully sent but just a status code "204" so in my pattern matching
+it ends always in the `Err(e)` side but it is not a real error, so I needed to check that there is "204" in the response or not to see
+if i return my custom error or print a success messsage. But the `e` is already epected to be of type `AppError` whichis my custom error.
+I used formatting to help unwrap that and check using `.contains("204")`
+```rust
+...
+Err(e) => {
+  let formatted_e = format!("{}", e);
+  if formatted_e.contains("204") {...}
+  ...
+```
+So the lesson here is to use the amazing `format!()` macro in order to manipulate my custom `error` `enum` `AppError` which `derive` `Debug` already
+so can be `display` on prints and formatted.
 
 # Rust Doc Special Commenting
 I want in this project to introduce this documentation syntax
