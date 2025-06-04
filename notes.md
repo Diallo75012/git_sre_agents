@@ -756,3 +756,91 @@ Summary Tabelu:
 | Use a Result-returning block safely      | `Result<T, AppError>` everywhere + use `?` on subcalls     |
 
 
+# Rust Doc Special Commenting
+I want in this project to introduce this documentation syntax
+so that I can generate documents automatically for my project code using: `cargo doc`
+
+- Function/Method/Item Level
+`///` This is a doc comment for a function
+`///` It supports Markdown syntax
+```rust
+/// this function if for ...
+fn my_function() {}
+```
+
+- Crate Library Level
+`///` = Line doc comment
+`//!` = Inner doc comment (used for crates/modules),
+        Typically at the top of `lib.rs` or `main.rs`
+```rust
+//! This is a crate that will ....
+use crate::soemthing;
+```
+
+- Markdown Support
+Headings: `#`, `##`, `###`
+Lists: `-`, `*`, `1.`
+Code blocks: '```', `inline code`
+Links: `[Rust](https://www.rust-lang.org)`
+```rust
+/// # Heading
+/// - Bullet
+/// - List
+///
+/// ```rust
+/// let x = 42;
+/// assert_eq!(x, 42);
+/// ```
+```
+
+- Doc Tests
+those are actially ran by `Rust` when using `cargo test` or if function is not `pub` `cargo test --doc --all-targets` to run test on private ones.
+```rust
+/// Adds 1 to a number.
+///
+/// # Example
+///
+/// ```rust
+/// let x = 1;
+/// assert_eq!(my_crate::add_one(x), 2);
+/// ```
+pub fn add_one(x: i32) -> i32 {
+    x + 1
+}
+```
+```rust
+/// ```should_panic
+/// panic!("Fail!");
+/// ```
+```
+
+- Ignore, No Run
+Can also decide for those code snippets to not run 
+```rust
+/// ```ignore
+/// let x = todo!();
+/// ```
+
+/// ```no_run
+/// let _ = expensive_init();
+/// ```
+```
+
+- Generate Docs
+Generates full HTML documentation in `target/doc/`
+```bash
+# --open opens in browser (if needed)
+cargo doc --open
+```
+
+- Decorators Helpers Special For Docs
+Can also install `cargo install cargo-intraconv` and `cargo intraconv check` for broken docs links
+
+```rust
+// Fail if anything lacks doc
+#![deny(missing_docs)]
+```
+```rust
+// Warn for broken `[]` links
+#![warn(rustdoc::broken_intra_doc_links)]
+```

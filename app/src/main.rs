@@ -22,7 +22,7 @@ async fn run() {
 
   match envs_manage::create_or_update_env("location", "Shibuya") {
   	Ok(value) => {
-  	  println!("{}", value)
+  	  println!("{:?}", value)
   	},
   	Err(e) => {
   	  AppError::Env(format!("An error occurred while trying to access env var: {}", e));

@@ -24,4 +24,9 @@ pub enum AppError {
   Cli(String),
   #[error("Env Var Error:{0}")]
   Env(String),
+  #[error("Stream Error:{0}")]
+  Stream(String),
+  #[error("Input Error:{0}")]
+  Input(String),
+  /* ADD AS MANY CUSTOM ERROR TYPES AS NEEDED */
 }
