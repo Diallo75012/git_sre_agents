@@ -352,6 +352,7 @@ kubectl port-forward pod/nginx-585f69b946-qw57t 8080:80
 - [x] improve custom error enum and do some implementations to teach rust that our field can be mapped to standard library error types.
 - [x] create a file reader to be able to get the `Human` prompt at the beginning of the app.
 - [x] clone the `main repo` in the `human side` same as if the human had cloned that repo and want to check the changes from agents.
+- [] make all agents prompt files and a function for prompt formatting that would use the `format!()` macro to create prompts/text needed
 - [] consider using channels and threads so that the communication can be parallelized if multi tool call
 - [] use loop for tool call until getting the answer fully done (so maybe create this until it work and then integrate in project)
 - [] study the api returned messages/tool use/error to be able to `deserialize` what we want properly
@@ -725,7 +726,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 | Human           | Terminal input (`tokio::io::stdin`) | — (signals Main Agent to resume or stop)                                                    |
 
 
-# Manage Custom Errors
+
+_______________________________________________________________________________________________________________
+
+# MANAGE CUSTOM ERRORS
 I usually get some errors as i want my function to return `Result`
 as it is easier to manage thereafter in next function.
 so errors like : `expected () got ....` or `AppError does not implement.... or std library Error can use AppError`
@@ -795,6 +799,70 @@ Err(e) => {
 ```
 So the lesson here is to use the amazing `format!()` macro in order to manipulate my custom `error` `enum` `AppError` which `derive` `Debug` already
 so can be `display` on prints and formatted.
+
+## ERROR HANDLING GOOD PRACTICE TO IMPROVE MY ERROR MANAGEMENT IN `RUST`
+### `anyhow::Result<T>` is best for:
+- **Application-level** code (like **main()** and **async run()**).
+- **Rapid prototyping** or glue code **where you don’t care about exact error types**.
+- **Logging or displaying errors** with full context and **backtrace**.
+```rust
+use anyhow::{Result, Context};
+
+fn run() -> Result<()> {
+    let config = std::fs::read_to_string("config.toml")
+        // context() gives a nice human-readable error
+        .context("Failed to read configuration file")?;
+    
+    println!("{}", config);
+    Ok(())
+}
+```
+
+### `AppError` is best for:
+- **Library** or core modules** where **control** and **granularity** are key.
+- Representing **specific** known failure types **with structure**.
+- **Unit tests** and **code matching** exact variants (`Err(AppError::Notify(...))`).
+```rust
+pub fn get_env(key: &str) -> Result<String, AppError> {
+    dotenv().ok();
+    match dotenvy::var(key) {
+        Ok(val) => Ok(val),
+        Err(e) => Err(AppError::Env(format!("{}", e))),
+    }
+}
+```
+
+### How to Combine `anyhow` + `AppError`
+- Convert AppError into `anyhow::Error`: If a function returns `anyhow::Result<T>``, we can still use `?` with `AppError` by converting.
+- **How?**: `thiserror` + ``#[derive(Debug, Error)]` automatically implements `std::error::Error` for `AppError`, 
+  which is compatible with `anyhow::Error`
+```rust
+fn run() -> anyhow::Result<()> {
+    let val = get_env("API_KEY")?; // This works if get_env returns `Result<T, AppError>`
+
+    // If needed explicitly
+    let val = get_env("API_KEY").map_err(anyhow::Error::from)?;
+    Ok(())
+}
+```
+
+### Recap Tables Error Handling, When To Use `Custom`, `Anyhow` and `Propagation`
+| Layer                                      | Return Type                               | Error Handling Style                     |
+| ------------------------------------------ | ----------------------------------------- | ---------------------------------------- |
+| **Libraries**                              | `Result<T, AppError>`                     | Fine-grained control, structured errors  |
+| **Application logic** (`main.rs`, `run()`) | `anyhow::Result<T>`                       | Global context, graceful error reporting |
+| **Propagation**                            | Use `?`, `.context()`, or `.map_err(...)` | Choose based on use case                 |
+
+| Tool            | Purpose                                | When to Use                                  |
+| --------------- | -------------------------------------- | -------------------------------------------- |
+| `AppError`      | Precise error typing, domain-specific  | For reusable components and internal logic   |
+| `anyhow`        | Flexible, context-rich error reporting | In app entrypoints, high-level orchestration |
+| `.context()`    | Adds traceable messages                | For debugging and graceful degradation       |
+| `.map_err(...)` | Convert types manually                 | When custom mapping needed                   |
+
+Now my brain needs to stick to this logic and use it again and again until it becomes my standard of error handling.
+
+________________________________________________________________________________________________________________________
 
 # Rust Doc Special Commenting
 I want in this project to introduce this documentation syntax
@@ -884,3 +952,221 @@ Can also install `cargo install cargo-intraconv` and `cargo intraconv check` for
 // Warn for broken `[]` links
 #![warn(rustdoc::broken_intra_doc_links)]
 ```
+
+
+______________________________________________________________________________________________________________
+
+# Examples from previous project `ratatui`
+We will use the same as we did before with `mpsc` channel and states
+What might change is how we manage it as here instead of having a big loop in `APP` and clutter it,
+I want each Agents to have their own big `Run` `fn` that would use a `CORE` `cmd.rs` to `send` messages through the `stream`.
+To avoid code repeated, we would try to have a crate in `CORE` that would take several input parameter as the body would be almost the same,
+to read `instruction` from a state `agent` `outcome`, to run `git` commands,, to `send` messages (we could actually log to a `Discord` catagory)
+so that `human` can monitor the agentic process from `discord center of activity`.
+
+```rust
+/** SATES.RS **/
+
+// STATES EG. WITH  Channel Creation
+
+#[derive(Debug, Clone)]
+pub struct AppState {
+  pub steps: Vec<StepInfo>,
+  pub log: RingBuffer<String>,
+  pub log_scroll_offset: usize,
+}
+impl AppState {
+  pub fn new(step_names: &[&'static str]) -> (Self, watch::Sender<AppState>, watch::Receiver<AppState>) {
+    //let steps = step_names.iter().map(|&n| StepInfo { name: n, color: StepColor::Grey }).collect();
+    let state = AppState {
+      // this will be the `Vec<StepInfo>`
+      steps: step_names.iter().map(|&step_name| StepInfo {
+        name: step_name,
+        color: StepColor::Grey,
+      }).collect(),
+      // this will be the `RingBuffer<String>` limits the buffer if the output is too long
+      log: RingBuffer::<String>::new(5000), // here is were we default it to `5000`
+      log_scroll_offset: 0,
+    };
+    let (tx, rx) = watch::channel(state.clone());
+    //(Self { steps, log: RingBuffer::new(5000) }, tx, rx)
+    (state, tx, rx)
+  }
+
+
+/** MAIN CODE PROCESS OR AGENTS SPECIFIC BIG RUN CRATE **/
+
+// INITIALIZE STATE EG.
+
+let (mut state, _tx_state, _rx_state) = AppState::new(&step_names);
+
+// USE LOOP SCOPE FOR LLM CALL MULTITOOL UNTIL DONE
+
+loop {
+  ...logic...
+  
+  ..if this.. {
+    Return ...to exit loop
+  }
+}
+
+
+/** MAIN FUNCTION OR AGENT BIG RUN FN AS WELL **/
+
+// CHANNELS IMPORT EG.
+
+use anyhow::Result;
+use tokio::{sync::mpsc};
+use tokio::time::{
+  sleep,
+  Duration
+};
+
+// INITIALIZE A CHANNEL EG.
+let (tx_log, mut rx_log) = mpsc::channel::<String>(1024); // limit to 1024 here, might need to increase for us as llm context length can be larger
+
+// CHANNEL UNIQUE RECEIVER (DISPATCHER) EG
+// here we use `while` loop but could also see a system where this is managed at each agent level
+// and we get only the exit end processes outcome sent to `app.rs`
+while let Ok(line) = rx_log.try_recv() { // maybe here we will use `.recv` as we need to make sure to 100% we receive those messages
+  -- code logic...
+  ... if this... go to this node or agent... or do this....
+  
+  ... return ...to exit loop
+}
+
+
+/** MAIN FN OR AGENT BIG RUN FN **/
+
+// MAKING STRUCT SAFE TO SEND BETWEEN THREADS EG.
+
+// here `Vec` used but could just be the `struct` `Box dyned` but `Vec` is nice too
+let steps: Vec<Box<dyn Step + Send + Sync>> = vec![
+    Box::new(DiscoverNodes),
+]
+
+
+
+/** AGENT STRUCT IMPL. FN **/
+
+// STREAMING EG.
+
+use async_trait::async_trait;
+use tokio::process::Command;
+use tokio::sync::mpsc::Sender;
+// need to `spawn()`
+let child = Command::new("bash")
+  .arg("-c")
+  .arg(cmd)
+  .stdout(std::process::Stdio::piped())
+  .stderr(std::process::Stdio::piped())
+  .spawn()?; // This returns std::io::Error, which StepError handles via `#[from]`
+// Stream output + handle timeout via helper
+stream_child(self.name(), child, output_tx.clone()).await
+  .map_err(|e| StepError::Other(e.to_string()))?;
+// need decorator `async_trait` on implementation function of struct that will be sent through threads
+#[async_trait]
+impl <struct_name> {...}
+
+
+/** CMD.RS **/
+
+// SEND IN STREAM 
+use anyhow::{Context, Result};
+use tokio::io::{AsyncBufReadExt,BufReader};
+use tokio::sync::mpsc::Sender;
+use std::time::Duration;
+use tokio::time::timeout;
+// `fn` signature example
+pub async fn stream_child(
+    step: &'static str,
+    mut child: tokio::process::Child,
+    tx: Sender<String>,
+  ) -> Result<()> {...}
+// Take the child's stdout and stderr handles
+let stdout = child.stdout.take().context("Missing stdout")?;
+let stderr = child.stderr.take().context("Missing stderr")?;
+// Set up buffered line readers. type is `Result<Option<String>>`
+// `.lines()` extension need the import `AsyncBufReadExt` from `tokio::io`
+let mut rdr_out = BufReader::new(stdout).lines();
+let mut rdr_err = BufReader::new(stderr).lines();
+let tx_clone = tx.clone();
+// Spawn a task that reads stdout/stderr in background and sends to channel
+let log_task = tokio::spawn(async move {
+  loop {
+    // `tokio::select!` handles the `await` so no need `line = rdr_out.next_line().await` but just `line = rdr_out.next_line()`
+    tokio::select! {
+      // `.next_lines()` extension need the import `AsyncBufReadExt` from `tokio::io`
+      line = rdr_out.next_line() => {
+        match line {
+          Ok(Some(l)) => {
+            // so here even if inside `tokio:;select!` globally, it is not consider as so but inside `match`
+            // so `.send()` returns a `Future` therefore need an `await` (tricky). inner nested scope will have their own rules
+            let _ = tx_clone.send(format!("[{}][OUT] {}\n", step, l)).await;
+            write_step_cmd_debug(&format!("[{}][OUT] {}", step, l));
+          },
+           Ok(None) => break, // end of stream
+
+// USE TIMEOUT EG.
+if step == "Discover Nodes" {
+  let status = timeout(Duration::from_secs(60), child.wait())
+    .await
+    .context(format!("Timeout waiting for step `{}`", step))??;
+  if !status.success() {
+    return Err(anyhow::anyhow!("Command exited with status: {}", status));
+  }	
+} else if step == "Pull Repository Key" {
+    // here we put 360s as it can hang a bit
+    let status = timeout(Duration::from_secs(360), child.wait())
+      .await
+      .context(format!("Timeout waiting for step `{}`", step))??;
+    if !status.success() {
+      return Err(anyhow::anyhow!("Command exited with status: {}", status));
+    }
+}
+
+```
+
+_____________________________________________________________________________________
+
+# AGENTS DEVELOPMENT PLAN
+
+Here is have set the updated needs for each agents.
+```
+- Flow is: HUMAN > PROMPT ANALYZER AGENT > MAIN AGENT > SRE AGENT >< PR AGENT > MAIN AGENT > HUMAN
+
+- Prerequisites for this stage:
+  - Have prompts for each agents saved to files and will be injected with llm call using `format!()` macro
+  - How transmission is done between agents, the end of one agent would update common state
+    and the flow would start the parent agent that could check the state
+    and see which tool to calluntil job is done
+
+FIRST AGENT READING USER PROMPT
+- Reads User Prompt File
+- call llm with content of file and prompt talking about what is the context of the project and what structured output we want
+- structured output: which tasks for which agent?
+- discord validation of action done and work transmitted to `main agent` which is a `tool` MANDATORY TO USE
+
+MAIN AGENT
+- Read the received message from the First agent by pulling state accordingly
+- have SRE agents as tools and calls those in a loop so that we are sure that can call both if needed in requirements
+- have merging tool access
+- have discord notifier tool for ech actions
+
+SRE AGENT
+- have tool to read files for the infrastructure
+- have tool to make diffs and check
+- have a tool to do see git history
+- have tool like `kubectl` to check `infra` or `app`
+- have tool to make commits
+- have a tool to send discord notifications
+- saved outcome to sate
+- have a state to update for work done and another for report on work
+
+PR AGENT
+- have tool to pull work of `sre agent`
+- have tool to check infrasture against requirement like `kubectl`, `curl`
+- have tool to check git history
+- have tool/OR/condition to forward requirements to `sre agents` or `main agent`
+```
+
