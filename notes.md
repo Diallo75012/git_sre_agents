@@ -398,7 +398,7 @@ kubectl port-forward pod/nginx-585f69b946-qw57t 8080:80
 }
 ```
 ​
-- `curl` api calll example
+- `curl` api call example
 ```bash
 curl --location 'https://api.cerebras.ai/v1/chat/completions' \
 --header 'Content-Type: application/json' \                      # .header(reqwest::header::CONTENT_TYPE, "application/json") or just .json()
@@ -1170,3 +1170,17 @@ PR AGENT
 - have tool/OR/condition to forward requirements to `sre agents` or `main agent`
 ```
 
+______________________________________________________________________
+
+# Serde Super Helpful
+Have discovered that it can help to omit certain field and would handle their value if those are `None` for `Option`
+or for example if a vector is empty. So when defining the struct we can omit those if nothing to declare.
+```rust
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Tool {
+    pub name: String,
+
+    #[serde(skip_serializing_if = "Vec::is_empty")] // this would make a `[]` is nothing is declared for this field
+    pub parameters: Vec<String>,
+}
+```
