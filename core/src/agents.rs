@@ -53,15 +53,80 @@ pub enum ChoiceTool {
   Required,	
 }
 
-/// do struct for messages formatting
 
-/// do struct or check for tool call detection in response
+/// do struct for paylod sent
+# `create payload` `NEED`
+data = {
+    "model": "meta-llama/llama-3.3-70b-instruct",
+    "provider": {
+        "only": ["Cerebras"]
+    },
+    "messages": messages,
+    "tools": tools,
+    "tool_choice": "auto"
+}
 
+  pub name: String,
+  pub max_completion: u64,
+  pub temperature: u64,
+  /// Format of message sent to LLM: `[{"content": "Hello!", "role": "user"}]`
+  pub message: Vec<HashMap<String, String>>,
+  pub tool_choice: ChoiceTool,
+  /// To make field `None` if no tools we can just define that field as `None`
+  /// or use `serde` decorator ` #[serde(skip_serializing_if = "Option::is_none")]` and omit the field entirely as decorator will manage it
+  /// but anyways when defining this field need just to use `Some(vec![...])`
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub tools: Option<Tools>,
+  /// only type `function` is supported by Cerebras
+  #[serde(default = "function")]
+  #[serde(rename = "type")]
+  pub Type: String,
+
+/// we can then send messages for another call
+  data = {
+    "model": "meta-llama/llama-3.3-70b-instruct",
+    "provider": {
+      "only": ["Cerebras"]
+    },
+    "messages": messages
+  }
+
+[{"content": "Hello!", "role": "user"}]
+/// this will be the buffer history of messages stored and sent to an llm, so we need to limit it a certain way
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct MessageHistory {
+  /// so will have `MessageToAppend` and normal LlmResponse.choices[0].message.content formatted to a `MessageToAppend`
+  /// `LlmResponse.choices[0]` (doesn't change), `ResponseChoices.message` (`.message`), `ReponseMessage.content` (`.content`)
+  messages: Vec<MessageToAppend>,
+}
+
+/// this is the message to send after a tool call have been identified in the response, so llm have choosen a tool,
+/// we need to append to messages and send it to the llm again, and get the response and append it to the messages until tool is not called in a loop way
+/// with or without the `tool_call_id`: [{"content": "Hello!", "role": "user", "tool_call_id": "..."}]``
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct MessageToAppend {
+  #[serde(default = "tool")]
+  role: String,
+  content: String,
+  // so that we can skip that field if it is not there and keep going
+  #[serde(skip_serializing_if = "String::is_empty")]
+  // response.choices[0].message.tool_calls[0].id so `ToolCall.id`
+  tool_call_id: String,
+}
 
 #[derive(Deserialize, Debug, Clone, Default)]
-pub struct ReponseMessage {
+pub struct ToolCall {
+  // response.choices[0].message.tool_calls[0].function
+  function: String,
+  // response.choices[0].message.tool_calls[0].id
+  id: String,
+}
+
+#[derive(Deserialize, Debug, Clone, Default)]
+pub struct ResponseMessage {
   content: String,
   role: String,
+  tool_calls: Vec<ToolCall>,
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]
@@ -123,9 +188,10 @@ pub struct Tools {
   tools: Vec<Function>
 }
 
+/// we define for the agent and then maybe pick what we need from it after its definition or just use it directly need to test the api and adapt
 #[derive(Serialize, Debug, Clone, Default)]
 pub Struct ModelSettings {
-  pub Name: String,
+  pub name: String,
   pub max_completion: u64,
   pub temperature: u64,
   /// Format of message sent to LLM: `[{"content": "Hello!", "role": "user"}]`

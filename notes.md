@@ -1185,6 +1185,18 @@ pub struct Tool {
 }
 ```
 
+Also discovered that we can set a default value if field is omitted
+```rust
+#[derive(Serialize, Debug, Clone, Default)]
+pub struct FunctionParametersPropertiesExpression {
+  #[serde(default = "string")] // this one here called `string`
+  #[serde(rename = "type")]
+  Type: String,
+  description: String,
+}
+```
+
+
 # DERIVE: `derive` decorator explained
 I feel like that I am using `derive` **everything** and want to have more hands on it and not just copy but understand when to use what..
 - `Serialize, Deserialize (from serde)`
