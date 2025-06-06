@@ -1184,3 +1184,144 @@ pub struct Tool {
     pub parameters: Vec<String>,
 }
 ```
+
+# DERIVE: `derive` decorator explained
+I feel like that I am using `derive` **everything** and want to have more hands on it and not just copy but understand when to use what..
+- `Serialize, Deserialize (from serde)`
+Purpose: Let your struct be converted to/from JSON, TOML, YAML, etc.
+Use case: For APIs, config files, saving state, etc.
+```rust
+#[derive(Serialize, Deserialize)]
+```
+
+- `Debug`
+Purpose: Lets you use `println!("{:?}", my_struct)` for debugging.
+Use case: Always useful during development.
+```rust
+#[derive(Debug)]
+```
+**NOTES**: better to use tracing and logging tools instead of `{:?}` and can `skip` some fields to not print secrets
+```rust
+#[derive(Debug)]
+struct Auth {
+    #[debug(skip)]
+    api_key: String,
+}
+```
+| Action                           | When and Why                                                          |
+| -------------------------------- | --------------------------------------------------------------------- |
+| 🛑 Avoid `println!("{:?}", val)` | In critical paths in release builds. Use proper logging instead.      |
+| 📉 Use `log` or `tracing` crates | For structured logging instead of direct `Debug` prints.              |
+| 🔐 Avoid leaking secrets         | Be careful when using `Debug` for structs with secrets (e.g. tokens). |
+
+
+
+- `Clone and Copy`
+Both allow duplicating values, but:
+| Trait   | What it does                                 | When to use                                                  |
+| ------- | -------------------------------------------- | ------------------------------------------------------------ |
+| `Clone` | Allows deep copy using `.clone()`            | For types that need explicit copying (e.g., `String`, `Vec`) |
+| `Copy`  | Implicit shallow copy (no `.clone()` needed) | For simple, small types (e.g., `i32`, `bool`, `char`)        |
+
+
+**Can only derive Copy if all fields are also Copy.**
+```rust
+#[derive(Clone, Copy)] // only works for simple types like integers
+struct Point {
+    x: i32,
+    y: i32,
+}
+```
+
+- `PartialEq and Eq`
+`PartialEq`: Enables `==` and `!=`.
+`Eq`: Marker trait with no methods, used to say "full equality is well-defined".
+
+**If you can derive `Eq`, always derive both.**
+`PartialEq` is for "can be compared", `Eq` is "equality makes sense and is total".
+```rust
+#[derive(PartialEq, Eq)]
+```
+
+- **When to use which?**
+For most structs, start with:
+```rust
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+```
+Then add `Copy` only if your struct has only simple `Copy` types (like `i32`, `bool`, etc). (On the `**stack**` types, so known size at compile time)
+So for those `Copy` types no need to care about `ownership` like for `bool` type. You can reuse the variable without `&`.
+Also:
+  can use `{}` to print (`Display`)
+  can use `{:?}` to print (`Debug`)
+See source: [Native Copy types](https://dhghomon.github.io/easy_rust/Chapter_19.html)
+See source: [More Headacke Reading Copy Types (Deeeper)](https://doc.rust-lang.org/std/primitive.char.html)
+```rust
+fn prints_number(number: i32) { // There is no -> so it's not returning anything
+                             // If number was not copy type, it would take it
+                             // and we couldn't use it again
+    println!("{}", number);
+}
+
+fn main() {
+    let my_number = 8;
+    prints_number(my_number); // Prints 8. prints_number gets a copy of my_number
+    prints_number(my_number); // Prints 8 again.
+                              // No problem, because my_number is copy type!
+}
+```
+
+Remove `Serialize`, `Deserialize` if you don’t need to save/load it.
+
+- ChatGPT Friend Tables
+Table to resume precise `Copy` `trait` implemented types or not (just think `stack` and `heap` or size known or now at compile time)
+| Type             | Is `Copy`? | Why?                            |
+| ---------------- | ---------- | ------------------------------- |
+| `i32`, `u8`      | ✅ Yes      | Fixed-size, simple to duplicate |
+| `bool`, `char`   | ✅ Yes      | Simple types                    |
+| `[u8; 32]`       | ✅ Yes      | Fixed-size array of `Copy` type |
+| `String`         | ❌ No       | Heap allocated, needs `Clone`   |
+| `Vec<T>`         | ❌ No       | Heap allocated, not `Copy`      |
+| `&str`           | ✅ Yes      | A reference (doesn't own data)  |
+| `&String`        | ✅ Yes      | A reference                     |
+| `Option<i32>`    | ✅ Yes      | Because `i32` is `Copy`         |
+| `Option<String>` | ❌ No       | Because `String` is not `Copy`  |
+
+Here to precise `PartialEq`, `Eq`
+| Trait       | Purpose                    | Example                   | Notes                           |
+| ----------- | -------------------------- | ------------------------- | ------------------------------- |
+| `PartialEq` | Enables `==` and `!=`      | `"a" == "a"`              | You must derive this to compare |
+| `Eq`        | Says equality is **total** | Good for sets, maps, etc. | Requires `PartialEq` already    |
+
+| Type          | `PartialEq` | `Eq`  | Why?                   |
+| ------------- | ----------- | ----- | ---------------------- |
+| `f32`, `f64`  | ✅ Yes       | ❌ No  | Because `NaN != NaN`   |
+| `i32`, `bool` | ✅ Yes       | ✅ Yes | Total equality defined |
+
+- `Default` can be derived to have automatic default values of a struct field but `Display` is an `impl` to a struct so no `derive`
+| Derive    | What it does                                    | Example Use                          |
+| --------- | ----------------------------------------------- | ------------------------------------ |
+| `Display` | Enables `format!("{}", val)`                    | For user-friendly print, not `{:?}`  |
+| `Default` | Creates a default value via `Struct::default()` | For configs, initializing empty data |
+
+```rust
+#[derive(Default, Debug)]
+struct Config {
+    retries: u32,
+    name: String,
+}
+
+// Now we can do:
+let config = Config::default();  // Config { retries: 0, name: "" }
+```
+```rust
+use std::fmt;
+
+struct City(String);
+
+impl fmt::Display for City {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "City: {}", self.0)
+    }
+}
+```
+
