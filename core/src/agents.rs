@@ -26,7 +26,7 @@ pub enum MessageRole {
 pub enum SchemaFieldType {
   String,
   Bool,
-  u64,
+  Int,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -55,49 +55,33 @@ pub enum ChoiceTool {
 
 
 /// do struct for paylod sent
-# `create payload` `NEED`
-data = {
-    "model": "meta-llama/llama-3.3-70b-instruct",
-    "provider": {
-        "only": ["Cerebras"]
-    },
-    "messages": messages,
-    "tools": tools,
-    "tool_choice": "auto"
-}
-
-  pub name: String,
-  pub max_completion: u64,
-  pub temperature: u64,
-  /// Format of message sent to LLM: `[{"content": "Hello!", "role": "user"}]`
-  pub message: Vec<HashMap<String, String>>,
-  pub tool_choice: ChoiceTool,
-  /// To make field `None` if no tools we can just define that field as `None`
-  /// or use `serde` decorator ` #[serde(skip_serializing_if = "Option::is_none")]` and omit the field entirely as decorator will manage it
-  /// but anyways when defining this field need just to use `Some(vec![...])`
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub tools: Option<Tools>,
-  /// only type `function` is supported by Cerebras
-  #[serde(default = "function")]
-  #[serde(rename = "type")]
-  pub Type: String,
+// # `create payload` `NEED`
+// data = {
+//     "model": "meta-llama/llama-3.3-70b-instruct",
+//     "provider": {
+//         "only": ["Cerebras"]
+//     },
+//     "messages": messages,
+//     "tools": tools,
+//     "tool_choice": "auto"
+// }
 
 /// we can then send messages for another call
-  data = {
-    "model": "meta-llama/llama-3.3-70b-instruct",
-    "provider": {
-      "only": ["Cerebras"]
-    },
-    "messages": messages
-  }
+  // data = {
+  //   "model": "meta-llama/llama-3.3-70b-instruct",
+  //   "provider": {
+  //     "only": ["Cerebras"]
+  //   },
+  //   "messages": messages
+  // }
 
-[{"content": "Hello!", "role": "user"}]
+
 /// this will be the buffer history of messages stored and sent to an llm, so we need to limit it a certain way
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct MessageHistory {
   /// so will have `MessageToAppend` and normal LlmResponse.choices[0].message.content formatted to a `MessageToAppend`
   /// `LlmResponse.choices[0]` (doesn't change), `ResponseChoices.message` (`.message`), `ReponseMessage.content` (`.content`)
-  messages: Vec<MessageToAppend>,
+  pub messages: Vec<MessageToAppend>,
 }
 
 /// this is the message to send after a tool call have been identified in the response, so llm have choosen a tool,
@@ -106,27 +90,27 @@ pub struct MessageHistory {
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct MessageToAppend {
   #[serde(default = "tool")]
-  role: String,
-  content: String,
+  pub role: String,
+  pub content: String,
   // so that we can skip that field if it is not there and keep going
   #[serde(skip_serializing_if = "String::is_empty")]
   // response.choices[0].message.tool_calls[0].id so `ToolCall.id`
-  tool_call_id: String,
+  pub tool_call_id: String,
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]
 pub struct ToolCall {
   // response.choices[0].message.tool_calls[0].function
-  function: String,
+  pub function: String,
   // response.choices[0].message.tool_calls[0].id
-  id: String,
+  pub id: String,
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]
 pub struct ResponseMessage {
-  content: String,
-  role: String,
-  tool_calls: Vec<ToolCall>,
+  pub content: String,
+  pub role: String,
+  pub tool_calls: Vec<ToolCall>,
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]
@@ -146,46 +130,43 @@ pub struct LlmResponse {
 
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct FunctionParametersPropertiesExpression {
-  #[serde(default = "string")]
-  #[serde(rename = "type")]
-  Type: String,
-  description: String,
+  #[serde(default = "string".to_string())]
+  pub r#type: String,
+  pub description: String,
 }
 
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct FunctionParametersProperties {
-  expression: FunctionParametersPropertiesExpression
+  pub expression: FunctionParametersPropertiesExpression
 }
 
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct FunctionParameters {
-  #[serde(default = "object")]
-  #[serde(rename = "type")]
-  Type: String,
-  properties: FunctionParamtersProprerties,
- #[serde(skip_serializing_if = "Vec::is_empty")]
- required: Vec<String>
+  #[serde(default = "object".to_string())]
+  pub r#ype: String,
+  pub properties: FunctionParamtersProprerties,
+  #[serde(skip_serializing_if = "Vec::is_empty")]
+  pub required: Vec<String>
 }
 
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct FunctionDetails {
-  name: String,
-  description: String,
-  parameters: FunctionParameters
+  pub name: String,
+  pub description: String,
+  pub parameters: FunctionParameters
 }
 
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct Function {
   /// `type` is always `function`
-  #[serde(default = "function")]
-  #[serde(rename = "type")]
-  Type: String,
-  function: FunctionDetails,
+  #[serde(default = "function".to_string())]
+  pub r#type: String,
+  pub function: FunctionDetails,
 }
 
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct Tools {
-  tools: Vec<Function>
+  pub tools: Vec<Function>
 }
 
 /// we define for the agent and then maybe pick what we need from it after its definition or just use it directly need to test the api and adapt
@@ -203,24 +184,147 @@ pub Struct ModelSettings {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub tools: Option<Tools>,
   /// only type `function` is supported by Cerebras
-  #[serde(default = "function")]
-  #[serde(rename = "type")]
-  pub Type: String,
+  #[serde(default = "function".to_string())]
+  pub r#ype: String,
 }
 
+/// this is the `schema` of the structured output structure generic to all different `schema` needed in the app
+#[derive(Serialize, Debug, Clone, Default)]
+pub struct SchemaFieldDetails {
+  pub r#type: String,
+  pub field_type: String,
+}
 
+impl SchemaFieldDetails {
+  // This is a static constructor (no &self)
+  pub fn new(field_type: &SchemaFieldType) -> Self {
+    let field_string_type = match field_type {
+      SchemaFieldType::String => "string".to_string(),
+      SchemaFieldType::Int => "integer".to_string(),
+      SchemaFieldType::Bool => "boolean".to_string(),
+    };
+    Self {
+      r#type: "type".to_string(),
+      field_type: field_string_type,
+    }
+  }
+
+  // Call new using SchemaFieldDetails::new()
+  pub fn create_schema_fields(
+    &self,
+    dictionary_fields_definition: &HashMap<String, &SchemaFieldType>,
+  ) -> HashMap<String, HashMap<String, SchemaFieldDetails>> {
+    let mut properties = HashMap::new();
+    for (key, type_value) in dictionary_fields_definition.iter() {
+      let field_type = SchemaFieldDetails::new(type_value); // <-- fix here
+      properties.insert(
+        key.to_string(),
+        HashMap::from([
+          ("type".to_string(), field_type)
+        ])
+      );
+    }
+    properties
+  }
+}
+
+    // /* TEST */
+    // let a = SchemaFieldDetails::new(&SchemaFieldType::String); // <-- fix here
+    // println!("{:?}", a);
+    // let b = HashMap::from(
+    //   [
+    //     ("location".to_string(), &SchemaFieldType::String),
+    //     ("decision_true_false".to_string(), &SchemaFieldType::Bool),
+    //     ("precision".to_string(), &SchemaFieldType::Int),
+    //   ]
+    // );
+    // let c = SchemaFieldDetails::create_schema_fields(
+    //   &SchemaFieldDetails::new(&SchemaFieldType::String),
+    //   &b
+    // );
+    // println!("{:?}", c);
+    // /* RETURNS */
+    // // need to talk with ChatGPT to see what is best for structure of object
+    // SchemaFieldDetails { type: "type", field_type: "string" }
+    // { 
+    //   "location": {"type": SchemaFieldDetails { type: "type", field_type: "string" }},
+    //   "precision": {"type": SchemaFieldDetails { type: "type", field_type: "integer" }},
+    //   "decision_true_false": {"type": SchemaFieldDetails { type: "type", field_type: "boolean" }}
+    // }
+
+/// this is the `schema` of the structured output structure generic to all different `schema` needed in the app
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct Schema {
   /// type is always to be set to 'object'
   #[serde(default = "object")]
   #[serde(rename = "type")]
-  Type: SchemaFieldType,
-  properties: HashMap<String, HashMap<String, SchemaFieldType>>
+  Type: String,
+  properties: HashMap<String, HashMap<String, SchemaFieldDetails>>
   #[serde(skip_serializing_if = "Vec::is_empty")]
   pub required: Vec<String>,
+  // this one will remain `False` as we have decided to not use this field in this project
   #[serde(rename = "additionalProperties")]
-  pub ExtraProperties: SchemaFieldType,
+  #[serde(rename = "False")]
+  pub extra_properties: String,
 }
+
+impl Schema {
+  pub fn new(
+    self,
+    /// this `properties_fields_types` will be built beforehands using other struct `impl` and then feed here the param
+    /// create a `HashMap` with all wanted fields and then use `SchemaFieldDetails::create_schema_fields` to build param `properties_fields_types`
+    properties_fields_types: &HashMap<String, HashMap<String, SchemaFieldDetails>>,
+    // this is an optional list of `properties_field_key`
+    schema_field_requirement: Option(&Vec<String>),
+  ) -> Schema {
+    /// here we just `unwrap` using match pattern to get the vector list which is encapsulated inside an `Option`
+    if let required_params = match schema_field_requirement {
+      Some(vec_content) => vec_content.clone(),
+      /// empty `Vec` that will be setting the field to `[]`
+      None => Vec::new(),  
+    };
+  	let schema = {
+  	  Type: self.Type,
+      properties: properties_fields_types,
+      required: required_params,
+      extra_properties: self.extra_properties,
+  	}
+  	
+  	schema
+  }    
+}
+
+/* ** TO CHECK AS WE NEED TO CREATE MORE STRUCTS FOR `PAYLOAD` ** */
+// { 
+//   "type": "json_schema",
+//   "json_schema": { 
+//     "name": "schema_name", # `response_format.json_schema.name`: string , optional name for schema
+//     "strict": true,        # `response_format.json_schema.strict`: boolean
+//     "schema": {...}        # `response_format.json_schema.schema`: object, the desired response JSON schema
+//   } 
+// }
+
+// so we will need to define a struct for the payload as well
+// we define the schema like here `movie_schema` already defined is used and then we define a payload and put it in
+// data = {
+//     "model": "meta-llama/llama-3.3-70b-instruct",
+//     "provider": {
+//         "only": ["Cerebras"]
+//     },
+//     "messages": [
+//         {"role": "system", "content": "You are a helpful assistant that generates movie recommendations."},
+//         {"role": "user", "content": "Suggest a sci-fi movie from the 1990s."}
+//     ],
+    
+    // need this as well as struct as the schema created will then be a field of this
+    // "response_format": {
+    //     "type": "json_schema", # can olso be `json_object` but here no need to enforce any structure so no need what comes next just `"type": "json_object"`
+    //     "json_schema": {
+    //         "name": "movie_schema",  # optional name
+    //         "strict": True,  # boolean True/False that enforced to follow the schema
+    //         "schema": movie_schema # this is where the actual defined schema goes
+    //     }
+    // }
 
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct StructOut {

@@ -16,7 +16,7 @@ use core::{
 
 /// function wrapper of the `Engine`
 async fn run() {
-  /// trying getting existing env vars
+  // trying getting existing env vars
 //   match envs_manage::get_env("city") {
 //   	Ok(value) => {
 //   	  println!("{}", value)
@@ -45,62 +45,64 @@ async fn run() {
 //   	  AppError::Env(format!("An error occurred while trying to read file {} content: {}", "human_prompt.md", e));
 //   	}
 //   }
+// 
+//   // test Discord webhook url formatting
+//   let discord_url = envs_manage::get_env("DISCORD_WH_URL");
+//   let discord_category = envs_manage::get_env("DISCORD_WH_CATEGORY");
+//   let discord_id = envs_manage::get_env("DISCORD_WH_ID");
+//   let mut discord_wh_formatted_full_url = String::new();
+//   match discord_url {
+//   	Ok(value) => {
+//   	  discord_wh_formatted_full_url.push_str(&value);
+//   	  println!("DISCORD_WH_URL: {}", value);
+//   	},
+//   	Err(e) => {
+//   	  AppError::Env(format!("An error occurred while trying to access env var DISCORD_WH_URL: {}", e));
+//   	}
+//   }
+//   match discord_category {
+//   	Ok(value) => {
+//   	  discord_wh_formatted_full_url.push_str(&value);
+//   	  println!("DISCORD_WH_CATEGORY: {}", value);
+//   	},
+//   	Err(e) => {
+//   	  AppError::Env(format!("An error occurred while trying to access env var DISCORD_WH_CATEGORY: {}", e));
+//   	}  	
+//   }
+//   match discord_id {
+//   	Ok(value) => {
+//   	  discord_wh_formatted_full_url.push_str(&value);
+//   	  println!("DISCORD_WH_ID: {}", value)
+//   	},
+//   	Err(e) => {
+//   	  AppError::Env(format!("An error occurred while trying to access env var DISCORD_WH_ID: {}", e));
+//   	}  	
+//   }
+//   println!("{}", discord_wh_formatted_full_url);
+// 
+//   /// trying send a notfication to discord
+//   match discord_notifier::notify_human(
+//     "I will be in Tokyo this summer after having made some money trading!",
+//     &discord_wh_formatted_full_url
+//   ).await {
+//   	Ok(_) => {
+//   	  // response is empty so just return the status code
+//   	  println!("Notification message sent to discord")
+//   	},
+//   	/// As `Discord` is returning noting other than a `204` if the message is successfully sent so no `String`
+//   	/// we will format the error `e` and then check if it contains `204` to return proper error message if any,
+//   	Err(e) => {
+//   	  let formatted_e = format!("{}", e);
+//   	  if formatted_e.contains("204") {
+//   	    /// so here we split the `String` as our custom error prints an error message
+//   	  	println!("Notification message has been successfully sent to Discord: {}", formatted_e.split("Discord Notifier Error:").collect::<Vec<&str>>()[1]);
+//   	  } else {
+//         eprintln!("{}", AppError::Env(format!("An error occurred while trying to send notification to discord {}", e)));	
+//       }
+//   	}
+//   }
 
-  // test Discord webhook url formatting
-  let discord_url = envs_manage::get_env("DISCORD_WH_URL");
-  let discord_category = envs_manage::get_env("DISCORD_WH_CATEGORY");
-  let discord_id = envs_manage::get_env("DISCORD_WH_ID");
-  let mut discord_wh_formatted_full_url = String::new();
-  match discord_url {
-  	Ok(value) => {
-  	  discord_wh_formatted_full_url.push_str(&value);
-  	  println!("DISCORD_WH_URL: {}", value);
-  	},
-  	Err(e) => {
-  	  AppError::Env(format!("An error occurred while trying to access env var DISCORD_WH_URL: {}", e));
-  	}
-  }
-  match discord_category {
-  	Ok(value) => {
-  	  discord_wh_formatted_full_url.push_str(&value);
-  	  println!("DISCORD_WH_CATEGORY: {}", value);
-  	},
-  	Err(e) => {
-  	  AppError::Env(format!("An error occurred while trying to access env var DISCORD_WH_CATEGORY: {}", e));
-  	}  	
-  }
-  match discord_id {
-  	Ok(value) => {
-  	  discord_wh_formatted_full_url.push_str(&value);
-  	  println!("DISCORD_WH_ID: {}", value)
-  	},
-  	Err(e) => {
-  	  AppError::Env(format!("An error occurred while trying to access env var DISCORD_WH_ID: {}", e));
-  	}  	
-  }
-  println!("{}", discord_wh_formatted_full_url);
 
-  /// trying send a notfication to discord
-  match discord_notifier::notify_human(
-    "I will be in Tokyo this summer after having made some money trading!",
-    &discord_wh_formatted_full_url
-  ).await {
-  	Ok(_) => {
-  	  // response is empty so just return the status code
-  	  println!("Notification message sent to discord")
-  	},
-  	/// As `Discord` is returning noting other than a `204` if the message is successfully sent so no `String`
-  	/// we will format the error `e` and then check if it contains `204` to return proper error message if any,
-  	Err(e) => {
-  	  let formatted_e = format!("{}", e);
-  	  if formatted_e.contains("204") {
-  	    /// so here we split the `String` as our custom error prints an error message
-  	  	println!("Notification message has been successfully sent to Discord: {}", formatted_e.split("Discord Notifier Error:").collect::<Vec<&str>>()[1]);
-  	  } else {
-        eprintln!("{}", AppError::Env(format!("An error occurred while trying to send notification to discord {}", e)));	
-      }
-  	}
-  }
 }
 
 

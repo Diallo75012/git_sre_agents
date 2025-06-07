@@ -499,11 +499,11 @@ data = {
     ],
     # `inject our structured output request format here`
     "response_format": {
-        "type": "json_schema",
+        "type": "json_schema", # can olso be `json_object` but here no need to enforce any structure so no need what comes next just `"type": "json_object"`
         "json_schema": {
-            "name": "movie_schema",
-            "strict": True,
-            "schema": movie_schema
+            "name": "movie_schema",  # optional name
+            "strict": True,  # boolean True/False that enforced to follow the schema
+            "schema": movie_schema # this is where the actual defined schema goes
         }
     }
 }
