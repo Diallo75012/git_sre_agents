@@ -1337,3 +1337,7 @@ impl fmt::Display for City {
 }
 ```
 
+_________________________________________________________________________________
+
+Heve simplified the structs by using `HashMaps` to get the formating closer to what the `api` expects for the `schema` object creation,
+Need now to do the same for the payload sent and keep testing using `rust playground`: [rust playground link](https://play.rust-lang.org/?version=stable&mode=debug&edition=2024)

@@ -1,6 +1,7 @@
 //! this file will be used to run the appllication
 //! and will have the engine holding the full logic in and `async` `run()`
 #![allow(unused_doc_comments)]
+use std::collections::HashMap;
 // use anyhow::Result;
 // use tokio::time::{
 //   sleep,
@@ -11,6 +12,11 @@ use core::{
   errors::AppError,
   file_reader,
   discord_notifier,
+  agents::{
+  	SchemaFieldDetails,
+  	SchemaFieldType,
+  	Schema,
+  },
 };
 
 
@@ -102,6 +108,27 @@ async fn run() {
 //   	}
 //   }
 
+    let a = SchemaFieldDetails::new(&SchemaFieldType::String); // <-- fix here
+    println!("a: {:#?}", a);
+    let b = HashMap::from(
+      [
+        ("location".to_string(), &SchemaFieldType::String),
+        ("decision_true_false".to_string(), &SchemaFieldType::Bool),
+        ("precision".to_string(), &SchemaFieldType::Int),
+      ]
+    );
+    let c = SchemaFieldDetails::create_schema_field(
+      //&SchemaFieldDetails::new(&SchemaFieldType::String),
+      &b
+    );
+    println!("c (json): {:#?}", c);
+    println!("c location type: {:#?}", c["location"]["type"]);
+    
+    let d = Schema::new(
+      &c,
+      Some(&vec!("location".to_string(), "decision_true_false".to_string(), "precision".to_string())),
+    );
+    println!("d: {:#?}", d);
 
 }
 

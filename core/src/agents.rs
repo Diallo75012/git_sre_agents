@@ -29,27 +29,27 @@ pub enum SchemaFieldType {
   Int,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub enum TaskCompletion {
   Done,
-  Processing,
+  #[default]Processing,
   Error,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub enum AgentRole {
   RequestAnalyzer,
-  Main,
+  #[default]Main,
   Pr,
   Sre1,
   Sre2,	
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub enum ChoiceTool {
   /// map those to `none`, `auto`, `required`
   None,
-  Auto,
+  #[default]Auto,
   Required,	
 }
 
@@ -75,6 +75,19 @@ pub enum ChoiceTool {
   //   "messages": messages
   // }
 
+/// this is the message to send after a tool call have been identified in the response, so llm have choosen a tool,
+/// we need to append to messages and send it to the llm again, and get the response and append it to the messages until tool is not called in a loop way
+/// with or without the `tool_call_id`: [{"content": "Hello!", "role": "user", "tool_call_id": "..."}]``
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct MessageToAppend {
+  //#[serde(default = "tool")]
+  pub role: String,
+  pub content: String,
+  // so that we can skip that field if it is not there and keep going
+  #[serde(skip_serializing_if = "String::is_empty")]
+  // response.choices[0].message.tool_calls[0].id so `ToolCall.id`
+  pub tool_call_id: String,
+}
 
 /// this will be the buffer history of messages stored and sent to an llm, so we need to limit it a certain way
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -82,20 +95,6 @@ pub struct MessageHistory {
   /// so will have `MessageToAppend` and normal LlmResponse.choices[0].message.content formatted to a `MessageToAppend`
   /// `LlmResponse.choices[0]` (doesn't change), `ResponseChoices.message` (`.message`), `ReponseMessage.content` (`.content`)
   pub messages: Vec<MessageToAppend>,
-}
-
-/// this is the message to send after a tool call have been identified in the response, so llm have choosen a tool,
-/// we need to append to messages and send it to the llm again, and get the response and append it to the messages until tool is not called in a loop way
-/// with or without the `tool_call_id`: [{"content": "Hello!", "role": "user", "tool_call_id": "..."}]``
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct MessageToAppend {
-  #[serde(default = "tool")]
-  pub role: String,
-  pub content: String,
-  // so that we can skip that field if it is not there and keep going
-  #[serde(skip_serializing_if = "String::is_empty")]
-  // response.choices[0].message.tool_calls[0].id so `ToolCall.id`
-  pub tool_call_id: String,
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]
@@ -116,7 +115,7 @@ pub struct ResponseMessage {
 #[derive(Deserialize, Debug, Clone, Default)]
 pub struct ResponseChoices {
   pub finish_reason: String,
-  pub message: ReponseMessage,
+  pub message: ResponseMessage,
 }
 
 /// here we will be `deserializing` the llm's response
@@ -130,7 +129,7 @@ pub struct LlmResponse {
 
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct FunctionParametersPropertiesExpression {
-  #[serde(default = "string".to_string())]
+  #[serde(default = "string")]
   pub r#type: String,
   pub description: String,
 }
@@ -142,9 +141,9 @@ pub struct FunctionParametersProperties {
 
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct FunctionParameters {
-  #[serde(default = "object".to_string())]
+  #[serde(default = "object")]
   pub r#ype: String,
-  pub properties: FunctionParamtersProprerties,
+  pub properties: FunctionParametersProperties,
   #[serde(skip_serializing_if = "Vec::is_empty")]
   pub required: Vec<String>
 }
@@ -159,7 +158,7 @@ pub struct FunctionDetails {
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct Function {
   /// `type` is always `function`
-  #[serde(default = "function".to_string())]
+  #[serde(default = "function")]
   pub r#type: String,
   pub function: FunctionDetails,
 }
@@ -171,7 +170,7 @@ pub struct Tools {
 
 /// we define for the agent and then maybe pick what we need from it after its definition or just use it directly need to test the api and adapt
 #[derive(Serialize, Debug, Clone, Default)]
-pub Struct ModelSettings {
+pub struct ModelSettings {
   pub name: String,
   pub max_completion: u64,
   pub temperature: u64,
@@ -184,48 +183,89 @@ pub Struct ModelSettings {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub tools: Option<Tools>,
   /// only type `function` is supported by Cerebras
-  #[serde(default = "function".to_string())]
+  #[serde(default = "function")]
   pub r#ype: String,
 }
 
 /// this is the `schema` of the structured output structure generic to all different `schema` needed in the app
 #[derive(Serialize, Debug, Clone, Default)]
-pub struct SchemaFieldDetails {
-  pub r#type: String,
-  pub field_type: String,
-}
+pub struct SchemaFieldDetails;
 
 impl SchemaFieldDetails {
-  // This is a static constructor (no &self)
-  pub fn new(field_type: &SchemaFieldType) -> Self {
-    let field_string_type = match field_type {
-      SchemaFieldType::String => "string".to_string(),
-      SchemaFieldType::Int => "integer".to_string(),
-      SchemaFieldType::Bool => "boolean".to_string(),
-    };
-    Self {
-      r#type: "type".to_string(),
-      field_type: field_string_type,
+    // This is a static constructor (no &self)
+    pub fn new(field_type: &SchemaFieldType) -> HashMap<String, String> {
+        let field_string_type = match field_type {
+            SchemaFieldType::String => "string".to_string(),
+            SchemaFieldType::Int => "integer".to_string(),
+            SchemaFieldType::Bool => "boolean".to_string(),
+        };
+        let schema_field_details = HashMap::from(
+          [
+            (r#"type"#.to_string(), field_string_type),
+          ]
+        );
+        schema_field_details
+        
     }
-  }
 
-  // Call new using SchemaFieldDetails::new()
-  pub fn create_schema_fields(
-    &self,
-    dictionary_fields_definition: &HashMap<String, &SchemaFieldType>,
-  ) -> HashMap<String, HashMap<String, SchemaFieldDetails>> {
-    let mut properties = HashMap::new();
-    for (key, type_value) in dictionary_fields_definition.iter() {
-      let field_type = SchemaFieldDetails::new(type_value); // <-- fix here
-      properties.insert(
-        key.to_string(),
-        HashMap::from([
-          ("type".to_string(), field_type)
-        ])
-      );
+    // Call new using SchemaFieldDetails::new()
+    pub fn create_schema_field(
+        //&self,
+        dictionary_fields_definition: &HashMap<String, &SchemaFieldType>,
+    ) -> HashMap<String, HashMap<String, String>> {
+        let mut properties = HashMap::new();
+        for (key, type_value) in dictionary_fields_definition.iter() {
+            let field_type = SchemaFieldDetails::new(type_value);
+            properties.insert(
+              key.to_string(),
+              field_type
+            );
+        }
+        properties
     }
-    properties
-  }
+}
+
+/// this is the `schema` of the structured output structure generic to all different `schema` needed in the app
+#[allow(non_snake_case)]
+#[derive(Serialize, Debug, Clone, Default)]
+pub struct Schema {
+  /// type is always to be set to 'object'
+  #[serde(default = "object")]
+  #[serde(rename = "type")]
+  r#type: String,
+  properties: HashMap<String, HashMap<String, String>>,
+  #[serde(skip_serializing_if = "Vec::is_empty")]
+  pub required: Vec<String>,
+  // this one will remain `False` as we have decided to not use this field in this project
+  #[serde(rename = "additionalProperties")]
+  pub additionalProperties: bool,
+}
+
+/// ***`properties_fields_types: &HashMap<String, HashMap<String, SchemaFieldDetails>>` ***
+/// this `properties_fields_types` will be built beforehands using other struct `impl` and then feed here the param
+/// create a `HashMap` with all wanted fields and then use `SchemaFieldDetails::create_schema_fields` to build param `properties_fields_types`
+/// ***`schema_field_requirement: Option<&Vec<String>>`***
+/// this is an optional list of `properties_field_key`
+impl Schema {
+  pub fn new(
+    properties_fields_types: &HashMap<String, HashMap<String, String>>,
+    schema_field_requirement: Option<&Vec<String>>,
+  ) -> Schema {
+    // here we just `unwrap` using match pattern to get the vector list which is encapsulated inside an `Option`
+    let required_params = match schema_field_requirement {
+      Some(vec_content) => vec_content.clone(),
+      // empty `Vec` that will be setting the field to `[]`
+      None => Vec::new(),  
+    };
+  	let schema = Schema {
+  	  r#type: "objectoooo".to_string(),
+      properties: properties_fields_types.clone(),
+      required: required_params,
+      additionalProperties: false,
+  	};
+  	
+  	schema
+  }    
 }
 
     // /* TEST */
@@ -252,47 +292,6 @@ impl SchemaFieldDetails {
     //   "decision_true_false": {"type": SchemaFieldDetails { type: "type", field_type: "boolean" }}
     // }
 
-/// this is the `schema` of the structured output structure generic to all different `schema` needed in the app
-#[derive(Serialize, Debug, Clone, Default)]
-pub struct Schema {
-  /// type is always to be set to 'object'
-  #[serde(default = "object")]
-  #[serde(rename = "type")]
-  Type: String,
-  properties: HashMap<String, HashMap<String, SchemaFieldDetails>>
-  #[serde(skip_serializing_if = "Vec::is_empty")]
-  pub required: Vec<String>,
-  // this one will remain `False` as we have decided to not use this field in this project
-  #[serde(rename = "additionalProperties")]
-  #[serde(rename = "False")]
-  pub extra_properties: String,
-}
-
-impl Schema {
-  pub fn new(
-    self,
-    /// this `properties_fields_types` will be built beforehands using other struct `impl` and then feed here the param
-    /// create a `HashMap` with all wanted fields and then use `SchemaFieldDetails::create_schema_fields` to build param `properties_fields_types`
-    properties_fields_types: &HashMap<String, HashMap<String, SchemaFieldDetails>>,
-    // this is an optional list of `properties_field_key`
-    schema_field_requirement: Option(&Vec<String>),
-  ) -> Schema {
-    /// here we just `unwrap` using match pattern to get the vector list which is encapsulated inside an `Option`
-    if let required_params = match schema_field_requirement {
-      Some(vec_content) => vec_content.clone(),
-      /// empty `Vec` that will be setting the field to `[]`
-      None => Vec::new(),  
-    };
-  	let schema = {
-  	  Type: self.Type,
-      properties: properties_fields_types,
-      required: required_params,
-      extra_properties: self.extra_properties,
-  	}
-  	
-  	schema
-  }    
-}
 
 /* ** TO CHECK AS WE NEED TO CREATE MORE STRUCTS FOR `PAYLOAD` ** */
 // { 
@@ -326,6 +325,7 @@ impl Schema {
     //     }
     // }
 
+#[allow(non_snake_case)]
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct StructOut {
   /// key/value: `HashMap<String, String>` OR `Schema` 
@@ -337,12 +337,13 @@ pub struct StructOut {
 }
 
 /// this is me creating a generic agent with all fields needed to make any type of agent
+#[allow(non_snake_case)]
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct Agent {
   pub Role: AgentRole,
   // content of message to be red by other agents  about task
   pub Message: String,
-  pub Prompt: mut Vec<&str>,
+  pub Prompt: Vec<String>,
   /// Eg. for Human request Analyzer Agent {HumanStructuredOutput.Agent: HumanStructuredOutput.Task }
   /// But at least we are free to add any key pairs
   pub StructuredOutput: StructOut,
@@ -351,21 +352,21 @@ pub struct Agent {
   pub Llm: ModelSettings,
 }
 
-impl Agent {
-  fn new(prompt_file_path: &str) -> Result<Self, AppError> {
-    /// This would propagate the error of type `AppError` already handled in `read_file`
-    /// let prompt = read_file(prompt_file_path);?
-    /// OR we can use match patterns
-    let prompt = match read_file(prompt_file_path) {
-      Ok(content) => content,
-      Err(e) => {
-          eprintln!("Error occurred: {}", e);
-          AppError::FileRead(e.to_string())
-      }
-    }
-    Self {
-      Prompt: read_file(prompt_file_path),
-      StructuredOutput: 
-    } 
-  }
-}
+// impl Agent {
+//   fn new(prompt_file_path: &str) -> Result<Self, AppError> {
+//     /// This would propagate the error of type `AppError` already handled in `read_file`
+//     /// let prompt = read_file(prompt_file_path);?
+//     /// OR we can use match patterns
+//     let prompt = match read_file(prompt_file_path) {
+//       Ok(content) => content,
+//       Err(e) => {
+//           eprintln!("Error occurred: {}", e);
+//           AppError::FileRead(e.to_string())
+//       }
+//     };
+//     Agent {
+//       Prompt: read_file(prompt_file_path),
+//       StructuredOutput: 
+//     } 
+//   }
+// }
