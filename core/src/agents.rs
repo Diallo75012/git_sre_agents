@@ -328,12 +328,55 @@ impl Schema {
 #[allow(non_snake_case)]
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct StructOut {
-  /// key/value: `HashMap<String, String>` OR `Schema` 
+  /// `Schema` is constructed and different ones will be stored in thos state `StructOut`
   pub HumanRequestAnalyzerStructOut: Schema,
   pub MainAgentStructOut: Schema,
   pub PrAgentStructOut: Schema,
   pub Sre1StructOut: Schema,
   pub Sre2StructOut: Schema,	
+}
+
+impl StructOut {
+  /// We construct out state `StructOut`
+  pub fn new(
+    human_schema: &Schema,
+    main_agent_schema: &Schema,
+    pr_agent_schema: &Schema,
+    sre1_schema: &Schema,
+    sre2_schema: &Schema,
+  ) -> StructOut {
+      let struct_out = StructOut {
+        HumanRequestAnalyzerStructOut: human_schema.clone(),
+        MainAgentStructOut: main_agent_schema.clone(),
+        PrAgentStructOut: pr_agent_schema.clone(),
+        Sre1StructOut: sre1_schema.clone(),
+        Sre2StructOut: sre2_schema.clone(),
+      };
+      struct_out
+  }
+  /// we provide a `HashMap` with key value and will use those to construct the schema
+  pub fn build_schema(
+    schema_field_dict: &HashMap<String, &SchemaFieldType>,
+  ) -> Schema {
+    // we initialize a `Vector` as mutable to construct the vector of required fields
+    // to organize the values and use the `Schema` struct implemented functions
+    let mut fields = Vec::new();
+    // we create the schema fields using `SchemaFieldDetails` implemented fn `create_schema_field`
+    let human_field_dict = SchemaFieldDetails::create_schema_field(
+      //&SchemaFieldDetails::new(&SchemaFieldType::String),
+      schema_field_dict
+    );
+    // we construct the vector and put it then in the `Schema::new()`
+    for elem in schema_field_dict.iter() {
+      fields.push(elem.0.clone())
+    }
+    let human_schema = Schema::new(
+      &human_field_dict,
+      Some(&fields),
+    );
+    // we return the schema
+    human_schema
+  }
 }
 
 /// this is me creating a generic agent with all fields needed to make any type of agent

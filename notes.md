@@ -1341,3 +1341,27 @@ ________________________________________________________________________________
 
 Heve simplified the structs by using `HashMaps` to get the formating closer to what the `api` expects for the `schema` object creation,
 Need now to do the same for the payload sent and keep testing using `rust playground`: [rust playground link](https://play.rust-lang.org/?version=stable&mode=debug&edition=2024)
+Here we see that we have created some implementations that permit to make that big state  hold the different schemas for each diffferent agents.
+```rust
+// Only need to provide this `HashMap` with key and our custon field type that will be mapped to what `Cerebras` expects: `string`, `boolean` or `integer`
+let nani_nani_schema = HashMap::from(
+  [
+    ("nani".to_string(), &SchemaFieldType::String),
+  ]
+);    
+let nani_schema = StructOut::build_schema(&nani_nani_schema);
+println!("nani_schema: {:#?}", nani_schema);
+    
+let schema_big_state = StructOut::new(
+  &nani_schema,
+  &nani_schema,
+  &nani_schema,
+  &nani_schema,
+  &nani_schema,
+);
+println!("schema_big_state: {:#?}", schema_big_state);
+```
+
+Now will need to get those converted to proper Json, so we need to implement a funciton that would do that job.
+From that we consider this done for the strutured output creation phase,we will have something json to send and easy to map to the right agent
+by just providing a `HashMap` with `key/value` `name` of field and `type` of field.

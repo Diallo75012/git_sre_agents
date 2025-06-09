@@ -16,6 +16,7 @@ use core::{
   	SchemaFieldDetails,
   	SchemaFieldType,
   	Schema,
+  	StructOut,
   },
 };
 
@@ -117,6 +118,7 @@ async fn run() {
         ("precision".to_string(), &SchemaFieldType::Int),
       ]
     );
+
     let c = SchemaFieldDetails::create_schema_field(
       //&SchemaFieldDetails::new(&SchemaFieldType::String),
       &b
@@ -129,6 +131,38 @@ async fn run() {
       Some(&vec!("location".to_string(), "decision_true_false".to_string(), "precision".to_string())),
     );
     println!("d: {:#?}", d);
+    
+    let human_request_analyzer_schema = HashMap::from(
+      [
+        ("requirement".to_string(), &SchemaFieldType::String),
+      ]
+    );
+    let human_field_dict = SchemaFieldDetails::create_schema_field(
+      //&SchemaFieldDetails::new(&SchemaFieldType::String),
+      &human_request_analyzer_schema
+    );
+    let human_schema = Schema::new(
+      &human_field_dict,
+      Some(&vec!("requirement".to_string())),
+    );
+    println!("human_schema: {:#?}", human_schema);
+    
+    let nani_nani_schema = HashMap::from(
+      [
+        ("nani".to_string(), &SchemaFieldType::String),
+      ]
+    );    
+    let nani_schema = StructOut::build_schema(&nani_nani_schema);
+    println!("nani_schema: {:#?}", nani_schema);
+    
+    let schema_big_state = StructOut::new(
+      &nani_schema,
+      &nani_schema,
+      &nani_schema,
+      &nani_schema,
+      &nani_schema,
+    );
+    println!("schema_big_state: {:#?}", schema_big_state);
 
 }
 
