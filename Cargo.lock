@@ -32,6 +32,7 @@ dependencies = [
  "main-agent",
  "pr-agent",
  "serde",
+ "serde_json",
  "sre1-worker-agent",
  "sre2-worker-agent",
  "thiserror",

@@ -20,6 +20,7 @@ pub enum MessageRole {
   System,
   Assistant,
   User,
+  None,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -42,7 +43,8 @@ pub enum AgentRole {
   #[default]Main,
   Pr,
   Sre1,
-  Sre2,	
+  Sre2,
+  None,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -54,7 +56,7 @@ pub enum ChoiceTool {
 }
 
 
-/// do struct for paylod sent
+// do struct for paylod sent
 // # `create payload` `NEED`
 // data = {
 //     "model": "meta-llama/llama-3.3-70b-instruct",
@@ -66,7 +68,7 @@ pub enum ChoiceTool {
 //     "tool_choice": "auto"
 // }
 
-/// we can then send messages for another call
+// we can then send messages for another call
   // data = {
   //   "model": "meta-llama/llama-3.3-70b-instruct",
   //   "provider": {
@@ -151,6 +153,7 @@ pub struct FunctionParameters {
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct FunctionDetails {
   pub name: String,
+  pub strict: bool,
   pub description: String,
   pub parameters: FunctionParameters
 }
@@ -162,7 +165,28 @@ pub struct Function {
   pub r#type: String,
   pub function: FunctionDetails,
 }
-
+/*
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate",
+            "strict": True,
+            "description": "A calculator tool that can perform basic arithmetic operations. Use this when you need to compute mathematical expressions or solve numerical problems.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "expression": {
+                        "type": "string",
+                        "description": "The mathematical expression to evaluate"
+                    }
+                },
+                "required": ["expression"]
+            }
+        }
+    }
+]
+*/
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct Tools {
   pub tools: Vec<Function>
@@ -187,6 +211,48 @@ pub struct ModelSettings {
   pub r#ype: String,
 }
 
+/// we implement fucntions that will create any tool needed and also create the field modelsettings to easily add it to `Agent.Llm`
+impl ModelSettings {
+  // ---------- Constructor Function to Build a Tool ----------
+  pub fn create_calculator_tool() -> Function {
+    Function {
+      r#type: function(),
+      function: FunctionDetails {
+        name: "calculate".to_string(),
+        strict: true,
+        description: "A calculator tool that can perform basic arithmetic operations.".to_string(),
+        parameters: FunctionParameters {
+          r#type: object(),
+          properties: FunctionParametersProperties {
+            expression: FunctionParametersPropertiesExpression {
+              r#type: string(),
+              description: "The mathematical expression to evaluate".to_string(),
+            },
+          },
+          required: vec!["expression".to_string()],
+        },
+      },
+    }
+  }
+
+  // ---------- Example ModelSettings Construction ----------
+  pub fn build_model_settings_with_tools() -> ModelSettings {
+    let tool = create_calculator_tool();
+
+    ModelSettings {
+      name: "cerebras-model".to_string(),
+      max_completion: 1000,
+      temperature: 0,
+      message: vec![],
+      tool_choice: ChoiceTool::Auto,
+      tools: Some(Tools {
+        tools: vec![tool],
+      }),
+      r#type: function(),
+    }
+  }
+}
+
 /// this is the `schema` of the structured output structure generic to all different `schema` needed in the app
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct SchemaFieldDetails;
@@ -199,12 +265,11 @@ impl SchemaFieldDetails {
             SchemaFieldType::Int => "integer".to_string(),
             SchemaFieldType::Bool => "boolean".to_string(),
         };
-        let schema_field_details = HashMap::from(
+        HashMap::from(
           [
             (r#"type"#.to_string(), field_string_type),
           ]
-        );
-        schema_field_details
+        )
         
     }
 
@@ -257,14 +322,12 @@ impl Schema {
       // empty `Vec` that will be setting the field to `[]`
       None => Vec::new(),  
     };
-  	let schema = Schema {
+  	Schema {
   	  r#type: "objectoooo".to_string(),
       properties: properties_fields_types.clone(),
       required: required_params,
       additionalProperties: false,
-  	};
-  	
-  	schema
+  	}
   }    
 }
 
@@ -314,16 +377,76 @@ impl Schema {
 //         {"role": "system", "content": "You are a helpful assistant that generates movie recommendations."},
 //         {"role": "user", "content": "Suggest a sci-fi movie from the 1990s."}
 //     ],
-    
-    // need this as well as struct as the schema created will then be a field of this
-    // "response_format": {
-    //     "type": "json_schema", # can olso be `json_object` but here no need to enforce any structure so no need what comes next just `"type": "json_object"`
-    //     "json_schema": {
-    //         "name": "movie_schema",  # optional name
-    //         "strict": True,  # boolean True/False that enforced to follow the schema
-    //         "schema": movie_schema # this is where the actual defined schema goes
-    //     }
-    // }
+
+/// this is used in the construct of API camm to `Cerebras` to define the response format
+/// and this where our `schema` built here by some other structs and stored in the  `StructOutput` OR `Agent.structured_output`/
+/// `"response_format": {
+///     "type": "json_schema", # can olso be `json_object` but here no need to enforce any structure so no need what comes next just `"type": "json_object"`
+///     "json_schema": {
+///         "name": "movie_schema",  # optional name
+///         "strict": True,  # boolean True/False that enforced to follow the schema
+///         "schema": movie_schema # this is where the actual defined schema goes
+///     }
+/// }`
+#[derive(Serialize, Debug, Clone)]
+pub struct CallApiResponseFormat {
+  name: String,
+  // True/False to enforce or not the schema
+  strict: bool,
+  // this is where we put the schema sent to the API
+  schema: Schema,
+}
+#[derive(Serialize, Debug, Clone)]
+pub struct ResponseFormat: {
+  // csan be `json_schema` or `json_object` (but no need if `json_object` to enforce any structure)
+  pub r#type: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub schema: Option<CallApiResponseFormat>,
+
+impl ResponseFormat {
+  pub fn new() -> RepsonseFormat {
+  	ResponseFormat {
+  	  // we use by defualt `json_object`. if we need `json_schema` we will need to define the `schema` field and mutate the initialized `ResponseFormat`
+  	  r#type: "json_object",
+  	  // we don't define schema which will be by default  and will 'mutate' it only `type` is `json_schema`
+  	}
+  }
+  /// Returns a map representation of the response format.
+  pub fn response_format_desired_as_map(&self) -> Result<HashMap<String, serde_json::Value>, AppError> {
+    let mut map = HashMap::new();
+
+    match self.r#type.as_str() {
+      "json_object" => {
+        map.insert("type".to_string(), json!("json_object"));
+      }
+      "json_schema" => {
+        map.insert("type".to_string(), json!("json_schema"));
+        // here we unwrap the `Option` to get the `schema`
+        match &self.schema {
+          Some(call_api_response_format) => {
+            map.insert("json_schema".to_string(), json!(call_api_response_format));
+          }
+          None => {
+            return Err(AppError::Agent("Missing schema for json_schema format".into()));
+          }
+        }
+      }
+      _ => {
+        return Err(AppError::Agent("Unknown response format type".into()));
+      }
+    }
+
+    Ok(map)
+  }
+  
+  // api comsummable to be unwrapping the result and putting this field hashmap in the api call `response_format`
+  // propagates `AppError` from  `Result<HashMap<String, serde_json::Value>, AppError>` or returns a `HashMap<String, serde_json::Value>`
+  // let response_desired_format = response_format_desired_as_map.as_map()?;
+  // let payload = json!({
+  //     "response_format": map // this is the correct typeto send to API: a JSON object
+  // });
+}
+
 
 #[allow(non_snake_case)]
 #[derive(Serialize, Debug, Clone, Default)]
@@ -345,14 +468,13 @@ impl StructOut {
     sre1_schema: &Schema,
     sre2_schema: &Schema,
   ) -> StructOut {
-      let struct_out = StructOut {
+      StructOut {
         HumanRequestAnalyzerStructOut: human_schema.clone(),
         MainAgentStructOut: main_agent_schema.clone(),
         PrAgentStructOut: pr_agent_schema.clone(),
         Sre1StructOut: sre1_schema.clone(),
         Sre2StructOut: sre2_schema.clone(),
-      };
-      struct_out
+      }
   }
   /// we provide a `HashMap` with key value and will use those to construct the schema
   pub fn build_schema(
@@ -362,7 +484,7 @@ impl StructOut {
     // to organize the values and use the `Schema` struct implemented functions
     let mut fields = Vec::new();
     // we create the schema fields using `SchemaFieldDetails` implemented fn `create_schema_field`
-    let human_field_dict = SchemaFieldDetails::create_schema_field(
+    let agent_field_dict = SchemaFieldDetails::create_schema_field(
       //&SchemaFieldDetails::new(&SchemaFieldType::String),
       schema_field_dict
     );
@@ -370,13 +492,73 @@ impl StructOut {
     for elem in schema_field_dict.iter() {
       fields.push(elem.0.clone())
     }
-    let human_schema = Schema::new(
-      &human_field_dict,
+    // we return the `Schema`
+    Schema::new(
+      &agent_field_dict,
       Some(&fields),
-    );
+    )
     // we return the schema
-    human_schema
+    //agent_schema
   }
+
+  /// this set of two functions `as_map()` and `sturct-_out_to_json_map()`  
+  /// will get the output consummable version without the `struct` name but just its `Json` `Value` from `serde`
+  pub fn as_map(&self) -> HashMap<String, &Schema> {
+    HashMap::from([
+      ("HumanRequestAnalyzerStructOut".to_string(), &self.HumanRequestAnalyzerStructOut),
+      ("MainAgentStructOut".to_string(), &self.MainAgentStructOut),
+      ("PrAgentStructOut".to_string(), &self.PrAgentStructOut),
+      ("Sre1StructOut".to_string(), &self.Sre1StructOut),
+      ("Sre2StructOut".to_string(), &self.Sre2StructOut),
+    ])
+  }
+    
+  pub fn struct_out_to_json_map(struct_out: &StructOut) -> HashMap<String, serde_json::Value> {
+    let mut map = HashMap::new();
+    for (name, schema) in struct_out.as_map() {
+      map.insert(name.clone(), json!(schema));
+    }
+    map
+  }
+    // // this is how to call this set of functions to have it has a `dict`
+    // let json_map = StructOut::struct_out_to_json_map(&schema_big_state);
+    // match serde_json::to_string_pretty(&json_map) {
+    //   Ok(final_json) => println!("jsonyfied StructOut: {}", final_json),
+    //   Err(e) => eprintln!("Error serializing schema_big_state to JSON: {}", e),
+    // }
+
+  pub fn get_by_role(&self, role: &AgentRole) -> Option<&Schema> {
+    match role {
+      AgentRole::RequestAnalyzer => Some(&self.HumanRequestAnalyzerStructOut),
+      AgentRole::Main => Some(&self.MainAgentStructOut),
+      AgentRole::Pr => Some(&self.PrAgentStructOut),
+      AgentRole::Sre1 => Some(&self.Sre1StructOut),
+      AgentRole::Sre2 => Some(&self.Sre2StructOut),
+      _ => None,
+    }
+  }
+
+  // Call it like that when wanting to get the schema
+  //if let Some(schema) = agent.StructuredOutput.get_by_role(&agent.Role) {
+  //    println!("Schema for this agent role: {:#?}", schema);
+  //}
+
+//   // Example of Update of structured output field in `Agent`
+//   let mut agent = define agent struct here ... // OR if possible: `Agent::default();` // or however you construct the agent
+// 
+//   let maybe_schema = agent.StructuredOutput.get_by_role(&agent.Role);
+// 
+//   match maybe_schema {
+//     // unwrap the `Option()`
+//     Some(schema_ref) => {
+//         // Example: update only one schema inside `StructuredOutput` but need to have it as mutable beforehands
+//         agent.StructuredOutput.HumanRequestAnalyzerStructOut = schema_ref.clone();
+//     }
+//     None => {
+//         return Err(AppError::Agent("No matching schema".to_string()));
+//     }
+//   }
+
 }
 
 /// this is me creating a generic agent with all fields needed to make any type of agent
@@ -391,7 +573,9 @@ pub struct Agent {
   /// But at least we are free to add any key pairs
   pub StructuredOutput: StructOut,
   pub TaskState: TaskCompletion,
-  /// this is where all tools will be set
+  /// this is where all tools will be set and hold all necessary fields
+  /// but still will need to use those fields to construct what the API will consume at the end,
+  /// so we might implement a fucntion here that will for example transform enums in `String`
   pub Llm: ModelSettings,
 }
 

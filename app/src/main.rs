@@ -2,6 +2,7 @@
 //! and will have the engine holding the full logic in and `async` `run()`
 #![allow(unused_doc_comments)]
 use std::collections::HashMap;
+use serde_json;
 // use anyhow::Result;
 // use tokio::time::{
 //   sleep,
@@ -109,7 +110,7 @@ async fn run() {
 //   	}
 //   }
 
-    let a = SchemaFieldDetails::new(&SchemaFieldType::String); // <-- fix here
+    let a = SchemaFieldDetails::new(&SchemaFieldType::String);
     println!("a: {:#?}", a);
     let b = HashMap::from(
       [
@@ -163,6 +164,12 @@ async fn run() {
       &nani_schema,
     );
     println!("schema_big_state: {:#?}", schema_big_state);
+
+    let json_map = StructOut::struct_out_to_json_map(&schema_big_state);
+    match serde_json::to_string_pretty(&json_map) {
+      Ok(final_json) => println!("jsonyfied StructOut: {}", final_json),
+      Err(e) => eprintln!("Error serializing schema_big_state to JSON: {}", e),
+    }
 
 }
 

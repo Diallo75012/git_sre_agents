@@ -13,7 +13,8 @@ main-agent        = { path = "../agents/main_agent" }
 pr-agent          = { path = "../agents/pr_agent" }
 sre1-worker-agent = { path = "../agents/sre1_worker_agent" }
 sre2-worker-agent = { path = "../agents/sre2_worker_agent" }
-tokio   = { workspace = true }
-serde   = { workspace = true }
-anyhow  = { workspace = true }
-thiserror = { workspace = true }
+tokio        = { workspace = true }
+serde        = { workspace = true }
+serde_json   = { workspace = true }
+anyhow       = { workspace = true }
+thiserror    = { workspace = true }

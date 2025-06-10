@@ -1365,3 +1365,162 @@ println!("schema_big_state: {:#?}", schema_big_state);
 Now will need to get those converted to proper Json, so we need to implement a funciton that would do that job.
 From that we consider this done for the strutured output creation phase,we will have something json to send and easy to map to the right agent
 by just providing a `HashMap` with `key/value` `name` of field and `type` of field.
+
+
+# Issues
+- Had structure of struct ouput having the name of the struct so needed to `jsonify` it using `serde` `Value` to get the `dict`(`HashMap`) that it holds
+  for `API` consumption of the data.
+Eg. of output with the name of the struct
+```bash
+d: Schema {
+    type: "objectoooo",
+    properties: {
+        "decision_true_false": {
+            "type": "boolean",
+        },
+        "precision": {
+            "type": "integer",
+        },
+        "location": {
+            "type": "string",
+        },
+    },
+    required: [
+        "location",
+        "decision_true_false",
+        "precision",
+    ],
+    additionalProperties: false,
+}
+human_schema: Schema {
+    type: "objectoooo",
+    properties: {
+        "requirement": {
+            "type": "string",
+        },
+    },
+    required: [
+        "requirement",
+    ],
+    additionalProperties: false,
+}
+nani_schema: Schema {
+    type: "objectoooo",
+    properties: {
+        "nani": {
+            "type": "string",
+        },
+    },
+    required: [
+        "nani",
+    ],
+    additionalProperties: false,
+}
+schema_big_state: StructOut {
+    HumanRequestAnalyzerStructOut: Schema {
+        type: "objectoooo",
+        properties: {
+            "nani": {
+                "type": "string",
+            },
+        },
+        required: [
+            "nani",
+        ],
+        additionalProperties: false,
+    },
+    MainAgentStructOut: Schema {
+        type: "objectoooo",
+        properties: {
+            "nani": {
+                "type": "string",
+            },
+        },
+        required: [
+            "nani",
+        ],
+        additionalProperties: false,
+    },
+    PrAgentStructOut: Schema {
+        type: "objectoooo",
+        properties: {
+            "nani": {
+                "type": "string",
+            },
+        },
+        required: [
+            "nani",
+        ],
+        additionalProperties: false,
+    },
+    Sre1StructOut: Schema {
+        type: "objectoooo",
+        properties: {
+            "nani": {
+                "type": "string",
+            },
+        },
+        required: [
+            "nani",
+        ],
+        additionalProperties: false,
+    },
+    Sre2StructOut: Schema {
+        type: "objectoooo",
+        properties: {
+            "nani": {
+                "type": "string",
+            },
+        },
+        required: [
+            "nani",
+        ],
+        additionalProperties: false,
+    },
+}
+```
+**Solution**
+have implemented function that use return a `HashMap<String, serde_json::Value>` and had an implementation `as_map()` to get that passed to 
+`serde_json::to_string_pretty()` to get our consummable API wanted `Json dict`
+Eg. Get StructuredOutput fully done by just providing the field and types of those fields
+```rust
+let human_request_analyzer_schema = HashMap::from(
+  [
+    ("requirement".to_string(), &SchemaFieldType::String),
+  ]
+);
+let human_field_dict = SchemaFieldDetails::create_schema_field(
+  //&SchemaFieldDetails::new(&SchemaFieldType::String),
+  &human_request_analyzer_schema
+);
+let human_schema = Schema::new(
+  &human_field_dict,
+  Some(&vec!("requirement".to_string())),
+);
+println!("human_schema: {:#?}", human_schema);
+    
+let nani_nani_schema = HashMap::from(
+  [
+    ("nani".to_string(), &SchemaFieldType::String),
+  ]
+);    
+let nani_schema = StructOut::build_schema(&nani_nani_schema);
+println!("nani_schema: {:#?}", nani_schema);
+    
+let schema_big_state = StructOut::new(
+  &nani_schema,
+  &nani_schema,
+  &nani_schema,
+  &nani_schema,
+  &nani_schema,
+);
+println!("schema_big_state: {:#?}", schema_big_state);
+
+let json_map = StructOut::struct_out_to_json_map(&schema_big_state);
+match serde_json::to_string_pretty(&json_map) {
+  Ok(final_json) => println!("jsonyfied StructOut: {}", final_json),
+  Err(e) => eprintln!("Error serializing schema_big_state to JSON: {}", e),
+}
+```
+
+need to make the function mode dinamic for the `modelsettings` field of `Agent.Llm` and for also the `tools` creation one
