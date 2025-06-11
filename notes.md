@@ -1524,3 +1524,215 @@ match serde_json::to_string_pretty(&json_map) {
 ```
 
 need to make the function mode dinamic for the `modelsettings` field of `Agent.Llm` and for also the `tools` creation one
+
+- getting an error with `Result` missinterprated as `Rust` think that I am using an `alias`
+```rust
+421 |   pub fn response_format_desired_as_map(&self) -> Result<HashMap<String, serde_json::Value>, AppError> {
+    |                                                   ^^^^^^ expected 1 generic argument       ---------- help: remove the unnecessary generic argument
+```
+
+Solutions:
+OR -> specify taht you are use the `std` error so that `Rust` is not confused:
+```rust
+// explicitly determine what `Result`
+pub fn response_format_desired_as_map(&self) -> std::result::Result<HashMap<String, serde_json::Value>, AppError> {
+```
+OR -> create an `alias` well customized so that we can use `generics` and our `custom error`. so the `custom erro` is in the `alias custom type` defnition
+      and int he function return jsut put the type `T` so the `Ok()` side.
+```rust
+type AppResult<T> = std::result::Result<T, AppError>;
+
+// then use:
+fn response_format_desired_as_map(&self) -> AppResult<HashMap<String, serde_json::Value>> {
+```
+
+
+
+# Rust Learnings
+- `Struct Fn Instance`: When implementating a function to a `struct` you need to put `&self` as argument for it be an instance of the `struct`
+otherwise it is just a standalone function.
+- `Default`: When deriving `default` no need to implement it as a `struct` `function instance`. so here two examples or you use `derive` ro you implement it.
+```rust
+/// implementation example
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum ChoiceTool {
+  None,
+  Auto,
+  Required,	
+}
+/// can also implement default manually like that and get `Auto` as default
+impl Default for ChoiceTool {
+  fn default() -> Self {
+    ChoiceTool::Auto
+  }
+}
+```
+```rust
+/// Otherwise can `derive` call `default` for the field 
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub enum ChoiceTool {
+  None,
+  #[default]Auto,
+  Required,	
+}
+// use like that to define it using dafault value:
+let default_tool: ChoiceTool = Default::default();
+```
+
+- `#[serde(default = "function")]`: when using the decorator to define `struct` field default value you have to create the `function` as global function.
+   OR `impelement` a `method` to the `struct` with **same name** returning a `default` value for the field.
+   OR we can use `mod` and call it using the name of the `mod`
+```rust
+//example of `mod`
+mod defaults {
+  pub fn default_name() -> String {
+    "Junko".to_string()
+  }
+}
+#[derive(Deserialize)]
+struct Person {
+  #[serde(default = "defaults::default_name")]
+  name: String,
+}
+
+// impl example
+#[derive(Deserialize)]
+struct Person {
+  #[serde(default = "default_name")]
+  name: String,
+}
+impl Person {
+  pub fn default_name() -> String {
+    "Junko".to_string()
+  }
+}
+
+// function in the same module/scope anywhere
+pub fn default_name() -> String {
+  "Junko".to_string()
+}
+#[derive(Deserialize)]
+struct Person {
+  #[serde(default = "default_name")]
+  name: String,
+}
+```
+
+- `Enum` with field `Vec<String>`
+  We can't use `Vec<String>` directly in an `Enum` `field` same as we would do in a `struct`,
+  therefore, we need to use field of type `struct` and access that `type` like that
+  OR use a `List(Vec<String>)`  (tupel variant). I prefer the `struct` way
+```rust
+// `tuple` variant example
+enum MyEnum {
+  List(Vec<String>),
+  None,
+}
+// use it this way
+let e = MyEnum::List(vec!["a".into(), "b".into()]);
+match e {
+  MyEnum::List(v) => println!("{:?}", v),
+  MyEnum::None => {}
+}
+
+// `struct` variant example2.
+enum MyEnum {
+  WithItems { items: Vec<String> },
+  None,
+}
+.. use it this way
+
+let e = MyEnum::WithItems {
+  items: vec!["a".to_string(), "b".to_string()],
+};
+```
+
+
+
+# Tools creation
+ChatGPT suggested way of doing it:
+```rust
+// ---------- Constructor Function to Build a Tool ----------
+pub fn create_calculator_tool(&self) -> Function {
+  Function {
+    r#type: function(),
+    function: FunctionDetails {
+      name: "calculate".to_string(),
+      strict: true,
+      description: "A calculator tool that can perform basic arithmetic operations.".to_string(),
+      parameters: FunctionParameters {
+        r#type: object(),
+        properties: FunctionParametersProperties {
+          expression: FunctionParametersPropertiesExpression {
+            r#type: string(),
+            description: "The mathematical expression to evaluate".to_string(),
+          },
+        },
+        required: vec!["expression".to_string()],
+      },
+    },
+  }
+}
+```
+
+But prefer to find a way to have single funciton creating the tool so that i can use it and isntanciate tools and then just pass those as Vec<Funtions>
+
+Used the `Rust Playground` and need to implement this as we obtain the objectthe way we want it:
+```rust
+use std::collections::HashMap;
+
+
+fn main() {
+   // we put all in a `Vec`
+  //let mut a = Vec::new();
+  // we need to add to the function the build of this `Vec` with required field that is going to be added to final return object
+  //let mut required = Vec::new();
+  
+  let b = HashMap::from(
+    [
+      ("type".to_string(), "string".to_string()),
+      ("description".to_string(), "the name of the location".to_string()),
+      ("name".to_string(), "location".to_string()),
+    ]
+  );
+  let c = HashMap::from(
+    [
+      ("name".to_string(), "completion".to_string()),
+      ("type".to_string(), "boolean".to_string()),
+      ("description".to_string(), "job done or not?".to_string()),
+    ]
+  );
+  fn create_param_setting(param_settings: &Vec<&HashMap<String, String>>)
+    -> HashMap<String, HashMap<String, String>> { 
+    let mut a_a = HashMap::new();
+    let mut a_a_a = HashMap::new();
+    for elem in param_settings.iter() {
+      for (_idx, key) in elem.iter().enumerate() {
+        //required.push(b[key].to_string())
+        if key.0 == "type" {
+          a_a_a.insert("type".to_string(), elem[key.0].to_string());
+        } else if key.0 == "description" {
+            a_a_a.insert("description".to_string(), elem[key.0].to_string());
+        }
+      }
+      for (_idx, key) in elem.iter().enumerate() {
+        if key.0 == "name" {
+          a_a.insert(elem[key.0].to_string(), a_a_a.clone());
+        }
+      }
+      a_a_a.clear();
+      println!("a_a: {:?}", a_a);
+    }
+    a_a
+  }
+  
+  let params_dict = create_param_setting(&vec!(&b, &c));
+  println!("Params dict : {:?}", params_dict)
+}
+```
+```bash
+Outputs:
+a_a: {"location": {"description": "the name of the location", "type": "string"}}
+a_a: {"completion": {"description": "job done or not?", "type": "boolean"}, "location": {"description": "the name of the location", "type": "string"}}
+Params dict : {"completion": {"description": "job done or not?", "type": "boolean"}, "location": {"description": "the name of the location", "type": "string"}}
+```

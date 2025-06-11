@@ -14,6 +14,21 @@ use crate::{
   errors::AppError,
 };
 
+
+/// functions that will be shared for `serde(default)` fields
+fn string() -> String {
+  "string".to_string()
+}
+
+fn object() -> String {
+  "object".to_string()
+}
+
+fn function() -> String {
+  "function".to_string()
+}
+
+
 /// this one enum is for the formating or match on messages `roles`
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MessageRole {
@@ -51,10 +66,32 @@ pub enum AgentRole {
 pub enum ChoiceTool {
   /// map those to `none`, `auto`, `required`
   None,
-  #[default]Auto,
+  #[default]Auto, // use like that to define it using dafault value: `let default_tool: ChoiceTool = Default::default();`
   Required,	
 }
+/*
+/// can also implement default manually like that and get `Auto` as default
+impl Default for ChoiceTool {
+  fn default() -> Self {
+    ChoiceTool::Auto
+  }
+}
+*/
 
+/// here we will have the custom `enums` to make life easy in what `type` a `HashMap` can return
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum FunctionDetailsEnum {
+  String,
+  Bool,
+  FunctionParamaters,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum FunctionParametersEnum {
+  String,
+  FunctionParametersProperties,
+  VecStringStructType { vec_string: Vec<String> },
+}
 
 // do struct for paylod sent
 // # `create payload` `NEED`
@@ -82,7 +119,6 @@ pub enum ChoiceTool {
 /// with or without the `tool_call_id`: [{"content": "Hello!", "role": "user", "tool_call_id": "..."}]``
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct MessageToAppend {
-  //#[serde(default = "tool")]
   pub role: String,
   pub content: String,
   // so that we can skip that field if it is not there and keep going
@@ -129,26 +165,63 @@ pub struct LlmResponse {
   pub object: String,
 }
 
-#[derive(Serialize, Debug, Clone, Default)]
-pub struct FunctionParametersPropertiesExpression {
-  #[serde(default = "string")]
-  pub r#type: String,
-  pub description: String,
-}
 
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct FunctionParametersProperties {
-  pub expression: FunctionParametersPropertiesExpression
+  pub param_name: String, 
+  // we just use HashMap and keys will be `type` and ``description` to not have another `struct` on top of all this chain of `structs`
+  pub details : HashMap<String, String>,
 }
 
+/// here we will implement a method as there can be several `function parameters`
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct FunctionParameters {
   #[serde(default = "object")]
-  pub r#ype: String,
+  pub r#type: String,
   pub properties: FunctionParametersProperties,
   #[serde(skip_serializing_if = "Vec::is_empty")]
   pub required: Vec<String>
 }
+
+impl FunctionParameters {
+  // so here we provide paramters: 
+  // [
+  //   {
+  // 	   param_name: {
+  // 	   	details // which is hashmap<stirng, string> with keys/value `type`: "<string or boolean or integer>".to_string(), "description": ".....".to_string() 
+  // 	   }
+  // 	}
+  // ]
+  pub fn create_function_parameters_part(&self, properties: &Vec<HashMap<String,HashMap<String, String>>>) -> HashMap<String, FunctionParametersEnum> {
+    FunctionParameters {
+    	r#type: ...
+    	properties: FunctionPrametersProperties {
+    	  param_name: details
+    	}
+    }
+  }
+}
+
+type FunctionParametersResult<T> = std::result::Result<T, AppError>;
+impl FunctionParameters {
+  pub fn create_function_parameters_object(
+    &self,
+    properties: &HashMap<String, HashMap<String, String>>,  // {"param_name": { "type": "string", "description": "any description"}, "another_param":{...}}
+  ) -> FunctionParametersResult<HashMap<String, FunctionParametersEnum>> {
+    // initialize the return type that we want to return and make it mutatable to add what we need
+    let mut function_parameters = HashMap::new();
+    // we initialize `FunctionParametersPropertiesParameters` as mutable to be able to add some more
+    let 
+    // {"param_name": { "type": "string", "description": "any description"}, "another_param":{...}}
+    let parameters_part = FunctionParameters {
+      r#type: object(),
+      properties: FunctionParametersProperties,
+      required: Vec<String>	
+    }
+  }
+}
+
+
 
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct FunctionDetails {
@@ -158,6 +231,27 @@ pub struct FunctionDetails {
   pub parameters: FunctionParameters
 }
 
+type FunctionDetailsResult<T> = std::result::Result<T, AppError>;
+// we can have several function parameters so we instanciate the creation of one so that we can create as many as we want
+impl FunctionDetails {
+  pub fn parameters_object(
+    &self,
+    name: &str,
+    strict: bool,
+    description: &str,
+    parameters: &Vec<FunctionParamters>
+  ) -> FunctionDetailsResult<HashMap<String, FunctionDetailsEnum>> {
+  	FunctionDetails {
+  	  name: name.clone(),
+  	  strict: strict,
+      description: description.clone(),
+      parameters: // need to loop over
+  	}
+  }
+}
+
+
+/// we will need to implement here as there can be several functions details added
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct Function {
   /// `type` is always `function`
@@ -192,6 +286,12 @@ pub struct Tools {
   pub tools: Vec<Function>
 }
 
+type ToolCreationResult<T> = std::result::Result<T, AppError>;
+  /// we are goin to instanciate a funciton that is going to use all structs and make any tool wanted
+impl Tools {
+
+}
+
 /// we define for the agent and then maybe pick what we need from it after its definition or just use it directly need to test the api and adapt
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct ModelSettings {
@@ -208,36 +308,13 @@ pub struct ModelSettings {
   pub tools: Option<Tools>,
   /// only type `function` is supported by Cerebras
   #[serde(default = "function")]
-  pub r#ype: String,
+  pub r#type: String,
 }
 
 /// we implement fucntions that will create any tool needed and also create the field modelsettings to easily add it to `Agent.Llm`
 impl ModelSettings {
-  // ---------- Constructor Function to Build a Tool ----------
-  pub fn create_calculator_tool() -> Function {
-    Function {
-      r#type: function(),
-      function: FunctionDetails {
-        name: "calculate".to_string(),
-        strict: true,
-        description: "A calculator tool that can perform basic arithmetic operations.".to_string(),
-        parameters: FunctionParameters {
-          r#type: object(),
-          properties: FunctionParametersProperties {
-            expression: FunctionParametersPropertiesExpression {
-              r#type: string(),
-              description: "The mathematical expression to evaluate".to_string(),
-            },
-          },
-          required: vec!["expression".to_string()],
-        },
-      },
-    }
-  }
-
   // ---------- Example ModelSettings Construction ----------
-  pub fn build_model_settings_with_tools() -> ModelSettings {
-    let tool = create_calculator_tool();
+  pub fn build_model_settings_with_tools(&self, list_tools: &Vec<Function>) -> ModelSettings {
 
     ModelSettings {
       name: "cerebras-model".to_string(),
@@ -246,7 +323,7 @@ impl ModelSettings {
       message: vec![],
       tool_choice: ChoiceTool::Auto,
       tools: Some(Tools {
-        tools: vec![tool],
+        tools: list_tools.clone(),
       }),
       r#type: function(),
     }
@@ -397,22 +474,27 @@ pub struct CallApiResponseFormat {
   schema: Schema,
 }
 #[derive(Serialize, Debug, Clone)]
-pub struct ResponseFormat: {
+pub struct ResponseFormat {
   // csan be `json_schema` or `json_object` (but no need if `json_object` to enforce any structure)
   pub r#type: String,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub schema: Option<CallApiResponseFormat>,
+}
+
+/// we create a custom type for the ResponseFormat `Result`
+type ResponseFormatResult<T> = std::result::Result<T, AppError>;
 
 impl ResponseFormat {
-  pub fn new() -> RepsonseFormat {
+  pub fn new() -> ResponseFormat {
   	ResponseFormat {
   	  // we use by defualt `json_object`. if we need `json_schema` we will need to define the `schema` field and mutate the initialized `ResponseFormat`
-  	  r#type: "json_object",
+  	  r#type: "json_object".to_string(),
   	  // we don't define schema which will be by default  and will 'mutate' it only `type` is `json_schema`
+  	  schema: None
   	}
   }
-  /// Returns a map representation of the response format.
-  pub fn response_format_desired_as_map(&self) -> Result<HashMap<String, serde_json::Value>, AppError> {
+  // Returns a map representation of the response format.
+  pub fn response_format_desired_as_map(&self) -> ResponseFormatResult<HashMap<String, serde_json::Value>> {
     let mut map = HashMap::new();
 
     match self.r#type.as_str() {

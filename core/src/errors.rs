@@ -35,6 +35,9 @@ pub enum AppError {
   /// implemented `reqwest::Error`
   #[error("Discord Notifier Error:{0}")]
   Notify(String),
+  /// Error for agent stuff
+  #[error("Agent Error:{0}")]
+  Agent(String),  
 }
 
 /// this is to teach `Rust` about our custom error by implementing `std` errors
