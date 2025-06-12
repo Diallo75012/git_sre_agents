@@ -1647,6 +1647,24 @@ let e = MyEnum::WithItems {
 };
 ```
 
+- instead of using `&Vec<HashMap<String, serde_json::Value>>` use `&[HashMap<String, serde_json::Value>]` in function signature
+  and then then `into()` to get a owned `Vec` if needed like:
+```rust
+pub fn build_model_settings_with_tools(&self, list_tools: &[HashMap<String, serde_json::Value>]) -> ModelSettings {
+
+  ModelSettings {
+    name: "cerebras-model".to_string(),
+    max_completion: 1000,
+    temperature: 0,
+    message: vec![],
+    tool_choice: ChoiceTool::Auto,
+    // use `into()` to get an `into vec`
+    tools: Some(list_tools.into()),
+    r#type: function(),
+  }
+}
+```  
+
 
 
 # Tools creation
@@ -1736,3 +1754,13 @@ a_a: {"location": {"description": "the name of the location", "type": "string"}}
 a_a: {"completion": {"description": "job done or not?", "type": "boolean"}, "location": {"description": "the name of the location", "type": "string"}}
 Params dict : {"completion": {"description": "job done or not?", "type": "boolean"}, "location": {"description": "the name of the location", "type": "string"}}
 ```
+_______________________________________________________________________________
+
+Done with the tools creation and now need to work on the `ModelSettings` other fields in order to be able to get a complete model settings:
+- will need to create a message formatting so struct and impl to get the meesages Vec<HashMap<String, String>> sent to the API
+- Need to make a step by step in how to create  the objects which function to call, even have probably a big helper function that does the job
+  like:
+  - an agent creation machine function,
+  - a models setting creation machine function,
+  - a schema machine creation function which will add it to the correct machine function
+  - so a `machine_function.rs` that will the one used by the app to create the different state object used during the app lifetime as those will be `STATIC`

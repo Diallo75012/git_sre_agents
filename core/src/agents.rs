@@ -78,20 +78,6 @@ impl Default for ChoiceTool {
 }
 */
 
-/// here we will have the custom `enums` to make life easy in what `type` a `HashMap` can return
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum FunctionDetailsEnum {
-  String,
-  Bool,
-  FunctionParamaters,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum FunctionParametersEnum {
-  String,
-  FunctionParametersProperties,
-  VecStringStructType { vec_string: Vec<String> },
-}
 
 // do struct for paylod sent
 // # `create payload` `NEED`
@@ -166,58 +152,68 @@ pub struct LlmResponse {
 }
 
 
+/// TOOLS `structs` and `impls`: we will try to match what the `API` is eecting receive when calling `LLM` on `Cerebras`
 #[derive(Serialize, Debug, Clone, Default)]
-pub struct FunctionParametersProperties {
-  pub param_name: String, 
-  // we just use HashMap and keys will be `type` and ``description` to not have another `struct` on top of all this chain of `structs`
-  pub details : HashMap<String, String>,
+pub struct FunctionParametersContainer {
+  name: String,
+  r#type: String,
+  description: String,
 }
 
-/// here we will implement a method as there can be several `function parameters`
-#[derive(Serialize, Debug, Clone, Default)]
-pub struct FunctionParameters {
-  #[serde(default = "object")]
-  pub r#type: String,
-  pub properties: FunctionParametersProperties,
-  #[serde(skip_serializing_if = "Vec::is_empty")]
-  pub required: Vec<String>
-}
-
-impl FunctionParameters {
-  // so here we provide paramters: 
-  // [
-  //   {
-  // 	   param_name: {
-  // 	   	details // which is hashmap<stirng, string> with keys/value `type`: "<string or boolean or integer>".to_string(), "description": ".....".to_string() 
-  // 	   }
-  // 	}
-  // ]
-  pub fn create_function_parameters_part(&self, properties: &Vec<HashMap<String,HashMap<String, String>>>) -> HashMap<String, FunctionParametersEnum> {
-    FunctionParameters {
-    	r#type: ...
-    	properties: FunctionPrametersProperties {
-    	  param_name: details
-    	}
-    }
+type FunctionParametersContainerResult<T> = std::result::Result<T, AppError>;
+impl FunctionParametersContainer {
+  /// We create a `.new()`` object for `property` field of the `tool object`
+  /// ```rust
+  /// let c = HashMap::from(
+  ///   [
+  ///     ("name".to_string(), "completion".to_string()),
+  ///     ("type".to_string(), "boolean".to_string()),
+  ///     ("description".to_string(), "job done or not?".to_string()),
+  ///   ]
+  /// );
+  /// ```
+  /// from that we can use the second fn `create_function_parameters_object`
+  /// to get this:
+  /// `{ "completion": {"description": "job done or not?", "type": "boolean"}, {...}}`
+  pub fn fn_param_as_map(&self) -> HashMap<String, String> {
+  	HashMap::from(
+  	  [
+  	    ("name".to_string(), self.name.to_string().clone()),
+  	    ("type".to_string(), self.r#type.to_string().clone()),
+  	    ("description".to_string(), self.description.to_string().clone()),
+  	  ]
+  	)
   }
-}
 
-type FunctionParametersResult<T> = std::result::Result<T, AppError>;
-impl FunctionParameters {
   pub fn create_function_parameters_object(
     &self,
-    properties: &HashMap<String, HashMap<String, String>>,  // {"param_name": { "type": "string", "description": "any description"}, "another_param":{...}}
-  ) -> FunctionParametersResult<HashMap<String, FunctionParametersEnum>> {
-    // initialize the return type that we want to return and make it mutatable to add what we need
-    let mut function_parameters = HashMap::new();
-    // we initialize `FunctionParametersPropertiesParameters` as mutable to be able to add some more
-    let 
-    // {"param_name": { "type": "string", "description": "any description"}, "another_param":{...}}
-    let parameters_part = FunctionParameters {
-      r#type: object(),
-      properties: FunctionParametersProperties,
-      required: Vec<String>	
+    // we will use `.fn_param_as_map()` to create variabled and put those into a `Vec` to make up the `param_settings`
+    param_settings: &[HashMap<String, String>]  
+  ) -> FunctionParametersContainerResult<HashMap<String, HashMap<String, String>>> {
+    let mut outer_hashmap = HashMap::new();
+    let mut inner_hashmap = HashMap::new();
+
+    // we loop over our input parameters objects which hold all information needed
+    for elem in param_settings.iter() {
+      // we fill the `inner_hashmap`
+      for (_idx, key) in elem.iter().enumerate() {
+      	if key.0 == "type" {
+      	  inner_hashmap.insert("type".to_string(), elem[key.0].to_string());
+      	} else if key.0 == "description" {
+      	  inner_hashmap.insert("description".to_string(), elem[key.0].to_string());
+      	}
+      }
+      // we fill then the `outer_hashmap` mapping to the name of the parameter
+      for (_idx, key) in elem.iter().enumerate() {
+      	if key.0 == "name" {
+      	  outer_hashmap.insert(elem[key.0].to_string(), inner_hashmap.clone());
+      	}
+      }
+      // we clear up the `inner_hashmap` to use it again
+      inner_hashmap.clear();
     }
+    // we return the `outer_hashmap`
+    Ok(outer_hashmap)
   }
 }
 
@@ -228,25 +224,54 @@ pub struct FunctionDetails {
   pub name: String,
   pub strict: bool,
   pub description: String,
-  pub parameters: FunctionParameters
+  pub parameters: FunctionParametersContainer,
 }
 
 type FunctionDetailsResult<T> = std::result::Result<T, AppError>;
-// we can have several function parameters so we instanciate the creation of one so that we can create as many as we want
 impl FunctionDetails {
-  pub fn parameters_object(
+  // we create the `function` field object
+  pub fn create_function_with_parameters_object(
     &self,
-    name: &str,
-    strict: bool,
-    description: &str,
-    parameters: &Vec<FunctionParamters>
-  ) -> FunctionDetailsResult<HashMap<String, FunctionDetailsEnum>> {
-  	FunctionDetails {
-  	  name: name.clone(),
-  	  strict: strict,
-      description: description.clone(),
-      parameters: // need to loop over
+    fn_name: &str,
+    fn_strict: bool,
+    fn_description: &str,
+    // for this one need before to call the implementated function `FunctionParametersContainer::create_function_parameters_object()`
+    // and match `Result` to get the `HashMap<String, HashMap<String, String>>`
+    parameters: &Result<HashMap<String, HashMap<String, String>>>
+  ) -> FunctionDetailsResult<HashMap<String, serde_json::Value>> {
+    // that is what we are going to render 
+  	let mut function_details = HashMap::new();
+
+  	// here we will unwrap the result and save what is in to save the `properties` field object
+  	let mut required = Vec::new();
+  	let properties = match parameters {
+  	  Ok(params) => params.clone(),
+  	  Err(e) => return Err(AppError::Agent(format!("An Error Occured While Trying To Create `properties` function field object: {}", e))),
+  	};
+  	for (_idx, elem) in properties.iter().enumerate() {
+  	  required.push(elem.0.to_string())
   	}
+  	let paramters_full_object = HashMap::from(
+      [
+        // this never change so we can hard write it
+        ("type".to_string(), json!("object".to_string())),
+        ("properties".to_string(), json!(properties.clone())),
+      ]  
+  	);
+
+    // we make sure that the `strict` parameter is a `String` and with capital letter as first letter for APi consumption
+  	let strict: String = if fn_strict {
+  	  "True".into()
+  	} else {
+      "False".into()
+  	};
+
+  	// we build the full object returned using those different parts
+  	function_details.insert("name".into(), json!(fn_name));
+  	function_details.insert("strict".into(), json!(strict));
+  	function_details.insert("description".into(), json!(fn_description));
+  	function_details.insert("parameters".into(), json!(paramters_full_object));
+  	Ok(function_details)
   }
 }
 
@@ -254,10 +279,50 @@ impl FunctionDetails {
 /// we will need to implement here as there can be several functions details added
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct Function {
-  /// `type` is always `function`
-  #[serde(default = "function")]
-  pub r#type: String,
-  pub function: FunctionDetails,
+  r#type: String,
+  // we build this field by unwrapping the result returned by `FunctionDetails::()`
+  func: HashMap<String, serde_json::Value>,
+}
+
+type FunctionResult<T> = std::result::Result<T, AppError>;
+impl Function {
+  pub fn create_function_part(
+    &self,
+    fn_name: &str,
+    fn_strict: bool,
+    fn_description: &str,
+    fn_parameter_container: &FunctionParametersContainer,
+    parameters: &Result<HashMap<String, HashMap<String, String>>>
+  ) -> FunctionResult<HashMap<String, serde_json::Value>> {
+    // we initialize the final `HashMap` rendered
+    let mut function_part = HashMap::new();
+
+    // returns a fully owned object that we can `jsonify`
+    let function_details = FunctionDetails {
+      name: fn_name.to_string().clone(),
+      strict: fn_strict,
+      description: fn_description.to_string().clone(),
+      parameters: fn_parameter_container.clone(),
+    };
+    let func_and_params_object = function_details.create_function_with_parameters_object(
+      fn_name,
+      fn_strict,
+      fn_description,
+      parameters
+    );
+    let func_final_object = match func_and_params_object {
+      Ok(full_object_func) => full_object_func,
+      Err(e) => return Err(AppError::Agent(format!("An Error Occured While Trying to get func_final_object: {}", e))),
+    };
+    let function_full = Function {
+       r#type: "function".into(),
+      func: func_final_object,    	
+    };
+
+    function_part.insert("type".to_string(), json!("function"));
+    function_part.insert("function".to_string(), json!(function_full));
+    Ok(function_part)
+  }
 }
 /*
 tools = [
@@ -283,14 +348,28 @@ tools = [
 */
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct Tools {
-  pub tools: Vec<Function>
+  #[serde(skip_serializing_if = "Vec::is_empty")]
+  pub tools: Vec<HashMap<String, serde_json::Value>>,
 }
 
 type ToolCreationResult<T> = std::result::Result<T, AppError>;
   /// we are goin to instanciate a funciton that is going to use all structs and make any tool wanted
 impl Tools {
-
+  pub fn new() -> Tools {
+  	Tools {
+  	  tools: vec![HashMap::from([("".to_string(), json!("")),])],
+    }
+  }
+  pub fn add_function_tool(&self, list_tools: &[HashMap<String, serde_json::Value>]) -> Vec<HashMap<String, serde_json::Value>> {
+    let mut tools_part = Vec::new();
+  	for elem in list_tools.iter() {
+  	  tools_part.push(elem.clone())
+  	}
+  	self.tools.clone()
+  }
 }
+
+/********** NEED TO ADD A STRUCT FOR MESSAGES SENT TO API FORMATTED SO AN IMPL WITH IT *************/
 
 /// we define for the agent and then maybe pick what we need from it after its definition or just use it directly need to test the api and adapt
 #[derive(Serialize, Debug, Clone, Default)]
@@ -305,7 +384,8 @@ pub struct ModelSettings {
   /// or use `serde` decorator ` #[serde(skip_serializing_if = "Option::is_none")]` and omit the field entirely as decorator will manage it
   /// but anyways when defining this field need just to use `Some(vec![...])`
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub tools: Option<Tools>,
+  // `Vec<HashMap<String, serde_json::Value>>` which is th etype of `Tools.tools`
+  pub tools: Option<Vec<HashMap<String, serde_json::Value>>>,
   /// only type `function` is supported by Cerebras
   #[serde(default = "function")]
   pub r#type: String,
@@ -314,7 +394,7 @@ pub struct ModelSettings {
 /// we implement fucntions that will create any tool needed and also create the field modelsettings to easily add it to `Agent.Llm`
 impl ModelSettings {
   // ---------- Example ModelSettings Construction ----------
-  pub fn build_model_settings_with_tools(&self, list_tools: &Vec<Function>) -> ModelSettings {
+  pub fn build_model_settings_with_tools(&self, list_tools: &[HashMap<String, serde_json::Value>]) -> ModelSettings {
 
     ModelSettings {
       name: "cerebras-model".to_string(),
@@ -322,9 +402,8 @@ impl ModelSettings {
       temperature: 0,
       message: vec![],
       tool_choice: ChoiceTool::Auto,
-      tools: Some(Tools {
-        tools: list_tools.clone(),
-      }),
+      // use `into()` to get an `into vec`
+      tools: Some(list_tools.into()),
       r#type: function(),
     }
   }
@@ -336,7 +415,7 @@ pub struct SchemaFieldDetails;
 
 impl SchemaFieldDetails {
     // This is a static constructor (no &self)
-    pub fn new(field_type: &SchemaFieldType) -> HashMap<String, String> {
+    pub fn create_schema_field_type_as_map(field_type: &SchemaFieldType) -> HashMap<String, String> {
         let field_string_type = match field_type {
             SchemaFieldType::String => "string".to_string(),
             SchemaFieldType::Int => "integer".to_string(),
@@ -357,7 +436,7 @@ impl SchemaFieldDetails {
     ) -> HashMap<String, HashMap<String, String>> {
         let mut properties = HashMap::new();
         for (key, type_value) in dictionary_fields_definition.iter() {
-            let field_type = SchemaFieldDetails::new(type_value);
+            let field_type = SchemaFieldDetails::create_schema_field_type_as_map(type_value);
             properties.insert(
               key.to_string(),
               field_type

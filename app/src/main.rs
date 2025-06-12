@@ -110,7 +110,7 @@ async fn run() {
 //   	}
 //   }
 
-    let a = SchemaFieldDetails::new(&SchemaFieldType::String);
+    let a = SchemaFieldDetails::create_schema_field_type_as_map(&SchemaFieldType::String);
     println!("a: {:#?}", a);
     let b = HashMap::from(
       [

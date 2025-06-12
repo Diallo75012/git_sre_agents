@@ -1,7 +1,8 @@
 use thiserror::Error;
+use serde::Serialize;
 
 
-#[derive(Error, Debug)]
+#[derive(Serialize, Error, Debug)]
 pub enum AppError {
   /*******/
   // decorator in which we can put our custom error message like `format!()`,
