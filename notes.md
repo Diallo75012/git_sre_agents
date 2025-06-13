@@ -1878,3 +1878,8 @@ Agent
 | StructuredOutput | Schema logic                  | `machine_struct_output`    |
 | TaskState        | Default or defined enum       | direct or `TaskCompletion` |
 | Llm              | Model config + prompt + tools | `machine_model_settings`   |
+
+
+have added some read me in core to prepare the machine function implementations. 
+Have a boiler plate of some of the machine funcitons reusing the agent.rs structs implementations.
+need next to test those functions and see what it returns and adapt those to what is needed for the app.
