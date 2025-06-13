@@ -415,6 +415,20 @@ impl MessagesSent {
     // we use `into()` to get a list of type `Vec` owned
     messages_list_slice.into()
   }
+
+  /// this is to update the field content of `MessagesSent` so that we can dynamically change agent prompt content
+  pub fn update_message_content_to_send(&mut self, new_message_content: &str) -> MessageSentResult<String> {
+  	self.content = new_message_content.to_string();
+  	match self.content.clone() {
+  	  present => {
+  	    if present == new_message_content { 
+  	      Ok("Message field has been updated successfully".into())
+  	    } else {
+  	      Err(AppError::Messages("An error occured while trying to update message content".into()))
+  	    }
+  	  }
+  	}
+  }
 }
 
 
@@ -432,16 +446,17 @@ pub struct ModelSettings {
   /// or use `serde` decorator ` #[serde(skip_serializing_if = "Option::is_none")]` and omit the field entirely as decorator will manage it
   /// but anyways when defining this field need just to use `Some(vec![...])`
   #[serde(skip_serializing_if = "Option::is_none")]
-  // `Vec<HashMap<String, serde_json::Value>>` which is th etype of `Tools.tools`
+  // `Vec<HashMap<String, serde_json::Value>>` which is the type of `Tools.tools`
   pub tools: Option<Vec<HashMap<String, serde_json::Value>>>,
   /// only type `function` is supported by Cerebras
   #[serde(default = "function")]
   pub r#type: String,
 }
 
+type ModelSettingsResult<T> = std::result::Result<T, AppError>;
 /// we implement fucntions that will create any tool needed and also create the field modelsettings to easily add it to `Agent.Llm`
 impl ModelSettings {
-  // ---------- Example ModelSettings Construction ----------
+  /// initialization of model settings
   pub fn initialize_model_settings_with_tools(&self, list_tools: &[HashMap<String, serde_json::Value>]) -> ModelSettings {
 
     ModelSettings {
@@ -454,6 +469,72 @@ impl ModelSettings {
       tools: Some(list_tools.into()),
       r#type: function(),
     }
+  }
+
+  /// update any model settings field calling `llm.update_model_settings(...)?` fron `Agent`
+  /// `Clippy` warning for to many argument as it has a max trigger at `7`,
+  /// just use decorator `#[allow(clippy::too_many_arguments)]` on the to not see it even if it compiles fine
+  #[allow(clippy::too_many_arguments)]
+  pub fn update_model_settings(
+    &mut self,
+    model_name: Option<&str>,
+    model_max_completion: Option<u64>,
+    model_temperature: Option<u64>,
+    model_messages: Option<&[HashMap<String, String>]>,
+    model_tool_choice: Option<&ChoiceTool>,
+    model_tools: Option<&Option<Vec<HashMap<String, serde_json::Value>>>>,
+    model_type: Option<&str>,
+  // we return the updated `ModelSettings` in a `Result`   
+  ) -> ModelSettingsResult<&mut Self> {
+    // we are going to use `if let` way instead of `match` pattern (same same but same)
+    // just so that in this file twe have two different examples of how to manage dynamic function paramters
+
+    // name
+    if let Some(value) = model_name {
+      self.name = value.to_string();
+    } else {
+      println!("Nothing to change for Name field");
+    }
+    // max_conpeltion
+    if let Some(value) = model_max_completion {
+      // no need to `.clone` as `u64` implements `Copy` trait
+      self.max_completion = value;
+    } else {
+      println!("Nothing to change for max_compeltion field");
+    }
+
+    // temperature
+    if let Some(value) = model_temperature {
+      // no need to `.clone()` as `u64` implements `Copy` trait
+      self.temperature = value;
+    } else {
+      println!("Nothing to change for Temperature field");
+    }
+    // messages
+    if let Some(value) = model_messages {
+      self.message = value.into();
+    } else {
+      println!("Nothing to change for Messages field");
+    }
+    // tool_chocie
+    if let Some(value) = model_tool_choice {
+      self.tool_choice = value.clone();
+    } else {
+      println!("Nothing to change for Tool_Choice field");
+    }
+    // tools
+    if let Some(value) = model_tools {
+      self.tools = value.clone();
+    } else {
+      println!("Nothing to change for Tools field");
+    }
+    // r#type
+    if let Some(value) = model_type {
+      self.r#type = value.to_string();
+    } else {
+      println!("Nothing to change for Type field");
+    }
+    Ok(self)
   }
 }
 
@@ -782,35 +863,115 @@ impl StructOut {
 #[allow(non_snake_case)]
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct Agent {
-  pub Role: AgentRole,
+  pub role: AgentRole,
   // content of message to be red by other agents  about task
-  pub Message: String,
-  pub Prompt: Vec<String>,
+  pub message: String,
+  pub prompt: MessagesSent,
   /// Eg. for Human request Analyzer Agent {HumanStructuredOutput.Agent: HumanStructuredOutput.Task }
   /// But at least we are free to add any key pairs
-  pub StructuredOutput: StructOut,
-  pub TaskState: TaskCompletion,
+  /// use "StructOut::get_by_role(&self, role: &AgentRole)" to get it
+  pub structured_output: StructOut,
+  pub task_state: TaskCompletion,
   /// this is where all tools will be set and hold all necessary fields
   /// but still will need to use those fields to construct what the API will consume at the end,
   /// so we might implement a fucntion here that will for example transform enums in `String`
-  pub Llm: ModelSettings,
+  pub llm: ModelSettings,
 }
 
-// impl Agent {
-//   fn new(prompt_file_path: &str) -> Result<Self, AppError> {
-//     /// This would propagate the error of type `AppError` already handled in `read_file`
-//     /// let prompt = read_file(prompt_file_path);?
-//     /// OR we can use match patterns
-//     let prompt = match read_file(prompt_file_path) {
-//       Ok(content) => content,
-//       Err(e) => {
-//           eprintln!("Error occurred: {}", e);
-//           AppError::FileRead(e.to_string())
-//       }
-//     };
-//     Agent {
-//       Prompt: read_file(prompt_file_path),
-//       StructuredOutput: 
-//     } 
-//   }
-// }
+type AgentResult<T> = std::result::Result<T, AppError>;
+impl Agent {
+  pub fn new(
+    agent_role: &AgentRole,
+    agent_message_to_others: &str,   
+    agent_prompt_from_file: &MessagesSent,
+    agent_strutured_output: &StructOut,
+    agent_task_state: &TaskCompletion,
+    agent_llm: &ModelSettings,
+  ) -> AgentResult<Agent> {
+    Ok(
+      Agent {
+    role: agent_role.clone(),
+    message: agent_message_to_others.to_string(),
+    // we store `role` and `content` and use implemented function to build the api call from the `Agent` container 
+    // using `MessagesSent::create_new_message_to_send()` 
+    prompt: agent_prompt_from_file.clone(),
+    structured_output: agent_strutured_output.clone(),
+    task_state: agent_task_state.clone(),
+    // can update using: `llm.update_model_settings(...)?`
+    llm: agent_llm.clone(),  
+      }
+    )
+  }
+
+  /// this would take all fields as Options so that we can use the same function to update whatever we want and use `None` for all other fields
+  pub fn update_agent(
+    &mut self,
+    agent_role: Option<&AgentRole>,
+    agent_message_to_others: Option<&str>,   
+    agent_prompt_from_file: Option<&MessagesSent>,
+    agent_structured_output: Option<&StructOut>,
+    agent_task_state: Option<&TaskCompletion>,
+    agent_llm: Option<&ModelSettings>,
+  // we just a return a confirmation `String` or `Error` so use our custom `AgentResult`
+  ) -> AgentResult<String> {
+    // we will now use match pattern and update the field
+
+    // role
+    self.role = match agent_role {
+      Some(value) => value.clone(),
+      // we keep it the same
+      None => {
+        println!("Nothing to change for Role field"); self.role.clone()
+      },
+    };
+    // messsage
+    self.message = match agent_message_to_others {
+      Some(value) => value.to_string(),
+      // we keep it the same
+      None => {
+        println!("Nothing to change for Message field"); self.message.clone()
+      },
+    };
+    // prompt 
+    self.prompt = match agent_prompt_from_file {
+      Some(value) => value.clone(),
+      // we keep it the same
+      None => {
+        println!("Nothing to change for Prompt field"); self.prompt.clone()
+      },
+    };
+    // structured_ouput 
+    self.structured_output = match agent_structured_output {
+      Some(value) => value.clone(),
+      // we keep it the same
+      None => {
+        println!("Nothing to change for Structured_Output field"); self.structured_output.clone()
+      },
+    };
+    // task_state 
+    self.task_state = match agent_task_state {
+      Some(value) => value.clone(),
+      // we keep it the same
+      None => {
+        println!("Nothing to change for Task_State field"); self.task_state.clone()
+      },
+    };
+    // llm
+    self.llm =  match agent_llm {
+      Some(value) => value.clone(),
+      // we keep it the same
+      None => {
+        println!("Nothing to change for Llm field"); self.llm.clone()
+      },
+    };
+
+    Ok("Agent Field(s) Updated!".into())
+  }
+  
+}
+
+
+
+
+
+

@@ -1665,8 +1665,94 @@ pub fn build_model_settings_with_tools(&self, list_tools: &[HashMap<String, serd
 }
 ```  
 
+- Dynamic function definition
+I found that making some function having all input parameters to be of type `Option(<the type>)`
+and then just use match pattern to check if `Some()` or `None` to do something or not is nice.
+**Rust doesn't have any equivalent to `Python` `just do nothing` so in `Rust` it is common to just use `.clone()` as we are doing in the `None` arms**
+But we can replace the `match` statements by `if let` statements so that we don't need to `clone` again the same field:
+```rust
+// both arms returning `()` so it is fine
+if let Some(value) = agent_llm {
+  self.llm = value.clone();
+} else {
+  println!("Nothing to change for Llm field");
+}
+```
+```rust
+pub fn update_agent(
+  &mut self,
+  agent_role: Option<&AgentRole>,
+  agent_message_to_others: Option<&str>,   
+  agent_prompt_from_file: Option<&MessagesSent>,
+  agent_structured_output: Option<&StructOut>,
+  agent_task_state: Option<&TaskCompletion>,
+  agent_llm: Option<&ModelSettings>,
+  // we just a return a confirmation `String` or `Error` so use our custom `AgentResult`
+  ) -> AgentResult<String> {
+  // we will now use match pattern and update the field
 
+  // role
+  self.role = match agent_role {
+    Some(value) => value.clone(),
+    // we keep it the same
+    None => {
+      println!("Nothing to change for Role field"); self.role.clone()
+    },
+  };
+  // messsage
+  self.message = match agent_message_to_others {
+    Some(value) => value.to_string(),
+    // we keep it the same
+    None => {
+      println!("Nothing to change for Message field"); self.message.clone()
+    },
+  };
+  // prompt 
+  self.prompt = match agent_prompt_from_file {
+    Some(value) => value.clone(),
+    // we keep it the same
+    None => {
+      println!("Nothing to change for Prompt field"); self.prompt.clone()
+    },
+  };
+  // structured_ouput 
+  self.structured_output = match agent_structured_output {
+    Some(value) => value.clone(),
+    // we keep it the same
+    None => {
+      println!("Nothing to change for Structured_Output field"); self.structured_output.clone()
+    },
+  };
+  // task_state 
+  self.task_state = match agent_task_state {
+    Some(value) => value.clone(),
+    // we keep it the same
+    None => {
+      println!("Nothing to change for Task_State field"); self.task_state.clone()
+    },
+  };
+  // llm
+  self.llm =  match agent_llm {
+    Some(value) => value.clone(),
+    // we keep it the same
+    None => {
+      println!("Nothing to change for Llm field"); self.llm.clone()
+    },
+  };
 
+  Ok("Agent Field(s) Updated!".into())
+}
+```
+**ChatGPT translated Suggestion**: use `if let` unless in any arm need to do more complicated stuff.
+| Method                 | Description                                              | Performance       | Idiomatic |
+| ---------------------- | -------------------------------------------------------- | ----------------- | --------- |
+| `match` with `clone()` | Works fine, a bit verbose and forces value return        | Slight clone cost | Good      |
+| `if let Some(...)`     | Clean, only updates when needed, easy to read            | Efficient         | **Best**  |
+
+- `Clippy` warning looking like an error: `this function has too many arguments 8/7`
+  it is just a `warning` and the code will compile, so no worry , can use many arguments.
+  can use decorator `#![deny(clippy::too_many_arguments)]` so that it doesn't cry
+_________________________________________________________________________________________________
 # Tools creation
 ChatGPT suggested way of doing it:
 ```rust

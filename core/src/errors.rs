@@ -41,7 +41,10 @@ pub enum AppError {
   Agent(String), 
   /// messages to send formatting error
   #[error("Message Formatting Error:{0}")]
-  Messages(String),  
+  Messages(String),
+  /// messages to send formatting error
+  #[error("Settings Error:{0}")]
+  Settings(String),  
 }
 
 /// this is to teach `Rust` about our custom error by implementing `std` errors
