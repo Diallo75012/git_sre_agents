@@ -38,7 +38,10 @@ pub enum AppError {
   Notify(String),
   /// Error for agent stuff
   #[error("Agent Error:{0}")]
-  Agent(String),  
+  Agent(String), 
+  /// messages to send formatting error
+  #[error("Message Formatting Error:{0}")]
+  Messages(String),  
 }
 
 /// this is to teach `Rust` about our custom error by implementing `std` errors
@@ -55,3 +58,4 @@ impl From<std::env::VarError> for AppError {
    AppError::Env(e.to_string())
  }
 }
+

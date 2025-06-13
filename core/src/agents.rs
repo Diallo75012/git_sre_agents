@@ -69,6 +69,13 @@ pub enum ChoiceTool {
   #[default]Auto, // use like that to define it using dafault value: `let default_tool: ChoiceTool = Default::default();`
   Required,	
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub enum UserType {
+  Assistant,
+  #[default]User,
+  System,
+}
 /*
 /// can also implement default manually like that and get `Auto` as default
 impl Default for ChoiceTool {
@@ -370,6 +377,47 @@ impl Tools {
 }
 
 /********** NEED TO ADD A STRUCT FOR MESSAGES SENT TO API FORMATTED SO AN IMPL WITH IT *************/
+#[derive(Serialize, Debug, Clone, Default)]
+pub struct MessagesSent {
+  user_type: String,
+  content: String,
+}
+
+// [{"content": "Hello!", "role": "user"}]
+type MessageSentResult<T> = std::result::Result<T, AppError>;
+
+impl MessagesSent {
+  /// we instantiate the container of messages to send
+  pub fn create_new_message_to_send(type_user: &UserType, content: &str) -> Self {
+    let t_user = match type_user {
+      UserType::User => "user".to_string(),
+      UserType::Assistant => "assistant".to_string(),
+      UserType::System => "system".to_string(),
+    };
+  	Self {
+  	  user_type: t_user,
+  	  content: content.to_string(),
+  	}
+  }
+
+  /// we format the messages to send
+  pub fn format_new_message_to_send(&self) -> HashMap<String, String> {
+    HashMap::from(
+      [
+        ("content".to_string(), self.content.clone()),
+        ("role".to_string(), self.user_type.clone()),
+      ]
+    )
+  }
+
+  /// we pass in an array of those formatted messages and this will be `Vec` of messages sent to the API
+  pub fn list_messages_to_send(messages_list_slice: &[HashMap<String, String>]) -> Vec<HashMap<String, String>> {
+    // we use `into()` to get a list of type `Vec` owned
+    messages_list_slice.into()
+  }
+}
+
+
 
 /// we define for the agent and then maybe pick what we need from it after its definition or just use it directly need to test the api and adapt
 #[derive(Serialize, Debug, Clone, Default)]
@@ -394,13 +442,13 @@ pub struct ModelSettings {
 /// we implement fucntions that will create any tool needed and also create the field modelsettings to easily add it to `Agent.Llm`
 impl ModelSettings {
   // ---------- Example ModelSettings Construction ----------
-  pub fn build_model_settings_with_tools(&self, list_tools: &[HashMap<String, serde_json::Value>]) -> ModelSettings {
+  pub fn initialize_model_settings_with_tools(&self, list_tools: &[HashMap<String, serde_json::Value>]) -> ModelSettings {
 
     ModelSettings {
       name: "cerebras-model".to_string(),
       max_completion: 1000,
       temperature: 0,
-      message: vec![],
+      message: vec![], // vec of hashmaps role..., content...
       tool_choice: ChoiceTool::Auto,
       // use `into()` to get an `into vec`
       tools: Some(list_tools.into()),
@@ -442,6 +490,7 @@ impl SchemaFieldDetails {
               field_type
             );
         }
+        // needed for `Schema.properties`
         properties
     }
 }
@@ -468,6 +517,7 @@ pub struct Schema {
 /// ***`schema_field_requirement: Option<&Vec<String>>`***
 /// this is an optional list of `properties_field_key`
 impl Schema {
+  /// used by `StructuredOutput::build_schema()`
   pub fn new(
     properties_fields_types: &HashMap<String, HashMap<String, String>>,
     schema_field_requirement: Option<&Vec<String>>,
@@ -596,19 +646,19 @@ impl ResponseFormat {
         return Err(AppError::Agent("Unknown response format type".into()));
       }
     }
-
+    // just use question mark to unwrap that when creating the variable, if anny error it will propagate..daijobu!
     Ok(map)
   }
   
   // api comsummable to be unwrapping the result and putting this field hashmap in the api call `response_format`
   // propagates `AppError` from  `Result<HashMap<String, serde_json::Value>, AppError>` or returns a `HashMap<String, serde_json::Value>`
-  // let response_desired_format = response_format_desired_as_map.as_map()?;
+  // let response_desired_format = response_format_desired_as_map()?;
   // let payload = json!({
   //     "response_format": map // this is the correct typeto send to API: a JSON object
   // });
 }
 
-
+/// this is the structured output field and will use of the the other sturct `Schema` to build different structured output
 #[allow(non_snake_case)]
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct StructOut {
@@ -621,6 +671,7 @@ pub struct StructOut {
 }
 
 impl StructOut {
+
   /// We construct out state `StructOut`
   pub fn new(
     human_schema: &Schema,
@@ -637,6 +688,7 @@ impl StructOut {
         Sre2StructOut: sre2_schema.clone(),
       }
   }
+
   /// we provide a `HashMap` with key value and will use those to construct the schema
   pub fn build_schema(
     schema_field_dict: &HashMap<String, &SchemaFieldType>,
@@ -673,7 +725,15 @@ impl StructOut {
       ("Sre2StructOut".to_string(), &self.Sre2StructOut),
     ])
   }
-    
+
+  /// this is how to call this set of functions to have it has a `dict`
+  /// ```
+  /// let json_map = StructOut::struct_out_to_json_map(&schema_big_state);
+  /// match serde_json::to_string_pretty(&json_map) {
+  ///   Ok(final_json) => println!("jsonyfied StructOut: {}", final_json),
+  ///   Err(e) => eprintln!("Error serializing schema_big_state to JSON: {}", e),
+  /// }
+  /// ``` 
   pub fn struct_out_to_json_map(struct_out: &StructOut) -> HashMap<String, serde_json::Value> {
     let mut map = HashMap::new();
     for (name, schema) in struct_out.as_map() {
@@ -681,13 +741,13 @@ impl StructOut {
     }
     map
   }
-    // // this is how to call this set of functions to have it has a `dict`
-    // let json_map = StructOut::struct_out_to_json_map(&schema_big_state);
-    // match serde_json::to_string_pretty(&json_map) {
-    //   Ok(final_json) => println!("jsonyfied StructOut: {}", final_json),
-    //   Err(e) => eprintln!("Error serializing schema_big_state to JSON: {}", e),
-    // }
 
+  /// Call it like that when wanting to get the schema
+  /// ```
+  /// if let Some(schema) = agent.StructuredOutput.get_by_role(&agent.Role) {
+  ///   println!("Schema for this agent role: {:#?}", schema);
+  /// }
+  /// ```
   pub fn get_by_role(&self, role: &AgentRole) -> Option<&Schema> {
     match role {
       AgentRole::RequestAnalyzer => Some(&self.HumanRequestAnalyzerStructOut),
@@ -699,10 +759,6 @@ impl StructOut {
     }
   }
 
-  // Call it like that when wanting to get the schema
-  //if let Some(schema) = agent.StructuredOutput.get_by_role(&agent.Role) {
-  //    println!("Schema for this agent role: {:#?}", schema);
-  //}
 
 //   // Example of Update of structured output field in `Agent`
 //   let mut agent = define agent struct here ... // OR if possible: `Agent::default();` // or however you construct the agent
