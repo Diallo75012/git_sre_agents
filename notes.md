@@ -352,21 +352,21 @@ kubectl port-forward pod/nginx-585f69b946-qw57t 8080:80
 - [x] improve custom error enum and do some implementations to teach rust that our field can be mapped to standard library error types.
 - [x] create a file reader to be able to get the `Human` prompt at the beginning of the app.
 - [x] clone the `main repo` in the `human side` same as if the human had cloned that repo and want to check the changes from agents.
-- [] make all agents prompt files and a function for prompt formatting that would use the `format!()` macro to create prompts/text needed
-- [] consider using channels and threads so that the communication can be parallelized if multi tool call
-- [] use loop for tool call until getting the answer fully done (so maybe create this until it work and then integrate in project)
-- [] study the api returned messages/tool use/error to be able to `deserialize` what we want properly
-- [] prepare a RUST workspace in the model of previous project and here modularize the flow of actions having each agentif flow on its own
+- [ ] make all agents prompt files and a function for prompt formatting that would use the `format!()` macro to create prompts/text needed
+- [ ] consider using channels and threads so that the communication can be parallelized if multi tool call
+- [ ] use loop for tool call until getting the answer fully done (so maybe create this until it work and then integrate in project)
+- [ ] study the api returned messages/tool use/error to be able to `deserialize` what we want properly
+- [ ] prepare a RUST workspace in the model of previous project and here modularize the flow of actions having each agentif flow on its own
      and one core unit and bunble the applicaiton with only one app binary.
-- [] start creating agentic flow in RUST starting with the external agent that will be link between human request and the start of agents 
-- [] do the agents that will be the sre workers who read instruction from communication brought by the main agent or pr agent.
-- [] do the the pr agent
-- [] do the main agent
-- [] make sure tools are used as intended so have a list and agent can choose which tool is best depending on request1 
-- [] build http client layer...
-- [] implement proper JSON handling (`serde` san)
-- [] create kind of conversation management (`state`, `files` OR `env vars`)
-- [] mimmic tool execution logic in RUST in the model of what we have done with `langgraph`
+- [ ] start creating agentic flow in RUST starting with the external agent that will be link between human request and the start of agents 
+- [ ] do the agents that will be the sre workers who read instruction from communication brought by the main agent or pr agent.
+- [ ] do the the pr agent
+- [ ] do the main agent
+- [ ] make sure tools are used as intended so have a list and agent can choose which tool is best depending on request1 
+- [ ] build http client layer...
+- [ ] implement proper JSON handling (`serde` san)
+- [ ] create kind of conversation management (`state`, `files` OR `env vars`)
+- [ ] mimmic tool execution logic in RUST in the model of what we have done with `langgraph`
 
 
 ## `Cerebras` Compeltion API study
@@ -393,7 +393,7 @@ kubectl port-forward pod/nginx-585f69b946-qw57t 8080:80
   "json_schema": { 
     "name": "schema_name", # `response_format.json_schema.name`: string , optional name for schema
     "strict": true,        # `response_format.json_schema.strict`: boolean
-    "schema": {...}        # `response_format.json_schema.schema`: object, the desired response JSON schema
+    "schema":  {...}       # `response_format.json_schema.schema`: object, the desired response JSON schema
   } 
 }
 ```
@@ -1286,8 +1286,8 @@ Remove `Serialize`, `Deserialize` if you don’t need to save/load it.
 
 - ChatGPT Friend Tables
 Table to resume precise `Copy` `trait` implemented types or not (just think `stack` and `heap` or size known or now at compile time)
-| Type             | Is `Copy`? | Why?                            |
-| ---------------- | ---------- | ------------------------------- |
+| Type             | Is `Copy`?  | Why?                            |
+| ---------------- | ----------- | ------------------------------- |
 | `i32`, `u8`      | ✅ Yes      | Fixed-size, simple to duplicate |
 | `bool`, `char`   | ✅ Yes      | Simple types                    |
 | `[u8; 32]`       | ✅ Yes      | Fixed-size array of `Copy` type |
@@ -1752,6 +1752,24 @@ pub fn update_agent(
 - `Clippy` warning looking like an error: `this function has too many arguments 8/7`
   it is just a `warning` and the code will compile, so no worry , can use many arguments.
   can use decorator `#![deny(clippy::too_many_arguments)]` so that it doesn't cry
+
+- for `HashMap` loops in Rust, we can get `k,v` in two different way:
+  - `.iter().enumerate()`: with index and `k,v` together and accessible by `k: k.0` and `v: elem[k.0]`
+  - `iter()`: using `(k, v)` and accessing each like in `Python` `k` and `v`
+```rust
+for (_idx, key) in dict.iter().enumerate() {
+  self.communication_message.insert(key.0.clone(), dict[key.0].clone());
+}
+// OR
+for (k, v) in dict.iter() {
+  self.communication_message.insert(k.clone(), v.clone());
+}
+```
+
+
+
+
+
 _________________________________________________________________________________________________
 # Tools creation
 ChatGPT suggested way of doing it:
@@ -1853,20 +1871,34 @@ Done with the tools creation and now need to work on the `ModelSettings` other f
 
 # planning the Machine Functions
 
-Agent
-├── Role: AgentRole                     // Enum (manual input or helper fn)
-├── Message: String                     // Input (manual)
-├── Prompt: Vec<String>                 // Input (manual or generated)
-├── StructuredOutput: StructOut         // Call machine_struct_output(...) → StructOut
-├── TaskState: TaskCompletion           // Enum (default is fine)
-├── Llm: ModelSettings                  // Call machine_model_settings(...) → ModelSettings
-                                        ├── name: String
-                                        ├── max_completion: u64
-                                        ├── temperature: u64
-                                        ├── message: Vec<HashMap<String, String>>  ← usually 1 msg, eg. from prompt
-                                        ├── tool_choice: ChoiceTool (Auto, None, Required)
-                                        ├── tools: Option<Tools> (None or Some(tools))
-                                        └── r#type: String (usually "function")
+**Agent**
+
+├── Role: AgentRole                  |   // Enum (manual input or helper fn)
+-------------------------------------|-----------------------------------------------------------------------------
+├── Message: String                  |   // Input (manual)
+-------------------------------------|-----------------------------------------------------------------------------
+├── Prompt: Vec<String>              |   // Input (manual or generated)
+-------------------------------------|-----------------------------------------------------------------------------
+├── StructuredOutput: StructOut      |   // Call machine_struct_output(...) → StructOut
+-------------------------------------|-----------------------------------------------------------------------------
+├── TaskState: TaskCompletion        |   // Enum (default is fine)
+-------------------------------------|-----------------------------------------------------------------------------
+├── Llm: ModelSettings               |   // Call machine_model_settings(...) → ModelSettings
+-------------------------------------|-----------------------------------------------------------------------------
+                                     |   ├── name: String
+                                     |-----------------------------------------------------------------------------
+                                     |   ├── max_completion: u64
+                                     |-----------------------------------------------------------------------------
+                                     |   ├── temperature: u64
+                                     |-----------------------------------------------------------------------------
+                                     |   ├── message: Vec<HashMap<String, String>>  ← usually 1 msg, eg. from prompt
+                                     |-----------------------------------------------------------------------------
+                                     |   ├── tool_choice: ChoiceTool (Auto, None, Required)
+                                     |-----------------------------------------------------------------------------
+                                     |   ├── tools: Option<Tools> (None or Some(tools))
+                                     |-----------------------------------------------------------------------------
+                                     |   └── r#type: String (usually "function")
+                                     |-----------------------------------------------------------------------------
 
 
 ### Required Fields
@@ -1883,3 +1915,128 @@ Agent
 have added some read me in core to prepare the machine function implementations. 
 Have a boiler plate of some of the machine funcitons reusing the agent.rs structs implementations.
 need next to test those functions and see what it returns and adapt those to what is needed for the app.
+
+**PROMPT MACHINE**
+- `machine_prompt()` is making the `struct` MessagesSent` but `format_new_message_to_send()` is never called to make `[{role:..., content:...}]`:
+   we need it to make all prompts and save those, it we want to mutate the prompt we will need to mutate the corresponding field in the struct and
+   rebuild the prompt message. so each agent will have the struct filed in a var and final message in a var (= 2 vars per agents)
+**machine prompt flow Eg.**
+```rust
+let pr_agent_struct_prompt = machine_prompt(role: &UserType, content: &str); // which create the struct
+let pr_agent_prompt = pr_agent_struct_prompt.format_new_message_to_send(); // which return as `[{"role": ..., "content": ...}]`
+``` 
+
+**SCHEMA MACHINE AND STRUCTOUT MACHINE**
+- `machine_struct_output()` is not doing the job properly as saving same schema for all field of the strutured output `struct` while those are different types 
+  We need first to a variable that stores the `schema` specific to a `type of user` using:
+  `Schema::new(properties_fields_types: &HashMap<String, HashMap<String, String>>, schema_field_requirement: Option<&Vec<String>>,)`
+  And then, we need to build one unique structured output `struct` that will store those schemas using: `StructuredOutput::build_schema()`
+**machine structured output flow Eg.**
+```rust
+let <agent>_schema_field_definition = HashMap::from(
+      [
+        ("location".to_string(), &SchemaFieldType::String),
+        ("decision_true_false".to_string(), &SchemaFieldType::Bool),
+        ("precision".to_string(), &SchemaFieldType::Int),
+      ]
+    );
+let <agent>_schema_proprerties =  SchemaFieldDetails::create_schema_field(&<agent>_schema_field_definition);
+let <agent>_schema = Schema::new(
+      &<agent>_schema_proprerties,
+      Some(&vec!("location".to_string(), "decision_true_false".to_string(), "precision".to_string())), // make sure to put corresponding input arguments
+    );
+// after having built all types of structured output store those in the `StructOut`
+let all_agents_sturctured_output_storage = StructOut::new(&<human>_schema, &<pr>_schema, &<main>_schema, &<sre1>_schema, &<sre2>_schema,);
+
+// then have the json output. this is for all fields but could use only one field to get the json of that agent schema
+let all_agents_sturctured_output_storage_json_map = StructOut::struct_out_to_json_map(&schema_big_state);
+
+OR
+
+let <agent>_schema_fields = HashMap::from(
+      [
+        ("nani".to_string(), &SchemaFieldType::String),
+      ]
+    );    
+let <agent>_schema = StructOut::build_schema(&<agent>_schema_fields);
+let all_agents_sturctured_output_storage = StructOut::new(&<human>_schema, &<pr>_schema, &<main>_schema, &<sre1>_schema, &<sre2>_schema,);
+let all_agents_sturctured_output_storage_json_map = StructOut::struct_out_to_json_map(&schema_big_state);
+
+
+/// after to get only one schema stuctured output do
+if let Some(schema) = all_agents_sturctured_output_storage.get_by_role(&agent.Role) {
+  println!("Schema for this agent role: {:#?}", schema);
+  schema
+} 
+```
+
+**TOOLS MACHINE** (needed after for `ModelSettings Machine`)
+- we initialize and empty vec as tool so create a var for an agent binded tools always empty at the beginning using `Tools.new()`
+  and can use the mutation to modify it using the implemented function `add_function_tool()`
+  and we need then to have the return type to `Option<>` so that we can add it to the `ModelSettings` struct field for tools.
+**machine tools flow Eg.**
+```rust
+let mut <agent>_tools = Tools.new();
+agent_tools.add_function_tool()?; // return result Ok(()) or propagates the custom error
+Some(agent_tools);  // which is of perfect type `Some(Vec<HashMap<String, serde_json::Value>>)`
+```
+
+**MESSAGES MACHINE**
+- we need to initialize a new one for each that we want to create and it will store an empty message list that can be updated with `system/assistant/user`
+  messages which are going to be initializing a struct per agents using `MessagesSent::create_new_message_struct_to_send()` and then formatting the container into
+  a hashmap using `MessagesSent::format_new_message_to_send(&self)` and then we use that variable to add it to the model settings tools in a vec
+  using `MessagesSentlist_messages_to_send()` if needed, for the moment this `messages machine` will render the dictionary `HashMap`
+**machine model setting flow Eg.**
+```rust
+let <agent>_message = create_new_message_struct_to_send(&type_user, &content);
+// this will create the dictionary form of the message corresponding to that `struct` `MessagesSent` container. we will need to create a lot of those
+let <agent>_message_dict = <agent>_message.format_new_message_to_send();
+
+// now this is ready to be used by the `model settings machine` for its field `message`
+```
+
+**MODEL SETTINGS MACHINE**
+- we could use `MessagesSentlist_messages_to_send()` after we just need to mutate the field tools of modelsettings and replace it with this new list for eg.
+  But we will just use our implementation `ModelSettings::.update_model_settings()` and put None to fields that are already set and do not need updates
+**machine model setting flow Eg.**
+```rust
+/// this using the struct `MessagesSent` and then creating the Vec that will store all messages different specific dicts created and needed for that
+/// model settings
+let <agent>_message_dict = <agent>_message.format_new_message_to_send();
+// then put all in a different agent messages in alist that can be added to the `ModelSettings.tools` field
+MessagesSent::list_messages_to_send(&[<agent>_message_dict, <agent>_message_dict, ....]) // returns `Vec<HashMap<String, String>`
+
+// BUT we opt for this. using this making `None` the fields that we do not need to update and passing in the messages dicts in and `&[...]`
+// updating therefore the existing instance of `ModelSettings`
+let mut <agent>_model_settings = ...;
+<agent>_model_settings.update_model_settings(
+    &mut self,
+    model_name: Option<&str>,
+    model_max_completion: Option<u64>,
+    model_temperature: Option<u64>,
+    model_messages: Option<&[HashMap<String, String>]>, // uses the `MESSAGES MACHINE`
+    model_tool_choice: Option<&ChoiceTool>,
+    model_tools: Option<&Option<Vec<HashMap<String, serde_json::Value>>>>, // uses the `TOOLS MACHINE`
+    model_type: Option<&str>,   
+  )?;  // will return same instance update in a result or propagate our custom error
+```
+
+**AGENTS MACHINE**
+- from here we should have all necessary variables to fill this `Agent` struct with the other created existing `structs`:
+  `AgentRole, MessagesSent, StructOut, TaskCompletion, ModelSettings`
+  then we need one field empty but update it as agent is working: `agent_communication_message_to_others: &HashMAp<String, String>`
+**machine model setting flow Eg.**
+```rust
+// instantiate new `Agent`
+<agent> = new(
+    agent_role: &AgentRole, // enum type
+    agent_communication_message_to_others: &HashMap<String, String>, // used mut agent.update_agent(<and we put `None` for all other field execpt this one>)  
+    agent_prompt_from_file: &MessagesSent, // uses MESSAGES MACHINE
+    agent_strutured_output: &StructOut, // uses STRUCTOUT MACHINE
+    agent_task_state: &TaskCompletion, // enum type
+    agent_llm: &ModelSettings, // uses MODEL SETTINGS MACHINE
+)
+// after we use the field of that agent as needed to make our api calls objects
+// we can also update fields using
+updated_<agent> = <agent>.update_agent(<we put the field that we want to update and we put `None` for all other fields>)
+```

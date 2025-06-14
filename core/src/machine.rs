@@ -1,7 +1,7 @@
-// machines.rs - machine-based logic for Agent creation and response handling
-// See accompanying design plan for responsibilities:
-// - Construction machines: machine_prompt, machine_model_settings, machine_struct_output, machine_tools, machine_agent
-// - Response machines: machine_api_call, machine_api_response, machine_tool_loop, machine_context_update, machine_final_answer
+//! machines.rs - machine-based logic for Agent creation and response handling
+//! See accompanying design plan for responsibilities:
+//! - Construction machines: machine_prompt, machine_model_settings, machine_struct_output, machine_tools, machine_agent ... and more as file evolves
+//! - Response machines: machine_api_call, machine_api_response, machine_tool_loop, machine_context_update, machine_final_answer ... and more as file evolves
 use crate::agents::*;
 use crate::errors::AppError;
 use reqwest::Client;
@@ -10,15 +10,21 @@ use std::collections::HashMap;
 
 // -------------------- MACHINE CONSTRUCTORS --------------------
 
+/// this will make prompts {role:...., content:....}
+todo!();
 pub fn machine_prompt(role: &UserType, content: &str) -> MessagesSent {
   MessagesSent::create_new_message_to_send(role, content)
 }
 
+/// We will replace this with the Structured Output builder that will take in all schemas and create a structured output
+todo!(); 
 pub fn machine_struct_output(schema_dict: &HashMap<String, &SchemaFieldType>) -> StructOut {
   let schema = StructOut::build_schema(schema_dict);
   StructOut::new(&schema, &schema, &schema, &schema, &schema)
 }
 
+/// we will be building tools here
+todo!();
 pub fn machine_tools(tools: &[HashMap<String, serde_json::Value>]) -> Option<Vec<HashMap<String, Value>>> {
   if tools.is_empty() {
     None
@@ -27,6 +33,8 @@ pub fn machine_tools(tools: &[HashMap<String, serde_json::Value>]) -> Option<Vec
   }
 }
 
+/// we will here create the model settings machine
+todo!();
 pub fn machine_model_settings(
   prompt_messages: &[HashMap<String, String>],
   tool_choice: ChoiceTool,
@@ -43,6 +51,7 @@ pub fn machine_model_settings(
   }
 }
 
+/// we will here create the agent machine
 pub fn machine_agent(
   role: AgentRole,
   message: &str,

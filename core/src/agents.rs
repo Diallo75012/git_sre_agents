@@ -364,15 +364,14 @@ type ToolCreationResult<T> = std::result::Result<T, AppError>;
 impl Tools {
   pub fn new() -> Tools {
   	Tools {
-  	  tools: vec![HashMap::from([("".to_string(), json!("")),])],
+  	  tools: Vec::new(),
     }
   }
-  pub fn add_function_tool(&self, list_tools: &[HashMap<String, serde_json::Value>]) -> Vec<HashMap<String, serde_json::Value>> {
-    let mut tools_part = Vec::new();
+  pub fn add_function_tool(&mut self, list_tools: &[HashMap<String, serde_json::Value>]) -> ToolCreationResult<()> {
   	for elem in list_tools.iter() {
-  	  tools_part.push(elem.clone())
+  	  self.tools.push(elem.clone())
   	}
-  	self.tools.clone()
+  	Ok(())
   }
 }
 
@@ -388,7 +387,7 @@ type MessageSentResult<T> = std::result::Result<T, AppError>;
 
 impl MessagesSent {
   /// we instantiate the container of messages to send
-  pub fn create_new_message_to_send(type_user: &UserType, content: &str) -> Self {
+  pub fn create_new_message_struct_to_send(type_user: &UserType, content: &str) -> Self {
     let t_user = match type_user {
       UserType::User => "user".to_string(),
       UserType::Assistant => "assistant".to_string(),
@@ -457,13 +456,22 @@ type ModelSettingsResult<T> = std::result::Result<T, AppError>;
 /// we implement fucntions that will create any tool needed and also create the field modelsettings to easily add it to `Agent.Llm`
 impl ModelSettings {
   /// initialization of model settings
-  pub fn initialize_model_settings_with_tools(&self, list_tools: &[HashMap<String, serde_json::Value>]) -> ModelSettings {
+  pub fn initialize_model_settings_with_tools(
+    &self,
+    model_name: &str,
+    model_max_completion: u64,
+    model_temperature: u64,
+    model_message: &[HashMap<String, String>],
+    // tool_choice: will be set by default to `ToolChoice::Auto`
+    // r#type: will be set by default to `function`
+    list_tools: &[HashMap<String, serde_json::Value>]
+  ) -> ModelSettings {
 
     ModelSettings {
-      name: "cerebras-model".to_string(),
-      max_completion: 1000,
-      temperature: 0,
-      message: vec![], // vec of hashmaps role..., content...
+      name: model_name.to_string(),
+      max_completion: model_max_completion,
+      temperature: model_temperature,
+      message: model_message.into(), // vec of hashmaps role..., content...
       tool_choice: ChoiceTool::Auto,
       // use `into()` to get an `into vec`
       tools: Some(list_tools.into()),
@@ -558,7 +566,7 @@ impl SchemaFieldDetails {
         
     }
 
-    // Call new using SchemaFieldDetails::new()
+    // Will fill the `Schema.properties` field in: Schema::new()
     pub fn create_schema_field(
         //&self,
         dictionary_fields_definition: &HashMap<String, &SchemaFieldType>,
@@ -610,7 +618,7 @@ impl Schema {
       None => Vec::new(),  
     };
   	Schema {
-  	  r#type: "objectoooo".to_string(),
+  	  r#type: "object".to_string(),
       properties: properties_fields_types.clone(),
       required: required_params,
       additionalProperties: false,
@@ -797,7 +805,7 @@ impl StructOut {
 
   /// this set of two functions `as_map()` and `sturct-_out_to_json_map()`  
   /// will get the output consummable version without the `struct` name but just its `Json` `Value` from `serde`
-  pub fn as_map(&self) -> HashMap<String, &Schema> {
+  pub fn full_struct_as_map(&self) -> HashMap<String, &Schema> {
     HashMap::from([
       ("HumanRequestAnalyzerStructOut".to_string(), &self.HumanRequestAnalyzerStructOut),
       ("MainAgentStructOut".to_string(), &self.MainAgentStructOut),
@@ -817,7 +825,7 @@ impl StructOut {
   /// ``` 
   pub fn struct_out_to_json_map(struct_out: &StructOut) -> HashMap<String, serde_json::Value> {
     let mut map = HashMap::new();
-    for (name, schema) in struct_out.as_map() {
+    for (name, schema) in struct_out.full_struct_as_map() {
       map.insert(name.clone(), json!(schema));
     }
     map
@@ -865,7 +873,7 @@ impl StructOut {
 pub struct Agent {
   pub role: AgentRole,
   // content of message to be red by other agents  about task
-  pub message: String,
+  pub communication_message: HashMap<String, String>,
   pub prompt: MessagesSent,
   /// Eg. for Human request Analyzer Agent {HumanStructuredOutput.Agent: HumanStructuredOutput.Task }
   /// But at least we are free to add any key pairs
@@ -882,7 +890,7 @@ type AgentResult<T> = std::result::Result<T, AppError>;
 impl Agent {
   pub fn new(
     agent_role: &AgentRole,
-    agent_message_to_others: &str,   
+    agent_communication_message_to_others: &HashMap<String, String>,   
     agent_prompt_from_file: &MessagesSent,
     agent_strutured_output: &StructOut,
     agent_task_state: &TaskCompletion,
@@ -891,7 +899,7 @@ impl Agent {
     Ok(
       Agent {
     role: agent_role.clone(),
-    message: agent_message_to_others.to_string(),
+    communication_message: agent_communication_message_to_others.clone(),
     // we store `role` and `content` and use implemented function to build the api call from the `Agent` container 
     // using `MessagesSent::create_new_message_to_send()` 
     prompt: agent_prompt_from_file.clone(),
@@ -907,7 +915,7 @@ impl Agent {
   pub fn update_agent(
     &mut self,
     agent_role: Option<&AgentRole>,
-    agent_message_to_others: Option<&str>,   
+    agent_communication_message_to_others: Option<&HashMap<String, String>>,   
     agent_prompt_from_file: Option<&MessagesSent>,
     agent_structured_output: Option<&StructOut>,
     agent_task_state: Option<&TaskCompletion>,
@@ -924,12 +932,24 @@ impl Agent {
         println!("Nothing to change for Role field"); self.role.clone()
       },
     };
-    // messsage
-    self.message = match agent_message_to_others {
-      Some(value) => value.to_string(),
+    // communication messsage
+    self.communication_message = match agent_communication_message_to_others {
+      // here we need to loop over and just update the value of the key targeted
+      // as agents can get communication messages for other agents
+      Some(dict) => {
+        // we get here the HashMap and will just update what is needed
+        for (_idx, key) in dict.iter().enumerate() {
+          self.communication_message.insert(key.0.clone(), dict[key.0].clone());
+        }
+        // this also works when using only `.iter()` we can get the `k,v`
+        // for (k, v) in dict.iter() {
+        //   self.communication_message.insert(k.clone(), v.clone());
+        // }
+        self.communication_message.clone()
+      },
       // we keep it the same
       None => {
-        println!("Nothing to change for Message field"); self.message.clone()
+        println!("Nothing to change for Communication Message field"); self.communication_message.clone()
       },
     };
     // prompt 
