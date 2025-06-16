@@ -44,7 +44,13 @@ pub enum AppError {
   Messages(String),
   /// messages to send formatting error
   #[error("Settings Error:{0}")]
-  Settings(String),  
+  Settings(String),
+  /// Payload to send formatting error
+  #[error("Payload Error:{0}")]
+  Payload(String),
+  /// Fucntion Parameters formatting error
+  #[error("Function Param Error:{0}")]
+  FunctionParam(String),  
 }
 
 /// this is to teach `Rust` about our custom error by implementing `std` errors
@@ -62,3 +68,8 @@ impl From<std::env::VarError> for AppError {
  }
 }
 
+impl From<serde_json::Error> for AppError {
+  fn from(e: serde_json::Error) -> Self {
+    AppError::FunctionParam(e.to_string())
+  }
+}

@@ -52,6 +52,7 @@ pub fn machine_model_settings(
 }
 
 /// we will here create the agent machine
+todo!();
 pub fn machine_agent(
   role: AgentRole,
   message: &str,
@@ -70,8 +71,29 @@ pub fn machine_agent(
   )
 }
 
+/// Construct a payload that includes tools and/or response_format schema optionally
+pub fn machine_create_payload_with_or_without_tools_structout(
+  model: &str,
+  messages: &[HashMap<String, String>],
+  tool_choice: Option<ChoiceTool>,
+  tools: Option<&[HashMap<String, Value>]>,
+  response_format: Option<&HashMap<String, Value>>,
+) -> Result<Value, AppError> {
+  match Payload::create_payload_with_or_without_tools_structout(
+    model,
+    messages,
+    tool_choice,
+    tools,
+    response_format,
+  ) {
+    Ok(json_value) => Ok(json_value),
+    Err(e) => Err(AppError::Payload(format!("An error occured while trying to create the payload to send: {}", e)))
+  }
+}
+
 // -------------------- RESPONSE MACHINES --------------------
 
+/// this function calls the api normally with payload and messages
 pub async fn machine_api_call(
   endpoint: &str,
   payload: &Value,
@@ -89,6 +111,7 @@ pub async fn machine_api_call(
     return Err(AppError::Agent(format!("HTTP Error: {}", status)));
   }
 
+  // parsing the response with our selected fields through our `LlmResponse` struct
   let llm_response = response
     .json::<LlmResponse>()
     .await
@@ -97,6 +120,7 @@ pub async fn machine_api_call(
   Ok(llm_response)
 }
 
+/// this function checks on the response to see if there is any tool call
 pub fn machine_api_response(llm_response: &LlmResponse) -> Option<&Vec<ToolCall>> {
   llm_response
     .choices
@@ -104,6 +128,7 @@ pub fn machine_api_response(llm_response: &LlmResponse) -> Option<&Vec<ToolCall>
     .map(|choice| &choice.message.tool_calls)
 }
 
+/// this one will update the messages history and we can use the usize to set a max length of the history (maybe better to tdo that in the struct)
 pub fn machine_context_update(
   history: &mut MessageHistory,
   new_message: MessageToAppend,
@@ -115,6 +140,7 @@ pub fn machine_context_update(
   }
 }
 
+/// this one will return the response when there is no more tools to call
 pub fn machine_final_answer(llm_response: &LlmResponse) -> Option<String> {
   llm_response
     .choices
@@ -173,23 +199,4 @@ pub async fn machine_tool_loop(
   let final_response = machine_api_call(endpoint, &payload).await?;
   machine_final_answer(&final_response)
     .ok_or(AppError::Agent("No final answer found in response".into()))
-}
-
-// -------------------- CALL COORDINATION MACHINE --------------------
-
-/// Handles calling the LLM once or in a tool loop depending on whether tools are enabled.
-pub async fn machine_call_with_or_without_tools(
-  endpoint: &str,
-  mut history: MessageHistory,
-  mut payload: Value,
-  use_tool_loop: bool,
-  max_history_len: usize,
-) -> Result<String, AppError> {
-  if use_tool_loop {
-    machine_tool_loop(endpoint, history, payload, max_history_len).await
-  } else {
-    let response = machine_api_call(endpoint, &payload).await?;
-    machine_final_answer(&response)
-      .ok_or(AppError::Agent("No response returned".into()))
-  }
 }

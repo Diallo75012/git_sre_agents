@@ -85,28 +85,6 @@ impl Default for ChoiceTool {
 }
 */
 
-
-// do struct for paylod sent
-// # `create payload` `NEED`
-// data = {
-//     "model": "meta-llama/llama-3.3-70b-instruct",
-//     "provider": {
-//         "only": ["Cerebras"]
-//     },
-//     "messages": messages,
-//     "tools": tools,
-//     "tool_choice": "auto"
-// }
-
-// we can then send messages for another call
-  // data = {
-  //   "model": "meta-llama/llama-3.3-70b-instruct",
-  //   "provider": {
-  //     "only": ["Cerebras"]
-  //   },
-  //   "messages": messages
-  // }
-
 /// this is the message to send after a tool call have been identified in the response, so llm have choosen a tool,
 /// we need to append to messages and send it to the llm again, and get the response and append it to the messages until tool is not called in a loop way
 /// with or without the `tool_call_id`: [{"content": "Hello!", "role": "user", "tool_call_id": "..."}]``
@@ -161,11 +139,7 @@ pub struct LlmResponse {
 
 /// TOOLS `structs` and `impls`: we will try to match what the `API` is eecting receive when calling `LLM` on `Cerebras`
 #[derive(Serialize, Debug, Clone, Default)]
-pub struct FunctionParametersContainer {
-  name: String,
-  r#type: String,
-  description: String,
-}
+pub struct FunctionParametersContainer {}
 
 type FunctionParametersContainerResult<T> = std::result::Result<T, AppError>;
 impl FunctionParametersContainer {
@@ -179,21 +153,10 @@ impl FunctionParametersContainer {
   ///   ]
   /// );
   /// ```
-  /// from that we can use the second fn `create_function_parameters_object`
+  /// from that we can use the fn `create_function_parameters_object`
   /// to get this:
   /// `{ "completion": {"description": "job done or not?", "type": "boolean"}, {...}}`
-  pub fn fn_param_as_map(&self) -> HashMap<String, String> {
-  	HashMap::from(
-  	  [
-  	    ("name".to_string(), self.name.to_string().clone()),
-  	    ("type".to_string(), self.r#type.to_string().clone()),
-  	    ("description".to_string(), self.description.to_string().clone()),
-  	  ]
-  	)
-  }
-
   pub fn create_function_parameters_object(
-    &self,
     // we will use `.fn_param_as_map()` to create variabled and put those into a `Vec` to make up the `param_settings`
     param_settings: &[HashMap<String, String>]  
   ) -> FunctionParametersContainerResult<HashMap<String, HashMap<String, String>>> {
@@ -231,30 +194,47 @@ pub struct FunctionDetails {
   pub name: String,
   pub strict: bool,
   pub description: String,
-  pub parameters: FunctionParametersContainer,
+  pub parameters: HashMap<String, HashMap<String, String>>,
 }
 
 type FunctionDetailsResult<T> = std::result::Result<T, AppError>;
 impl FunctionDetails {
+  /// we create a new instance initialization
+  /// where param_setting is a list of unit like that:
+  /// ```
+  /// let param_setting_1 = HashMap::from(
+  ///   [
+  ///     ("name".to_string(), "completion".to_string()),
+  ///     ("type".to_string(), "boolean".to_string()),
+  ///     ("description".to_string(), "job done or not?".to_string()),
+  ///   ]
+  /// );
+  /// ``` 
+  pub fn new(
+    param_name: &str,
+    param_strict: bool,
+    param_description: &str,
+    param_settings: &[HashMap<String, String>],
+    ) -> FunctionDetailsResult<Self> {
+    let parameters_settings = FunctionParametersContainer::create_function_parameters_object(param_settings)?;
+    
+  	Ok(Self {
+      name: param_name.to_string(),
+      strict: param_strict,
+      description: param_description.to_string(),
+      parameters: parameters_settings,
+  	})
+  }
   // we create the `function` field object
   pub fn create_function_with_parameters_object(
     &self,
-    fn_name: &str,
-    fn_strict: bool,
-    fn_description: &str,
-    // for this one need before to call the implementated function `FunctionParametersContainer::create_function_parameters_object()`
-    // and match `Result` to get the `HashMap<String, HashMap<String, String>>`
-    parameters: &Result<HashMap<String, HashMap<String, String>>>
   ) -> FunctionDetailsResult<HashMap<String, serde_json::Value>> {
     // that is what we are going to render 
   	let mut function_details = HashMap::new();
 
   	// here we will unwrap the result and save what is in to save the `properties` field object
   	let mut required = Vec::new();
-  	let properties = match parameters {
-  	  Ok(params) => params.clone(),
-  	  Err(e) => return Err(AppError::Agent(format!("An Error Occured While Trying To Create `properties` function field object: {}", e))),
-  	};
+  	let properties = self.parameters.clone();
   	for (_idx, elem) in properties.iter().enumerate() {
   	  required.push(elem.0.to_string())
   	}
@@ -267,16 +247,16 @@ impl FunctionDetails {
   	);
 
     // we make sure that the `strict` parameter is a `String` and with capital letter as first letter for APi consumption
-  	let strict: String = if fn_strict {
+  	let strict: String = if self.strict {
   	  "True".into()
   	} else {
       "False".into()
   	};
 
   	// we build the full object returned using those different parts
-  	function_details.insert("name".into(), json!(fn_name));
+  	function_details.insert("name".into(), json!(self.name));
   	function_details.insert("strict".into(), json!(strict));
-  	function_details.insert("description".into(), json!(fn_description));
+  	function_details.insert("description".into(), json!(self.description));
   	function_details.insert("parameters".into(), json!(paramters_full_object));
   	Ok(function_details)
   }
@@ -287,36 +267,23 @@ impl FunctionDetails {
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct Function {
   r#type: String,
-  // we build this field by unwrapping the result returned by `FunctionDetails::()`
+  // we build this field by unwrapping the result returned by `FunctionDetails::create_function_with_parameters_object()`
   func: HashMap<String, serde_json::Value>,
 }
 
 type FunctionResult<T> = std::result::Result<T, AppError>;
 impl Function {
+
   pub fn create_function_part(
-    &self,
-    fn_name: &str,
-    fn_strict: bool,
-    fn_description: &str,
-    fn_parameter_container: &FunctionParametersContainer,
-    parameters: &Result<HashMap<String, HashMap<String, String>>>
+    function_details: &FunctionDetails,
+    //fn_parameter_container: &HashMap<String, HashMap<String, String>>,
   ) -> FunctionResult<HashMap<String, serde_json::Value>> {
     // we initialize the final `HashMap` rendered
     let mut function_part = HashMap::new();
 
     // returns a fully owned object that we can `jsonify`
-    let function_details = FunctionDetails {
-      name: fn_name.to_string().clone(),
-      strict: fn_strict,
-      description: fn_description.to_string().clone(),
-      parameters: fn_parameter_container.clone(),
-    };
-    let func_and_params_object = function_details.create_function_with_parameters_object(
-      fn_name,
-      fn_strict,
-      fn_description,
-      parameters
-    );
+    let func_details = function_details.clone();
+    let func_and_params_object = func_details.create_function_with_parameters_object();
     let func_final_object = match func_and_params_object {
       Ok(full_object_func) => full_object_func,
       Err(e) => return Err(AppError::Agent(format!("An Error Occured While Trying to get func_final_object: {}", e))),
@@ -652,37 +619,69 @@ impl Schema {
 
 
 /* ** TO CHECK AS WE NEED TO CREATE MORE STRUCTS FOR `PAYLOAD` ** */
-// { 
-//   "type": "json_schema",
-//   "json_schema": { 
-//     "name": "schema_name", # `response_format.json_schema.name`: string , optional name for schema
-//     "strict": true,        # `response_format.json_schema.strict`: boolean
-//     "schema": {...}        # `response_format.json_schema.schema`: object, the desired response JSON schema
-//   } 
+
+
+// data = {
+//    "model": "meta-llama/llama-3.3-70b-instruct",
+//    "provider": {
+//      "only": ["Cerebras"]
+//    },
+//    "messages": [
+//      {"role": "system", "content": "You are a helpful assistant that generates movie recommendations."},
+//      {"role": "user", "content": "Suggest a sci-fi movie from the 1990s."}
+//    ],
+//    "tools": tools,
+//    "tool_choice": "auto"
+//    "response_format": {
+//      "type": "json_schema", # can olso be `json_object` but here no need to enforce any structure so no need what comes next just `"type": "json_object"`
+//      "json_schema": {
+//        "name": "movie_schema",  # optional name
+//        "strict": True,  # boolean True/False that enforced to follow the schema
+//        "schema": movie_schema # this is where the actual defined schema goes
+//    }
 // }
 
-// so we will need to define a struct for the payload as well
-// we define the schema like here `movie_schema` already defined is used and then we define a payload and put it in
-// data = {
-//     "model": "meta-llama/llama-3.3-70b-instruct",
-//     "provider": {
-//         "only": ["Cerebras"]
-//     },
-//     "messages": [
-//         {"role": "system", "content": "You are a helpful assistant that generates movie recommendations."},
-//         {"role": "user", "content": "Suggest a sci-fi movie from the 1990s."}
-//     ],
+/// this will be creating a dynamic payload with or without tools, with or without structout
+/// we do not need to create the fields of the struct, we just impl a function to it as we will not store any paylaod state
+/// but just use those when needed and build when needed
+#[derive(Serialize, Debug, Clone)]
+pub struct Payload {}
 
-/// this is used in the construct of API camm to `Cerebras` to define the response format
-/// and this where our `schema` built here by some other structs and stored in the  `StructOutput` OR `Agent.structured_output`/
-/// `"response_format": {
-///     "type": "json_schema", # can olso be `json_object` but here no need to enforce any structure so no need what comes next just `"type": "json_object"`
-///     "json_schema": {
-///         "name": "movie_schema",  # optional name
-///         "strict": True,  # boolean True/False that enforced to follow the schema
-///         "schema": movie_schema # this is where the actual defined schema goes
-///     }
-/// }`
+type PayloadResult<T> = std::result::Result<T, AppError>;
+
+impl Payload {
+  pub fn create_payload_with_or_without_tools_structout(
+    model: &str,
+    messages: &[HashMap<String, String>],
+    tool_choice: Option<ChoiceTool>,
+    tools: Option<&Vec<HashMap<String, serde_json::Value>>>,
+    response_format: Option<&HashMap<String, serde_json::Value>>,
+  ) -> PayloadResult<serde_json::Value> {
+    // we start here with a normal `payload` basic one with text and will add some more fields if we got some tools or structured output.
+    let mut payload = json!({
+      "model": model,
+      "provider": { "only": ["Cerebras"] },
+      "messages": messages,
+    });
+
+    if let Some(tool_list) = tools {
+      payload["tools"] = json!(tool_list);
+    }
+    if let Some(choice) = tool_choice {
+      payload["tool_choice"] = json!(format!("{}", match choice {
+        ChoiceTool::None => "none",
+        ChoiceTool::Auto => "auto",
+        ChoiceTool::Required => "required",
+      }));
+    }
+    if let Some(format_map) = response_format {
+      payload["response_format"] = json!(format_map);
+    }
+
+    Ok(payload)
+  }
+}
+
 #[derive(Serialize, Debug, Clone)]
 pub struct CallApiResponseFormat {
   name: String,
@@ -743,7 +742,7 @@ impl ResponseFormat {
   // propagates `AppError` from  `Result<HashMap<String, serde_json::Value>, AppError>` or returns a `HashMap<String, serde_json::Value>`
   // let response_desired_format = response_format_desired_as_map()?;
   // let payload = json!({
-  //     "response_format": map // this is the correct typeto send to API: a JSON object
+  //     "response_format": map // this is the correct type to send to API: a JSON object
   // });
 }
 
@@ -805,7 +804,7 @@ impl StructOut {
 
   /// this set of two functions `as_map()` and `sturct-_out_to_json_map()`  
   /// will get the output consummable version without the `struct` name but just its `Json` `Value` from `serde`
-  pub fn full_struct_as_map(&self) -> HashMap<String, &Schema> {
+  pub fn get_full_struct_as_map(&self) -> HashMap<String, &Schema> {
     HashMap::from([
       ("HumanRequestAnalyzerStructOut".to_string(), &self.HumanRequestAnalyzerStructOut),
       ("MainAgentStructOut".to_string(), &self.MainAgentStructOut),
@@ -825,7 +824,7 @@ impl StructOut {
   /// ``` 
   pub fn struct_out_to_json_map(struct_out: &StructOut) -> HashMap<String, serde_json::Value> {
     let mut map = HashMap::new();
-    for (name, schema) in struct_out.full_struct_as_map() {
+    for (name, schema) in struct_out.get_full_struct_as_map() {
       map.insert(name.clone(), json!(schema));
     }
     map

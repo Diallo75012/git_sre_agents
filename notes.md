@@ -2040,3 +2040,52 @@ let mut <agent>_model_settings = ...;
 // we can also update fields using
 updated_<agent> = <agent>.update_agent(<we put the field that we want to update and we put `None` for all other fields>)
 ```
+
+**PAYLOAD MACHINE**
+- here we will use the empty struct `Payload` implementation function `create_payload_with_or_without_tools_structout`
+  which will be able to have acore minimal payload for text and then Optional input parameter for `Tools` and `Structured Output`
+  which will be built using our other structs implemented functions.
+**machine payload flow Eg.**
+```rust
+/// messages part
+let <agent>_message = create_new_message_struct_to_send(&type_user, &content);
+// this will create the dictionary form of the message corresponding to that `struct` `MessagesSent` container. we will need to create a lot of those
+let <agent>_message_dict = <agent>_message.format_new_message_to_send();
+
+/// tools part
+// can have more vars of this that will go in a list of the next function
+let function_params = HashMap::from(
+  [
+    ("name".to_string(), "completion".to_string()),
+    ("type".to_string(), "boolean".to_string()),
+    ("description".to_string(), "job done or not?".to_string()),
+  ]
+);
+// we create the function settings
+let function_settings = create_function_parameters_object(&[function_params, ...])?;
+// we instantiate a sturct with the details and then will create function with all the parameters
+let function_details = FunctionDetails::new(
+    &name, // param_name
+    strict, // param_strict
+    &str, // param_description
+    &[function_settings, ...], // param_settings
+):?
+// we create new function
+let new_func = create_function_part(&function_details)?;
+
+// we instantiate a tool and add all function needed to it
+let agent_tools = Tool::new();
+agent_tools.add_function_tool(&[new_func, ...])?;
+
+// now we get our payload with all the tools
+let payload = machine_create_payload_with_or_without_tools_structout(
+  "creditizens-gpt3000", // model
+  &[<agent>_message_dict], // messages
+  Some(ChoiceTool::Auto), // tool_choice
+  Option(&[agent_tool, ...]), // tools
+  response_format: Option<&HashMap<String, Value>>,
+)?;
+```
+
+
+
