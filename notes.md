@@ -1766,6 +1766,45 @@ for (k, v) in dict.iter() {
 }
 ```
 
+- How does my custom error results propagates to rigth custom type `AppError`
+  I have two solutions:
+    - do a mapping to the right custom error, using: ``
+    - or have a generalization implementation of serde_json::Error to my enum custom erro `AppError`
+```rust
+/// mapping way, when instantiating in my code:
+some_fallible_fn().map_err(|e| AppError::Payload(format!("Failed to X: {}", e)))?
+```
+```
+/// general way: impl to custom enum error type and then call with `?` as well and it will automatically be a `serde_json::Error`
+
+// implement
+use serde_json::Error as SerdeError;
+
+#[derive(Debug)]
+pub enum AppError {
+  Payload(String),
+  Json(SerdeError),
+  // other variants...
+}
+
+impl From<SerdeError> for AppError {
+  fn from(err: SerdeError) -> Self {
+    AppError::Json(err)
+  }
+}
+
+// instantiate
+pub fn create_payload_fallible() -> Result<serde_json::Value, AppError> {
+  let map = some_fallible_fn()?; // this returns serde_json::Error
+  Ok(json!(map)) // auto-converts serde_json::Error → AppError::Json
+}
+```
+| Want to return...               | Use...                                 |
+| ------------------------------- | -------------------------------------- |
+| A specific variant manually     | `Err(AppError::Payload(...))`          |
+| Map error into variant          |\`.map\_err(| e | AppError::Xxx(...))?\`|
+| Let `?` propagate automatically | Implement `From<Error>` for `AppError` |
+
 
 
 
@@ -2087,5 +2126,28 @@ let payload = machine_create_payload_with_or_without_tools_structout(
 )?;
 ```
 
+**RESPONSE MACHINE**
+- here we will parse the response.
+  we will need the `payload machine`, `api keys` from a `.env` file and the endpoint where we send it to.
+  so here we calling and getting a result response, in next machines we will need to analyze this response to know if we call any tool or not,
+  or if we need to call again if there are many tools, the agent would loop and decide when it is done and we would store the history of messages.
+  the `headers::get_auth_headers()` will be called inside this function to get an encapsulation and not get secret leaked, it will be built at
+  runtime and just to call the api
+**machine response flow Eg.**
+```rust
+// we call the api
+let payload = machine_create_payload_with_or_without_tools_structout(
+  "creditizens-gpt3000", // model
+  &[<agent>_message_dict], // messages
+  Some(ChoiceTool::Auto), // tool_choice
+  Option(&[agent_tool, ...]), // tools
+  response_format: Option<&HashMap<String, Value>>,
+)?;
 
+// ce call the api and get a response that need to be unwrapped par next call (result returned)
+machine_api_call(
+  &endpoint, // "https://cerebras...."
+  &payload,  // &serde_json::Value
+).map_err(|e| AppError::Agent(format!("An error occured while calling API: {}", e)))?;
 
+```

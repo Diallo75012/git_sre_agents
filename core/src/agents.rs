@@ -24,6 +24,14 @@ fn object() -> String {
   "object".to_string()
 }
 
+fn json_object() -> String {
+  "json_object".to_string()
+}
+
+fn json_schema() -> String {
+  "json_schema".to_string()
+}
+
 fn function() -> String {
   "function".to_string()
 }
@@ -104,6 +112,8 @@ pub struct MessageHistory {
   /// so will have `MessageToAppend` and normal LlmResponse.choices[0].message.content formatted to a `MessageToAppend`
   /// `LlmResponse.choices[0]` (doesn't change), `ResponseChoices.message` (`.message`), `ReponseMessage.content` (`.content`)
   pub messages: Vec<MessageToAppend>,
+  // we would use this to limit the length of the vec messages history stored 
+  pub history_mnax_size: usize,
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]
@@ -241,7 +251,7 @@ impl FunctionDetails {
   	let paramters_full_object = HashMap::from(
       [
         // this never change so we can hard write it
-        ("type".to_string(), json!("object".to_string())),
+        ("type".to_string(), json!(object())),
         ("properties".to_string(), json!(properties.clone())),
       ]  
   	);
@@ -585,7 +595,7 @@ impl Schema {
       None => Vec::new(),  
     };
   	Schema {
-  	  r#type: "object".to_string(),
+  	  r#type: object(),
       properties: properties_fields_types.clone(),
       required: required_params,
       additionalProperties: false,
@@ -678,7 +688,7 @@ impl Payload {
       payload["response_format"] = json!(format_map);
     }
 
-    Ok(payload)
+    Ok(json!(payload))
   }
 }
 
@@ -705,7 +715,7 @@ impl ResponseFormat {
   pub fn new() -> ResponseFormat {
   	ResponseFormat {
   	  // we use by defualt `json_object`. if we need `json_schema` we will need to define the `schema` field and mutate the initialized `ResponseFormat`
-  	  r#type: "json_object".to_string(),
+  	  r#type:json_object(),
   	  // we don't define schema which will be by default  and will 'mutate' it only `type` is `json_schema`
   	  schema: None
   	}
@@ -716,14 +726,14 @@ impl ResponseFormat {
 
     match self.r#type.as_str() {
       "json_object" => {
-        map.insert("type".to_string(), json!("json_object"));
+        map.insert("type".to_string(), json!(json_object()));
       }
       "json_schema" => {
-        map.insert("type".to_string(), json!("json_schema"));
+        map.insert("type".to_string(), json!(json_schema()));
         // here we unwrap the `Option` to get the `schema`
         match &self.schema {
           Some(call_api_response_format) => {
-            map.insert("json_schema".to_string(), json!(call_api_response_format));
+            map.insert(json_schema(), json!(call_api_response_format));
           }
           None => {
             return Err(AppError::Agent("Missing schema for json_schema format".into()));

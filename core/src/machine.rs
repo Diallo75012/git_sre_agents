@@ -3,8 +3,19 @@
 //! - Construction machines: machine_prompt, machine_model_settings, machine_struct_output, machine_tools, machine_agent ... and more as file evolves
 //! - Response machines: machine_api_call, machine_api_response, machine_tool_loop, machine_context_update, machine_final_answer ... and more as file evolves
 use crate::agents::*;
-use crate::errors::AppError;
-use reqwest::Client;
+use crate::{
+  errors::AppError,
+  headers::get_auth_headers,
+};
+use reqwest::{
+  Client,
+  header::{
+    HeaderMap,
+    HeaderValue,
+    AUTHORIZATION,
+  },
+};
+use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 
@@ -72,6 +83,7 @@ pub fn machine_agent(
 }
 
 /// Construct a payload that includes tools and/or response_format schema optionally
+todo!();
 pub fn machine_create_payload_with_or_without_tools_structout(
   model: &str,
   messages: &[HashMap<String, String>],
@@ -94,18 +106,25 @@ pub fn machine_create_payload_with_or_without_tools_structout(
 // -------------------- RESPONSE MACHINES --------------------
 
 /// this function calls the api normally with payload and messages
+todo!();
 pub async fn machine_api_call(
   endpoint: &str,
   payload: &Value,
 ) -> Result<LlmResponse, AppError> {
-  let client = Client::new();
+  // we instantiate headers, that might probably become a `CONST` that i am going to just import and use are input parameter to my funtions
+  // so that i have only one point calling the .env file having the credentials 
+  let headers = get_auth_headers().map_err(|e| AppError::EnvSecret(format!("Failed to get headers: {}", e)))?;
+
+  // we instantiate a client
   let response = client
     .post(endpoint)
+    .headers(headers)
     .json(payload)
     .send()
     .await
     .map_err(|e| AppError::Agent(format!("Failed to send request: {}", e)))?;
 
+  // we check on the status code returned
   let status = response.status();
   if !status.is_success() {
     return Err(AppError::Agent(format!("HTTP Error: {}", status)));
