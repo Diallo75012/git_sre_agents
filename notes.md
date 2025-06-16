@@ -2151,3 +2151,18 @@ machine_api_call(
 ).map_err(|e| AppError::Agent(format!("An error occured while calling API: {}", e)))?;
 
 ```
+
+**FINAL ANSWER MACHINE**
+- this machine is special as it will use the `response machine` and then will have a logic flow to determine:
+  - if a tool is to be called and call: `machine_api_response(llm_response: &LlmResponse)`
+  - if history messages need to be added and call: `machine_context_update(history: &mut MessageHistory, new_message: MessageToAppend, max_len: usize,)`
+  - if final answer need to be rendered as no more tools to call: `machine_final_answer(llm_response: &LlmResponse)`
+  - it will need to have a loop if more than one tool if present in the list of tools of the agent and call:
+    `machine_tool_loop(endpoint: &str, mut history: MessageHistory, mut payload: Value, max_history_len: usize,)`
+**machine final answer flow Eg.**
+```rust
+```
+
+
+now need to make the logic of response handle and flow and loop when having mpore than one tool
+and history appending of messages and re-submission of api call. This is the big machine to do the story for then we can statrt building up those functions.
