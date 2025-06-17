@@ -1956,7 +1956,7 @@ Have a boiler plate of some of the machine funcitons reusing the agent.rs struct
 need next to test those functions and see what it returns and adapt those to what is needed for the app.
 
 **PROMPT MACHINE**
-- `machine_prompt()` is making the `struct` MessagesSent` but `format_new_message_to_send()` is never called to make `[{role:..., content:...}]`:
+- `machine_prompt()` is making the struct `MessagesSent` but `format_new_message_to_send()` is never called to make `[{role:..., content:...}]`:
    we need it to make all prompts and save those, it we want to mutate the prompt we will need to mutate the corresponding field in the struct and
    rebuild the prompt message. so each agent will have the struct filed in a var and final message in a var (= 2 vars per agents)
 **machine prompt flow Eg.**
@@ -2116,7 +2116,8 @@ let new_func = create_function_part(&function_details)?;
 let agent_tools = Tool::new();
 agent_tools.add_function_tool(&[new_func, ...])?;
 
-// now we get our payload with all the tools
+// now we get our payload with all the tools (instantiate a response format if using `type: json_schema`
+// otherwise just use `ResponseFormat::new()` which will be of type: `json_objetc()` 'normal default one')
 let payload = machine_create_payload_with_or_without_tools_structout(
   "creditizens-gpt3000", // model
   &[<agent>_message_dict], // messages
@@ -2152,6 +2153,23 @@ machine_api_call(
 
 ```
 
+**HISTORY MESSAGES MACHINE**
+- this machine will be storing the history messages, I have changed the `struct` to have a unique field of type `VecDeque`
+  and will be using `with_capacity()` method (max:3) to not go over the context window for api call and `push_back()` and `push_front()`
+**machine history messages flow Eg.**
+```rust
+// this will set the `VecDeque` with capacity `3` and empty
+let mut <agent>_history = MessageHistory::new();
+// get the response from the api call and create a `MessageToAppend` instance.
+let message_role = "assistant".to_string(); // "user/system/ai"
+let message_content = "<response.choices[0].message.content>".to_stirng(); // or maybe use the `Deserialized field of the Response machine...`
+let message_tool_call_id = "<result['choices'][0]['message'].get('tool_calls', [])>".to_stirng(); // or `Deserialized Response machine` 
+let message_to_append = MessageToAppend::new(&message_role, &message_content, &message_tool_call_id); // all &String
+let messages_<agent>_history = <agent_history>.append_message_to_history(&message_to_append)?; // &MessageToAppend
+
+// then can use this message for next api call in the loop that we are going to create
+```
+
 **FINAL ANSWER MACHINE**
 - this machine is special as it will use the `response machine` and then will have a logic flow to determine:
   - if a tool is to be called and call: `machine_api_response(llm_response: &LlmResponse)`
@@ -2165,4 +2183,10 @@ machine_api_call(
 
 
 now need to make the logic of response handle and flow and loop when having mpore than one tool
-and history appending of messages and re-submission of api call. This is the big machine to do the story for then we can statrt building up those functions.
+and history appending of messages and re-submission of api call.
+This is the big machine to do the story for then we can statrt building up those functions.
+
+NEEd TO CHECK THAT:
+agent might need more fields that would need an api call to be amade in order to have the steps needed to perform the task
+and have the agent go through that checklist
+and use toolsin order to communicate with other agents until the checklist is done.

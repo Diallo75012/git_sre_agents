@@ -8,7 +8,10 @@
 //! `derive` `Default` to initialize `struct` with initial values so no need implementation of `.new()` for the `struct`
 use serde::{Deserialize, Serialize};
 use serde_json::{Result, json};
-use std::collections::HashMap;
+use std::collections::{
+  HashMap,
+  VecDeque,
+};
 use crate::{
   file_reader::read_file,
   errors::AppError,
@@ -96,7 +99,7 @@ impl Default for ChoiceTool {
 /// this is the message to send after a tool call have been identified in the response, so llm have choosen a tool,
 /// we need to append to messages and send it to the llm again, and get the response and append it to the messages until tool is not called in a loop way
 /// with or without the `tool_call_id`: [{"content": "Hello!", "role": "user", "tool_call_id": "..."}]``
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq)]
 pub struct MessageToAppend {
   pub role: String,
   pub content: String,
@@ -106,14 +109,55 @@ pub struct MessageToAppend {
   pub tool_call_id: String,
 }
 
+//type MessageToAppendResult<T> = std::result::Result<T, AppError>;
+impl MessageToAppend {
+  // this to create a new instance
+  pub fn new(message_role: &str, message_content: &str, message_tool_call_id: &str) -> Self {
+  	Self {
+      role: message_role.to_string(), 
+      content: message_content.to_string(),
+      tool_call_id: message_tool_call_id.to_string(),
+  	}
+  }
+}
+
 /// this will be the buffer history of messages stored and sent to an llm, so we need to limit it a certain way
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+/// changed my mind, using here just a `VecDeque` as we can have `with_capacity()` and `push_back()/push_front()` methods
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq)]
 pub struct MessageHistory {
   /// so will have `MessageToAppend` and normal LlmResponse.choices[0].message.content formatted to a `MessageToAppend`
   /// `LlmResponse.choices[0]` (doesn't change), `ResponseChoices.message` (`.message`), `ReponseMessage.content` (`.content`)
-  pub messages: Vec<MessageToAppend>,
-  // we would use this to limit the length of the vec messages history stored 
-  pub history_mnax_size: usize,
+  pub messages: VecDeque<MessageToAppend>,
+}
+
+type MessageHistoryResult<T> = std::result::Result<T, AppError>;
+impl MessageHistory {
+  // we create the function that would instantiate a new `MessageHistory`
+  // and then create another function that would be used to append `MessageToAppend`
+  pub fn new() -> Self {
+    let deque: VecDeque<MessageToAppend> = VecDeque::with_capacity(3);
+    Self {
+      messages: deque,
+    }
+  }
+  
+  pub fn append_message_to_history(&mut self, message_to_append: &MessageToAppend) -> MessageHistoryResult<serde_json::Value> {
+    let mut messages_present = self.messages.clone();
+  	if messages_present.len() >= 3 {
+  	  messages_present.pop_front();
+  	  messages_present.push_back(message_to_append.clone());
+  	  self.messages = messages_present;
+  	} else {
+  	  messages_present.push_back(message_to_append.clone());
+  	  self.messages = messages_present;  	    
+  	}
+    Ok(json!(self.clone()))
+  }
+  // clean up the history
+  pub fn clear_history(&mut self) -> MessageHistoryResult<()> {
+  	self.messages.clear();
+  	Ok(())
+  }
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]
@@ -893,6 +937,8 @@ pub struct Agent {
   /// but still will need to use those fields to construct what the API will consume at the end,
   /// so we might implement a fucntion here that will for example transform enums in `String`
   pub llm: ModelSettings,
+  /* ** Might need to add a field like a checklist so that agent know what need to be done next,
+        Optional field so we have only the main agent with that. to keep track of work. so will need to call api also to organize work  ** */
 }
 
 type AgentResult<T> = std::result::Result<T, AppError>;

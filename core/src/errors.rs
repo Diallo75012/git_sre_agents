@@ -56,7 +56,10 @@ pub enum AppError {
   FunctionParam(String),  
   /// General Error implementing serde_json
   #[error("(CustomJson) Error:{0}")]
-  CustomJson(String),  
+  CustomJson(String),
+  /// General Error implementing serde_json
+  #[error("History Message Formatting Error:{0}")]
+  History(String),  
 }
 
 /// this is to teach `Rust` about our custom error by implementing `std` errors

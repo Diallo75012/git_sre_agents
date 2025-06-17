@@ -1,7 +1,7 @@
 //! machines.rs - machine-based logic for Agent creation and response handling
 //! See accompanying design plan for responsibilities:
 //! - Construction machines: machine_prompt, machine_model_settings, machine_struct_output, machine_tools, machine_agent ... and more as file evolves
-//! - Response machines: machine_api_call, machine_api_response, machine_tool_loop, machine_context_update, machine_final_answer ... and more as file evolves
+//! - Response machines: machine_api_call, machine_api_response, machine_tool_loop, machine_history_update, machine_final_answer ... and more as file evolves
 use crate::agents::*;
 use crate::{
   errors::AppError,
@@ -148,15 +148,17 @@ pub fn machine_api_response(llm_response: &LlmResponse) -> Option<&Vec<ToolCall>
 }
 
 /// this one will update the messages history and we can use the usize to set a max length of the history (maybe better to tdo that in the struct)
-pub fn machine_context_update(
+pub fn machine_history_update(
   history: &mut MessageHistory,
-  new_message: MessageToAppend,
-  max_len: usize,
-) {
-  history.messages.push(new_message);
-  if history.messages.len() > max_len {
-    history.messages.remove(0); // keep context short
-  }
+  new_message: &MessageToAppend,
+) -> Result<serde_json::Value, AppError> {
+  let message = history
+    .append_message_to_history(new_message)
+    // using here `map_err(||...)?;` way and it is very handy
+    // so we can propagate the error to the machine if any, else we just keep going... fine
+    .map_err(|e| AppError::History(format!("Error updating history: {}", e)))?;
+
+  Ok(json!(message))
 }
 
 /// this one will return the response when there is no more tools to call
@@ -169,53 +171,118 @@ pub fn machine_final_answer(llm_response: &LlmResponse) -> Option<String> {
 
 // -------------------- TOOL CALL LOOP --------------------
 
+// create a mutable payload so we can update it on the fly at each loop
+let mut payload = machine_create_payload_with_or_without_tools_structout(
+  model: &str,
+  messages: &[HashMap<String, String>],
+  tool_choice: Option<ChoiceTool>,
+  tools: Option<&[HashMap<String, Value>]>,
+  response_format: Option<&HashMap<String, Value>>,
+)
+/// so this function is for the api call in a loop way with or without tools 
 pub async fn machine_tool_loop(
   endpoint: &str,
-  mut history: MessageHistory,
-  mut payload: Value,
-  max_history_len: usize,
+  history: &mut MessageHistory,
+  new_message: &MessageToAppend,
+  payload: &mut Value,
+  model: &str,
+  tool_choice: Option<ChoiceTool>,
+  tools: Option<&Vec<HashMap<String, serde_json::Value>>>,
+  response_format: Option<&HashMap<String, serde_json::Value>>,
+  agent: Option<&mut Agent>, // Optional agent updates
+  max_loop: usize,
 ) -> Result<String, AppError> {
-  loop {
-    let llm_response = machine_api_call(endpoint, &payload).await?;
+  history.append_message_to_history(new_message)?;
+  let mut loop_counter = 0;
 
-    if let Some(tool_calls) = machine_api_response(&llm_response) {
-      if tool_calls.is_empty() {
-        break;
+  // Hold the final response without re-calling the API again after loop
+  let mut final_response: Option<LlmResponse> = None;
+
+  loop {
+      // we set a `max loop` and return error if it is looping to much as we might get some api call issues as well
+      if loop_counter >= max_loop {
+        return Err(AppError::Agent(format!(
+          "Reached max tool loop iteration: {}",
+          max_loop
+        )));
       }
 
-      // Simulate tool execution (mock for now)
-      let tool_response = MessageToAppend {
-        role: "tool".into(),
-        content: format!("Executed tool: {}", tool_calls[0].function),
-        tool_call_id: tool_calls[0].id.clone(),
-      };
+      let llm_response = machine_api_call(endpoint, payload).await?;
 
-      // Update history with tool response
-      machine_context_update(&mut history, tool_response, max_history_len);
+      if let Some(tool_calls) = machine_api_response(&llm_response) {
+        if tool_calls.is_empty() {
+          // No tool, store final response and exit
+          final_response = Some(llm_response);
+          break;
+        }
 
-      // Rebuild payload with updated message history
-      let new_messages: Vec<_> = history
-        .messages
-        .iter()
-        .map(|m| {
-          let mut obj = json!({
-            "role": m.role,
-            "content": m.content
-          });
-          if !m.tool_call_id.is_empty() {
-            obj["tool_call_id"] = json!(m.tool_call_id);
-          }
-          obj
-        })
-        .collect();
+        // Simulate tool execution
+        let tool_response = MessageToAppend::new(
+          "tool",
+          &format!("Executed tool: {}", tool_calls[0].function),
+          &tool_calls[0].id,
+        );
 
-      payload["messages"] = json!(new_messages);
+        history.append_message_to_history(&tool_response)?;
+
+        if let Some(agent_ref) = agent {
+          agent_ref.communication_message.insert(
+            "last_tool".to_string(),
+            tool_calls[0].function.clone(),
+          );
+        }
+
+        let new_messages: Vec<HashMap<String, String>> = history
+          .messages
+          .iter()
+          .map(|m| {
+            let mut map = HashMap::new();
+            map.insert("role".to_string(), m.role.clone());
+            map.insert("content".to_string(), m.content.clone());
+            if !m.tool_call_id.is_empty() {
+              map.insert("tool_call_id".to_string(), m.tool_call_id.clone());
+            }
+            map
+          })
+          .collect();
+
+        *payload = machine_create_payload_with_or_without_tools_structout(
+          model,
+          &new_messages,
+          tool_choice.clone(),
+          tools,
+          response_format,
+        )?;
     } else {
-       break;
+      // No `tool_calls` field present — save the response
+      final_response = Some(llm_response);
+      break;
     }
   }
 
-  let final_response = machine_api_call(endpoint, &payload).await?;
-  machine_final_answer(&final_response)
-    .ok_or(AppError::Agent("No final answer found in response".into()))
+  // Reuse the last loop response
+  if let Some(resp) = final_response {
+    machine_final_answer(&resp)
+      .ok_or(AppError::Agent("No final answer found in response".into()))
+  } else {
+    Err(AppError::Agent("Unexpected: final response not set".into()))
+  }
 }
+// cal it like that
+// let answer = machine_tool_loop(
+//   &endpoint,
+//   &mut history,
+//   &new_message,
+//   &mut payload,
+//   model,
+//   Some(ChoiceTool::Auto),
+//   Some(&tools_vec),
+//   Some(&response_format_map),
+//   Some(&mut agent),
+//   3, // <-- max 3 tool loops
+// ).await?;
+
+
+
+// we can clear history if need as i have create an implementation returning a `result<()>` `.clear_hsitory(&self)`
+// need probably machine to manage checklist update and add a field to agent
