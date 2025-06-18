@@ -265,17 +265,17 @@ impl FunctionDetails {
   /// );
   /// ``` 
   pub fn new(
-    param_name: &str,
+    fn_name: &str,
     param_strict: bool,
-    param_description: &str,
+    fn_description: &str,
     param_settings: &[HashMap<String, String>],
     ) -> FunctionDetailsResult<Self> {
     let parameters_settings = FunctionParametersContainer::create_function_parameters_object(param_settings)?;
     
   	Ok(Self {
-      name: param_name.to_string(),
+      name: fn_name.to_string(),
       strict: param_strict,
-      description: param_description.to_string(),
+      description: fn_description.to_string(),
       parameters: parameters_settings,
   	})
   }
@@ -478,7 +478,6 @@ type ModelSettingsResult<T> = std::result::Result<T, AppError>;
 impl ModelSettings {
   /// initialization of model settings
   pub fn initialize_model_settings_with_tools(
-    &self,
     model_name: &str,
     model_max_completion: u64,
     model_temperature: u64,
@@ -868,6 +867,7 @@ impl StructOut {
     ])
   }
 
+  /// function to get the full `StructOut`
   /// this is how to call this set of functions to have it has a `dict`
   /// ```
   /// let json_map = StructOut::struct_out_to_json_map(&schema_big_state);

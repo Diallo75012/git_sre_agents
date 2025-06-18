@@ -1,7 +1,7 @@
-//! machines.rs - machine-based logic for Agent creation and response handling
-//! See accompanying design plan for responsibilities:
-//! - Construction machines: machine_prompt, machine_model_settings, machine_struct_output, machine_tools, machine_agent ... and more as file evolves
-//! - Response machines: machine_api_call, machine_api_response, machine_tool_loop, machine_history_update, machine_final_answer ... and more as file evolves
+//! `machines` contructors that will be using all our implemented struct methods
+//! `engines` that will be using those `machines` constructor or/and methods implemented in structs to build bigger picture objects
+//! this is to make it easy to call any part of the app needed.
+//! we need to create more custom errors so that it makes life easy to know at which part does the error has been triggers in our machines/engines flow
 use crate::agents::*;
 use crate::{
   errors::AppError,
@@ -22,49 +22,12 @@ use std::collections::HashMap;
 // -------------------- MACHINE CONSTRUCTORS --------------------
 
 /// this will make prompts {role:...., content:....}
-todo!();
-pub fn machine_prompt(role: &UserType, content: &str) -> MessagesSent {
+pub fn machine_prompt(role: &UserType, content: &str) -> MessagesSent { // done!
   MessagesSent::create_new_message_to_send(role, content)
 }
 
-/// We will replace this with the Structured Output builder that will take in all schemas and create a structured output
-todo!(); 
-pub fn machine_struct_output(schema_dict: &HashMap<String, &SchemaFieldType>) -> StructOut {
-  let schema = StructOut::build_schema(schema_dict);
-  StructOut::new(&schema, &schema, &schema, &schema, &schema)
-}
-
-/// we will be building tools here
-todo!();
-pub fn machine_tools(tools: &[HashMap<String, serde_json::Value>]) -> Option<Vec<HashMap<String, Value>>> {
-  if tools.is_empty() {
-    None
-  } else {
-    Some(tools.to_vec())
-  }
-}
-
-/// we will here create the model settings machine
-todo!();
-pub fn machine_model_settings(
-  prompt_messages: &[HashMap<String, String>],
-  tool_choice: ChoiceTool,
-  tools: Option<Vec<HashMap<String, Value>>>,
-) -> ModelSettings {
-  ModelSettings {
-    name: "cerebras-model".into(),
-    max_completion: 1000,
-    temperature: 0,
-    message: prompt_messages.to_vec(),
-    tool_choice,
-    tools,
-    r#type: function(),
-  }
-}
-
 /// we will here create the agent machine
-todo!();
-pub fn machine_agent(
+pub fn machine_agent( // done!
   role: AgentRole,
   message: &str,
   prompt: &MessagesSent,
@@ -83,8 +46,7 @@ pub fn machine_agent(
 }
 
 /// Construct a payload that includes tools and/or response_format schema optionally
-todo!();
-pub fn machine_create_payload_with_or_without_tools_structout(
+pub fn machine_create_payload_with_or_without_tools_structout( // done!
   model: &str,
   messages: &[HashMap<String, String>],
   tool_choice: Option<ChoiceTool>,
@@ -106,8 +68,8 @@ pub fn machine_create_payload_with_or_without_tools_structout(
 // -------------------- RESPONSE MACHINES --------------------
 
 /// this function calls the api normally with payload and messages
-todo!();
-pub async fn machine_api_call(
+/// used in the api call with tool or not loop big dynamic function
+pub async fn machine_api_call( // done!
   endpoint: &str,
   payload: &Value,
 ) -> Result<LlmResponse, AppError> {
@@ -140,15 +102,18 @@ pub async fn machine_api_call(
 }
 
 /// this function checks on the response to see if there is any tool call
-pub fn machine_api_response(llm_response: &LlmResponse) -> Option<&Vec<ToolCall>> {
+/// used in the loop api call function
+pub fn machine_api_response(llm_response: &LlmResponse) -> Option<&Vec<ToolCall>> { // done!
   llm_response
     .choices
     .get(0)
     .map(|choice| &choice.message.tool_calls)
 }
 
-/// this one will update the messages history and we can use the usize to set a max length of the history (maybe better to tdo that in the struct)
-pub fn machine_history_update(
+/// this one will update the messages history
+/// and we can use the `usize` to set a max length of the history
+/// used in the loop api call function 
+pub fn machine_history_update( // done!
   history: &mut MessageHistory,
   new_message: &MessageToAppend,
 ) -> Result<serde_json::Value, AppError> {
@@ -162,25 +127,261 @@ pub fn machine_history_update(
 }
 
 /// this one will return the response when there is no more tools to call
-pub fn machine_final_answer(llm_response: &LlmResponse) -> Option<String> {
+pub fn machine_final_answer(llm_response: &LlmResponse) -> Option<String> { // done!
   llm_response
     .choices
     .get(0)
     .map(|choice| choice.message.content.clone())
 }
 
-// -------------------- TOOL CALL LOOP --------------------
 
-// create a mutable payload so we can update it on the fly at each loop
-let mut payload = machine_create_payload_with_or_without_tools_structout(
+/*----------------------  ENGINES  ----------------------*/
+/* ** PROMPTS ENGINE ** */
+/// `machine_prompt()` is making the struct `MessagesSent` but `format_new_message_to_send()` is never called to make `[{role:..., content:...}]`:
+/// we need it to make all prompts and save those, it we want to mutate the prompt we will need to mutate the corresponding field in the struct and
+/// rebuild the prompt message. so each agent will have the struct filed in a var and final message in a var (= 2 vars per agents)
+pub fn engine_prompt(role: &UserType, content: &str) -> HashMap<String, String> {
+  // which create the struct
+  let agent_struct_prompt = machine_prompt(role: &UserType, content: &str);
+  // which return as `[{"role": ..., "content": ...}]`
+  let agent_prompt = agent_struct_prompt.format_new_message_to_send();
+  agent_prompt
+}
+
+/* ** SCHEMA ENGINE  ** */
+/// `machine_struct_output()` is not doing the job properly as saving same schema
+/// for all field of the strutured output `struct` while those are different types 
+/// We need first to a variable that stores the `schema` specific to a `type of user` using:
+/// `Schema::new(properties_fields_types: &HashMap<String, HashMap<String, String>>, schema_field_requirement: Option<&Vec<String>>,)`
+/// And then, we need to build one unique structured output `struct` that will store those schemas using: `StructuredOutput::build_schema()`
+pub fn create_schemas_engine(
+    human_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
+    main_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
+    pr_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
+    sre1_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
+    sre2_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>
+  ) -> Result<Structout, AppError> {
+  // we initialize the different schemas
+  human_schema = StructOut::build_schema(&human_schema_initial_hasmap);
+  main_schema = StructOut::build_schema(&main_schema_initial_hasmap);
+  pr_schema = StructOut::build_schema(&pr_schema_initial_hasmap);
+  sre1_schema = StructOut::build_schema(&sre1_schema_initial_hasmap);
+  sre2_schema = StructOut::build_schema(&sre2_schema_initial_hasmap);
+
+  // we create our structout holding all the different schemas
+  let all_agents_sturctured_output_storage = StructOut::new(
+    &human_schema,
+    &main_agent_schema,
+    &pr_agent_schema,
+    &sre1_schema,
+    &sre2_schema,
+  );
+  all_agents_sturctured_output_storage
+}
+/// after having built `once` the big `StructOut` container, we can consider it to be a constant and just get from it struct we need when calling `Cerebras`
+pub fn get_specific_agent_schema_engine(full_struct_out: &StructOut, agent_role: &AgentRole) -> Schema {
+  let all_agents_sturctured_output_storage_json_map = StructOut::struct_out_to_json_map(full_struct_out);
+  if let Some(schema) = all_agents_sturctured_output_storage.get_by_role(agent_role) {
+    schema
+  }
+}
+
+/* ** TOOL ENGINE  ** */
+/// we initialize and empty vec as tool so create a var for an agent binded tools always empty at the beginning using `Tools.new()`
+/// and can use the mutation to modify it using the implemented function `add_function_tool()`
+/// and we need then to have the return type to `Option<>` so that we can add it to the `ModelSettings` struct field for tools.
+/// we just provide this and get our tool made up fully
+/// ```
+/// let parameter1_settings = HashMap::from(
+///   [
+///     ("name".to_string(), "completion".to_string()),
+///     ("type".to_string(), "boolean".to_string()),
+///     ("description".to_string(), "job done or not?".to_string()),
+///   ]
+/// );
+/// // let parameter2_setting = HashMap...
+/// ```
+/// therefore, use this function mutiple time with same agent_tools initialize to add function tools to agent
+pub fn create_tool_engine(
+    agent_tools: &mut Tools,
+    &fn_name,
+    param_strict, // bool
+    &fn_description,
+    // here we put in a `&[HashMap<String, String>]` all different parameters of the function. so each has settings `name/type/description`
+    &param_settings,
+  ) -> Option<Tools> {   
+  /* Function creation */
+  // create the function details and also provide the hashmap of name/type/decription 
+  let function_details = match FunctionDetails::new(
+    fn_name,
+    param_strict,
+    fn_description,
+    param_settings,
+    )?;
+  //get the function created
+  // can use this as well (other implementation) let function = function details.create_function_with_parameters_object()?;
+  let function = create_function_part(&function_details)?; // unwrapping become `HashMap<String, serde_json::Value>` type
+
+  /* Tool creation */
+  // return result Ok(()) or propagates the custom error
+  agent_tools.add_function_tool(&[function])?;
+  // which is of perfect type `Some(Vec<HashMap<String, serde_json::Value>>)`
+  Some(agent_tools);
+}
+
+
+/* ** MESSAGES MACHINE ** */
+/// we need to initialize a new one for each that we want to create and it will store an empty message list that can be updated with `system/assistant/user`
+/// messages which are going to be initializing a struct per agents using `MessagesSent::create_new_message_struct_to_send()` and then formatting the container into
+/// a hashmap using `MessagesSent::format_new_message_to_send(&self)` and then we use that variable to add it to the model settings tools in a vec
+/// using `MessagesSentlist_messages_to_send()` if needed, for the moment this `messages machine` will render the dictionary `HashMap`
+pub fn messages_format_engine(type_user: &UserType, content: &str) -> HashMap<String, String> {
+  // initialize a new message
+  let agent_message = create_new_message_struct_to_send(&type_user, &content);
+  // this will create the dictionary form of the message corresponding to that `struct` `MessagesSent` container.
+  let agent_message_dict = agent_message.format_new_message_to_send();
+  agent_message_dict
+}
+
+/* ** MODELSETTINGS ENGINE  ** */
+/// we could use `MessagesSentlist_messages_to_send()` after we just need to mutate the field tools of modelsettings and replace it with this new list for eg.
+/// But we will just use our implementation `ModelSettings::.update_model_settings()` and put None to fields that are already set and do not need updates
+/// initialization of model settings and another to update like in implementation
+pub fn create_model_settings_engine(
+  model_name: &str,
+  model_max_completion: u64,
+  model_temperature: u64,
+  model_message: &[HashMap<String, String>],
+  // other field are created with default directly inside fn implementation
+  list_tools: &[HashMap<String, serde_json::Value>]
+  ) -> ModelSettings {
+  let new_model_setting = ModelSettings::initialize_model_settings_with_tools(
+    model_name: &str,
+    model_max_completion: u64,
+    model_temperature: u64,
+    model_message: &[HashMap<String, String>],
+    list_tools: &[HashMap<String, serde_json::Value>]
+
+  );
+  new_model_settings
+}
+// call it like that when wanting to update
+// let agent_model_settings.update_model_settings(
+//   model_name: Option<&str>,
+//   model_max_completion: Option<u64>,
+//   model_temperature: Option<u64>,
+//   model_messages: Option<&[HashMap<String, String>]>, // uses the `MESSAGES MACHINE`
+//   model_tool_choice: Option<&ChoiceTool>,
+//   model_tools: Option<&Option<Vec<HashMap<String, serde_json::Value>>>>, // uses the `TOOLS MACHINE`
+//   model_type: Option<&str>,   
+// )?;
+
+
+/* ** AGENT ENGINE  ** */
+/// from here we should have all necessary variables to fill this `Agent` struct with the other created existing `structs`:
+/// `AgentRole, MessagesSent, StructOut, TaskCompletion, ModelSettings`
+/// then we need one field empty but update it as agent is working: `agent_communication_message_to_others: &HashMAp<String, String>`
+pub fn create_agent_engine(
+  role: AgentRole,
+  message: &str,
+  prompt: &MessagesSent,
+  struct_out: &StructOut,
+  task_state: TaskCompletion,
+  llm_settings: &ModelSettings,
+) -> Result<Agent, AppError> {
+  let new_agent = machine_agent(
+    role,
+    message,
+    prompt,
+    struct_out,
+    task_state,
+    llm_settings,
+  )?;
+  Ok(new_agent)
+}
+
+// to update use it like that
+// agent.update_agent(
+//   agent_role: Option<&AgentRole>,
+//   agent_communication_message_to_others: Option<&HashMap<String, String>>,   
+//   agent_prompt_from_file: Option<&MessagesSent>,
+//   agent_structured_output: Option<&StructOut>,
+//   agent_task_state: Option<&TaskCompletion>,
+//   agent_llm: Option<&ModelSettings>,
+// )?;
+
+
+/* ** PAYLOAD ENGINE  ** */ // MIGHT NOT BE NEEDED AS API CALL CALL LOOP FUNCTION CREATES IT ON THE FLY
+/// here we will use the empty struct `Payload` implementation function `create_payload_with_or_without_tools_structout`
+/// which will be able to have acore minimal payload for text and then Optional input parameter for `Tools` and `Structured Output`
+/// which will be built using our other structs implemented functions.
+/// used as imput argument in the big function loop calling the api : `API CALL ENGINE`
+/* payload engine */
+fn create_payload_engine(
   model: &str,
   messages: &[HashMap<String, String>],
   tool_choice: Option<ChoiceTool>,
   tools: Option<&[HashMap<String, Value>]>,
   response_format: Option<&HashMap<String, Value>>,
-)
+) Result<Value, AppError> {
+  let payload = machine_create_payload_with_or_without_tools_structout(
+    model,
+    messages,
+    tool_choice.clone(),
+    tools,
+    response_format,
+  )?;
+  Ok(payload) // need to unwrap when callin g this function with match pattern as we need a type `&Value` for the function calling the api
+}
+
+// // need to get those done to feed this function (some are lists so can repeat creating of messages for Eg. for different agent or System/Assistant/Tool)
+// /* message engine */
+// messages_format_engine(type_user: &UserType, content: &str)
+// /* tools engine */
+// // to be repeated for same `agent_tools` to add some more
+// create_tool_engine(
+//   agent_tools: &mut Tools,
+//   &fn_name,
+//   param_strict, // bool
+//   &fn_description,
+//   // here we put in a `&[HashMap<String, String>]` all different parameters of the function. so each has settings `name/type/description`
+//   &param_settings,
+// )?; // maybe need to have a result istead of retun type: Option<Tools>
+
+
+/* ** RESPONSE ENGINE  ** */
+/// here we will parse the response.
+/// we will need the `payload machine`, `api keys` from a `.env` file and the endpoint where we send it to.
+/// so here we calling and getting a result response, in next machines we will need to analyze this response to know if we call any tool or not,
+/// or if we need to call again if there are many tools, the agent would loop and decide when it is done and we would store the history of messages.
+/// the `headers::get_auth_headers()` will be called inside this function to get an encapsulation and not get secret leaked, it will be built at
+/// runtime and just to call the api
+pub fn response_engine() -> {
+  // we do not implement nothing here as we will be just using the big loop funciton call for all our api calls
+  // tools or not. schema or not, this RESPONSE ENGINE is already there in the form of RESPONSE MACHINE
+}
+
+/* ** API CALL ENGINE  ** */
+/// - this machine is special as it will use the `response machine` and then will have a logic flow to determine:
+///   - if a tool is to be called and call: `machine_api_response(llm_response: &LlmResponse)`
+///   - if history messages need to be added and call: `machine_context_update(history: &mut MessageHistory, new_message: MessageToAppend, max_len: usize,)`
+///   - if final answer need to be rendered as no more tools to call: `machine_final_answer(llm_response: &LlmResponse)`
+///   - it will need to have a loop if more than one tool if present in the list of tools of the agent and call:
+///     `machine_tool_loop(endpoint: &str, mut history: MessageHistory, mut payload: Value, max_history_len: usize,)`
+/// -------------------- TOOL CALL LOOP --------------------
+/// create a mutable payload so we can update it on the fly at each loop
+/// ```
+/// let mut payload = machine_create_payload_with_or_without_tools_structout(
+///   model: &str,
+///   messages: &[HashMap<String, String>],
+///   tool_choice: Option<ChoiceTool>,
+///   tools: Option<&[HashMap<String, Value>]>,
+///   response_format: Option<&HashMap<String, Value>>,
+/// )
+/// ```
 /// so this function is for the api call in a loop way with or without tools 
-pub async fn machine_tool_loop(
+todo!(); // need to see what to update in agent
+pub async fn tool_or_not_loop_api_call_engine(
   endpoint: &str,
   history: &mut MessageHistory,
   new_message: &MessageToAppend,
@@ -199,60 +400,64 @@ pub async fn machine_tool_loop(
   let mut final_response: Option<LlmResponse> = None;
 
   loop {
-      // we set a `max loop` and return error if it is looping to much as we might get some api call issues as well
-      if loop_counter >= max_loop {
-        return Err(AppError::Agent(format!(
-          "Reached max tool loop iteration: {}",
-          max_loop
-        )));
+    // we set a `max loop` and return error if it is looping to much as we might get some api call issues as well
+    if loop_counter >= max_loop {
+      return Err(AppError::Agent(format!(
+        "Reached max tool loop iteration: {}",
+        max_loop
+      )));
+    }
+
+    let llm_response = machine_api_call(endpoint, payload).await?;
+
+    if let Some(tool_calls) = machine_api_response(&llm_response) {
+      if tool_calls.is_empty() {
+        // No tool, store final response and exit
+        final_response = Some(llm_response);
+        break;
       }
 
-      let llm_response = machine_api_call(endpoint, payload).await?;
+      // Simulate tool execution
+      let tool_response = MessageToAppend::new(
+        "tool",
+        &format!("Executed tool: {}", tool_calls[0].function),
+        &tool_calls[0].id,
+      );
 
-      if let Some(tool_calls) = machine_api_response(&llm_response) {
-        if tool_calls.is_empty() {
-          // No tool, store final response and exit
-          final_response = Some(llm_response);
-          break;
-        }
+      history.append_message_to_history(&tool_response)?;
 
-        // Simulate tool execution
-        let tool_response = MessageToAppend::new(
-          "tool",
-          &format!("Executed tool: {}", tool_calls[0].function),
-          &tool_calls[0].id,
+      if let Some(agent_ref) = agent {
+        agent_ref.communication_message.insert(
+          "last_tool".to_string(),
+          tool_calls[0].function.clone(),
         );
+      }
 
-        history.append_message_to_history(&tool_response)?;
+      let new_messages: Vec<HashMap<String, String>> = history
+        .messages
+        .iter()
+        .map(|m| {
+          let mut map = HashMap::new();
+          map.insert("role".to_string(), m.role.clone());
+          map.insert("content".to_string(), m.content.clone());
+          if !m.tool_call_id.is_empty() {
+            map.insert("tool_call_id".to_string(), m.tool_call_id.clone());
+          }
+          map
+        })
+        .collect();
 
-        if let Some(agent_ref) = agent {
-          agent_ref.communication_message.insert(
-            "last_tool".to_string(),
-            tool_calls[0].function.clone(),
-          );
-        }
-
-        let new_messages: Vec<HashMap<String, String>> = history
-          .messages
-          .iter()
-          .map(|m| {
-            let mut map = HashMap::new();
-            map.insert("role".to_string(), m.role.clone());
-            map.insert("content".to_string(), m.content.clone());
-            if !m.tool_call_id.is_empty() {
-              map.insert("tool_call_id".to_string(), m.tool_call_id.clone());
-            }
-            map
-          })
-          .collect();
-
-        *payload = machine_create_payload_with_or_without_tools_structout(
-          model,
-          &new_messages,
-          tool_choice.clone(),
-          tools,
-          response_format,
-        )?;
+      // here we just change in place so for that we use `*` to mutate it
+      // and then it still be coerced by Rust as `&mut`
+      // so when it comes back in the above: `let llm_response = machine_api_call(endpoint, payload).await?;`
+      // the type of `payload` is still `&mut`
+      *payload = machine_create_payload_with_or_without_tools_structout(
+        model,
+        &new_messages,
+        tool_choice.clone(),
+        tools,
+        response_format,
+      )?;
     } else {
       // No `tool_calls` field present — save the response
       final_response = Some(llm_response);
@@ -281,8 +486,6 @@ pub async fn machine_tool_loop(
 //   Some(&mut agent),
 //   3, // <-- max 3 tool loops
 // ).await?;
-
-
 
 // we can clear history if need as i have create an implementation returning a `result<()>` `.clear_hsitory(&self)`
 // need probably machine to manage checklist update and add a field to agent

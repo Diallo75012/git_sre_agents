@@ -2145,7 +2145,7 @@ let payload = machine_create_payload_with_or_without_tools_structout(
   response_format: Option<&HashMap<String, Value>>,
 )?;
 
-// ce call the api and get a response that need to be unwrapped par next call (result returned)
+// we call the api and get a response that need to be unwrapped par next call (result returned)
 machine_api_call(
   &endpoint, // "https://cerebras...."
   &payload,  // &serde_json::Value
@@ -2179,14 +2179,34 @@ let messages_<agent>_history = <agent_history>.append_message_to_history(&messag
     `machine_tool_loop(endpoint: &str, mut history: MessageHistory, mut payload: Value, max_history_len: usize,)`
 **machine final answer flow Eg.**
 ```rust
+let agent_api_call = tool_or_not_loop_api_call_engine(
+  endpoint: &str,
+  history: &mut MessageHistory,
+  new_message: &MessageToAppend,
+  payload: &mut Value,
+  model: &str,
+  tool_choice: Option<ChoiceTool>,
+  tools: Option<&Vec<HashMap<String, serde_json::Value>>>,
+  response_format: Option<&HashMap<String, serde_json::Value>>,
+  agent: Option<&mut Agent>, // Optional agent updates
+  max_loop: usize,
+)?;
 ```
 
 
-now need to make the logic of response handle and flow and loop when having mpore than one tool
+now need to make the logic of response handle and flow and loop when having more than one tool
 and history appending of messages and re-submission of api call.
 This is the big machine to do the story for then we can statrt building up those functions.
 
-NEEd TO CHECK THAT:
-agent might need more fields that would need an api call to be amade in order to have the steps needed to perform the task
+NEED TO CHECK THAT:
+agent might need more fields that would need an api call to be made in order to have the steps needed to perform the task
 and have the agent go through that checklist
-and use toolsin order to communicate with other agents until the checklist is done.
+and use tools in order to communicate with other agents until the checklist is done.
+
+
+- Need to do all custom errors needed in the machines/engines so that all returns results so that in the app calling we just unwrap with match patterns
+and will have printed where exatly the app fails.
+When the codebase starts to have many modules and small parts it is good to have as many custom errors as possible in a chaining way of results
+so that we can troubleshoot in an easier way.
+
+- Need then to instantiate the constants
