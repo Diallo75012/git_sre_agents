@@ -1,7 +1,7 @@
-
+# Core
 # Machine Functions that will be the engines that would pull all of those `enum`, `structs`, `implementation`
 Higher level view
-```
+```text
 [Input: AgentPrompt + Role + ToolChoice + SchemaFields]
                    │
                    ▼

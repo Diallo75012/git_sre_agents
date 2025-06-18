@@ -170,7 +170,6 @@ async fn run() {
       Ok(final_json) => println!("jsonyfied StructOut: {}", final_json),
       Err(e) => eprintln!("Error serializing schema_big_state to JSON: {}", e),
     }
-
 }
 
 

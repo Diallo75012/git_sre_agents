@@ -112,11 +112,12 @@ pub fn machine_api_response(llm_response: &LlmResponse) -> Option<&Vec<ToolCall>
 
 /// this one will update the messages history
 /// and we can use the `usize` to set a max length of the history
-/// used in the loop api call function 
+/// used in the loop api call function
+type MachineHistoryUpdateResult<T> = std::result::Result<T, AppError>; 
 pub fn machine_history_update( // done!
   history: &mut MessageHistory,
   new_message: &MessageToAppend,
-) -> Result<serde_json::Value, AppError> {
+) -> MachineHistoryUpdateResult<serde_json::Value> {
   let message = history
     .append_message_to_history(new_message)
     // using here `map_err(||...)?;` way and it is very handy
@@ -281,6 +282,7 @@ pub fn create_model_settings_engine(
 /// from here we should have all necessary variables to fill this `Agent` struct with the other created existing `structs`:
 /// `AgentRole, MessagesSent, StructOut, TaskCompletion, ModelSettings`
 /// then we need one field empty but update it as agent is working: `agent_communication_message_to_others: &HashMAp<String, String>`
+type CreateAgentEngineResult<T> = std::result::Result<T, AppError>;
 pub fn create_agent_engine(
   role: AgentRole,
   message: &str,
@@ -288,7 +290,7 @@ pub fn create_agent_engine(
   struct_out: &StructOut,
   task_state: TaskCompletion,
   llm_settings: &ModelSettings,
-) -> Result<Agent, AppError> {
+) -> CreateAgentEngineResult<Agent> {
   let new_agent = machine_agent(
     role,
     message,
@@ -317,13 +319,14 @@ pub fn create_agent_engine(
 /// which will be built using our other structs implemented functions.
 /// used as imput argument in the big function loop calling the api : `API CALL ENGINE`
 /* payload engine */
+type CreatePayloadEngineResult<T> = std::result::Result<T, AppError>;
 fn create_payload_engine(
   model: &str,
   messages: &[HashMap<String, String>],
   tool_choice: Option<ChoiceTool>,
   tools: Option<&[HashMap<String, Value>]>,
   response_format: Option<&HashMap<String, Value>>,
-) Result<Value, AppError> {
+) -> CreatePayloadEngineResult<Value> {
   let payload = machine_create_payload_with_or_without_tools_structout(
     model,
     messages,
@@ -381,6 +384,7 @@ pub fn response_engine() -> {
 /// ```
 /// so this function is for the api call in a loop way with or without tools 
 todo!(); // need to see what to update in agent
+type ToolOrNotLoopApiCallEngineResult<T> = std::result::Result<T, AppError>;
 pub async fn tool_or_not_loop_api_call_engine(
   endpoint: &str,
   history: &mut MessageHistory,
@@ -392,7 +396,7 @@ pub async fn tool_or_not_loop_api_call_engine(
   response_format: Option<&HashMap<String, serde_json::Value>>,
   agent: Option<&mut Agent>, // Optional agent updates
   max_loop: usize,
-) -> Result<String, AppError> {
+) -> ToolOrNotLoopApiCallEngineResult<String> {
   history.append_message_to_history(new_message)?;
   let mut loop_counter = 0;
 

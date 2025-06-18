@@ -2210,3 +2210,77 @@ When the codebase starts to have many modules and small parts it is good to have
 so that we can troubleshoot in an easier way.
 
 - Need then to instantiate the constants
+
+____________________________________________________________________________________________________
+
+# Rust auto-generation of documentation
+So in the files we use comment `//` but there is a way to have it well documented using special syntax
+and then generate the documentation in a `html` format so having a website that explains the comments used to document code.
+we will use `///` a dn `//!`
+- `///` for fucntion documentation and internal file documentation (called `outer` in Rust documentation
+        but weird as it is for items inside the file)
+- `//!` for top file level documentation or can call it mini-crate general documentation
+        (called `inside` in Rust documentation but weird as it is on top of page and nothis is coming before)
+source: [rust documentation generation](https://doc.rust-lang.org/rustdoc/what-is-rustdoc.html)
+
+- use by default: `cargo doc`
+- OR use `rustc`command to customize where the docs will be located or to target a crate:
+```rust
+// `-L` path to the dependencies of the project so get also `docs` created for it as well (so even the dependencies)
+// `-o` where the docs will be generated, here following the idomatic rust place for that `.../docs/target/doc`
+rustdoc --crate-name docs src/lib.rs -o <path>/docs/target/doc -L dependency=<path>/docs/target/debug/deps 
+// can also use this to create doc for a specific crate `src/lib.rs` and `--crate-name` for the custom name that will be used (here `docs`)
+rustdoc src/lib.rs --crate-name docs
+```
+
+Now after talk with chatGPT in how to do it best for my super modular rust project I learned this:
+**It works as there are some `Cargo.toml` files in folders.**
+```rust
+// for the project entirely do: then find docs at: `target/doc/index.html`
+// can add `--open` if want to open doc just after geenration
+// can `omit` `--no-deps` to get documentation of also dependencies and not only our own crates
+cargo doc --workspace --no-deps
+```
+```rust
+// for a specific crate only documentaiton creation
+// can add `--open` if want to open doc just after geenration
+// can `omit` `--no-deps` to get documentation of also dependencies and not only our own crates
+cargo doc -p core --no-deps
+```
+
+**folder structure**
+target/doc/
+├── core/
+│   └── index.html
+├── app/
+│   └── index.html
+├── main_agent/
+│   └── index.html
+...
+└── index.html <-- main entry point linking all crates
+
+If we want to generate a landing page README with links to diagrams (like those in diagrams_docs/) or architecture overview:
+- Add a `#![doc = include_str!("../README.md")]` at the top of your `lib.rs` in each crate to add all `README.md` files from each crates.
+
+**Note**: `.env` files are safe when creating docs as no secrets will be leaked to docs... 
+
+**Extras**:
+- Use `#[doc(hidden)]` on items you don’t want to show up in the public docs.
+- Use `#[cfg(doc)]` if we want code to appear only when generating docs.
+
+We can include code examples inside `///` using triple backticks:
+```rust
+/// ```rust
+/// let x = 5;
+/// println!("{}", x);
+/// ```
+```
+
+- for diagrams or picture to show up, we need to embed those in a `.md` file and in `lib.rs` we use the decorator with the path where the `.md` file is.
+  - Keep the images in `/diagrams_docs/`
+  - Create a file `core/src/lib.rs` with this content for exmaple: `#![doc = include_str!("../../docs/intro.md")]`
+  - Create `docs/intro.md` with diagram links for example that embed the images: `![Tool Call Flow](../diagrams_docs/tool_call_machine_diagram.png)`
+
+- Can also create a server locally for presentation of the documentation:
+  - create the documentation: `cargo doc --workspace --no-deps`
+  - Then copy the `target/doc` folder into a `GitHub Pages repo`, or serve it locally with: `python3 -m http.server 8080 --directory target/doc`
