@@ -1046,7 +1046,46 @@ impl Agent {
 }
 
 
+/// this will be saving the state of indentifed tasks to be done
+#[allow(non_snake_case)]
+#[derive(Serialize, Debug, Clone, Default)]
+pub struct TasksIdentified {
+  sre1: String,
+  sre2: String,
+}
 
-
-
-
+/// we will enter tasks for agents and this state create will leave as long as agent are working
+/// and will be updated if needed like human sending new task
+/// or just dropped and a new task we will be created
+type TasksIdentifiedResult<T> = std::result::Result<T, AppError>;
+impl TasksIdentified {
+  pub fn new(sre1_task: Option<&str>, sre2_task: Option<&str>) -> Self {
+    let sre1_duty = match sre1_task {
+      Some(value) => value,
+      // we keep it the same
+      None => {println!("No task for Sre1"); ""},
+    };
+    let sre2_duty = match sre2_task {
+      Some(value) => value,
+      // we keep it the same
+      None => {println!("No task for Sre2"); ""},
+    };
+    Self {
+      sre1: sre1_duty.into(),
+      sre2: sre2_duty.into(),
+    }
+  }
+  pub fn update_task(&mut self, sre1_task: Option<&str>, sre2_task: Option<&str>) -> TasksIdentifiedResult<Self> {
+    match sre1_task {
+      Some(value) => {self.sre1 = value.to_string(); self.sre1.clone()},
+      // we keep it the same
+      None => {println!("No task for Sre1"); self.sre1.clone()},
+    };
+    match sre2_task {
+      Some(value) => {self.sre2 = value.to_string(); self.sre2.clone()},
+      // we keep it the same
+      None => {println!("No task for Sre2"); self.sre2.clone()},
+    };
+    Ok(self.clone())
+  }
+}

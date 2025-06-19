@@ -19,6 +19,7 @@ use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 
+
 // -------------------- MACHINE CONSTRUCTORS --------------------
 
 /// this will make prompts {role:...., content:....}
@@ -27,6 +28,7 @@ pub fn machine_prompt(role: &UserType, content: &str) -> MessagesSent { // done!
 }
 
 /// we will here create the agent machine
+type AgentMachineResult<T> = std::result::Result<T, AppError>;
 pub fn machine_agent( // done!
   role: AgentRole,
   message: &str,
@@ -34,25 +36,27 @@ pub fn machine_agent( // done!
   struct_out: &StructOut,
   task_state: TaskCompletion,
   llm_settings: &ModelSettings,
-) -> Result<Agent, AppError> {
-  Agent::new(
-    &role,
-    message,
-    prompt,
-    struct_out,
-    &task_state,
-    llm_settings,
+) -> AgentMachineResult<Agent> {
+  Ok(Agent::new(
+      &role,
+      message,
+      prompt,
+      struct_out,
+      &task_state,
+      llm_settings,
+    )
   )
 }
 
 /// Construct a payload that includes tools and/or response_format schema optionally
+type CreatePayloadResult<T> = std::result::Result<T, AppError>;
 pub fn machine_create_payload_with_or_without_tools_structout( // done!
   model: &str,
   messages: &[HashMap<String, String>],
   tool_choice: Option<ChoiceTool>,
   tools: Option<&[HashMap<String, Value>]>,
   response_format: Option<&HashMap<String, Value>>,
-) -> Result<Value, AppError> {
+) -> CreatePayloadResult<Value> {
   match Payload::create_payload_with_or_without_tools_structout(
     model,
     messages,
@@ -69,10 +73,11 @@ pub fn machine_create_payload_with_or_without_tools_structout( // done!
 
 /// this function calls the api normally with payload and messages
 /// used in the api call with tool or not loop big dynamic function
+type CallApiResult<T> = std::result::Result<T, AppError>;
 pub async fn machine_api_call( // done!
   endpoint: &str,
   payload: &Value,
-) -> Result<LlmResponse, AppError> {
+) -> CallApiResult<LlmResponse> {
   // we instantiate headers, that might probably become a `CONST` that i am going to just import and use are input parameter to my funtions
   // so that i have only one point calling the .env file having the credentials 
   let headers = get_auth_headers().map_err(|e| AppError::EnvSecret(format!("Failed to get headers: {}", e)))?;
@@ -141,12 +146,13 @@ pub fn machine_final_answer(llm_response: &LlmResponse) -> Option<String> { // d
 /// `machine_prompt()` is making the struct `MessagesSent` but `format_new_message_to_send()` is never called to make `[{role:..., content:...}]`:
 /// we need it to make all prompts and save those, it we want to mutate the prompt we will need to mutate the corresponding field in the struct and
 /// rebuild the prompt message. so each agent will have the struct filed in a var and final message in a var (= 2 vars per agents)
-pub fn engine_prompt(role: &UserType, content: &str) -> HashMap<String, String> {
+type PromptEngineResult<T> = std::result::Result<T, AppError>;
+pub fn engine_prompt(role: &UserType, content: &str) -> PromptEngineResult<HashMap<String, String>> {
   // which create the struct
   let agent_struct_prompt = machine_prompt(role: &UserType, content: &str);
   // which return as `[{"role": ..., "content": ...}]`
   let agent_prompt = agent_struct_prompt.format_new_message_to_send();
-  agent_prompt
+  Ok(agent_prompt)
 }
 
 /* ** SCHEMA ENGINE  ** */
@@ -155,13 +161,14 @@ pub fn engine_prompt(role: &UserType, content: &str) -> HashMap<String, String> 
 /// We need first to a variable that stores the `schema` specific to a `type of user` using:
 /// `Schema::new(properties_fields_types: &HashMap<String, HashMap<String, String>>, schema_field_requirement: Option<&Vec<String>>,)`
 /// And then, we need to build one unique structured output `struct` that will store those schemas using: `StructuredOutput::build_schema()`
+type CreateSchemaEngineResult<T> = std::result::Result<T, AppError>;
 pub fn create_schemas_engine(
     human_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
     main_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
     pr_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
     sre1_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
     sre2_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>
-  ) -> Result<Structout, AppError> {
+  ) -> CreateSchemaEngineResult<StructOut> {
   // we initialize the different schemas
   human_schema = StructOut::build_schema(&human_schema_initial_hasmap);
   main_schema = StructOut::build_schema(&main_schema_initial_hasmap);
@@ -177,13 +184,15 @@ pub fn create_schemas_engine(
     &sre1_schema,
     &sre2_schema,
   );
-  all_agents_sturctured_output_storage
+  Ok(all_agents_sturctured_output_storage)
 }
-/// after having built `once` the big `StructOut` container, we can consider it to be a constant and just get from it struct we need when calling `Cerebras`
-pub fn get_specific_agent_schema_engine(full_struct_out: &StructOut, agent_role: &AgentRole) -> Schema {
+/// after having built `once` the big `StructOut` container,
+/// we can consider it to be a constant and just get from it struct we need when calling `Cerebras`
+type GetSchemaEngineResult<T> = std::result::Result<T, AppError>;
+pub fn get_specific_agent_schema_engine(full_struct_out: &StructOut, agent_role: &AgentRole) -> GetSchemaEngineResult<Schema> {
   let all_agents_sturctured_output_storage_json_map = StructOut::struct_out_to_json_map(full_struct_out);
   if let Some(schema) = all_agents_sturctured_output_storage.get_by_role(agent_role) {
-    schema
+    Ok(schema)
   }
 }
 
@@ -203,6 +212,7 @@ pub fn get_specific_agent_schema_engine(full_struct_out: &StructOut, agent_role:
 /// // let parameter2_setting = HashMap...
 /// ```
 /// therefore, use this function mutiple time with same agent_tools initialize to add function tools to agent
+type CreateToolEngineResult<T> = std::result::Result<T, AppError>;
 pub fn create_tool_engine(
     agent_tools: &mut Tools,
     &fn_name,
@@ -210,7 +220,7 @@ pub fn create_tool_engine(
     &fn_description,
     // here we put in a `&[HashMap<String, String>]` all different parameters of the function. so each has settings `name/type/description`
     &param_settings,
-  ) -> Option<Tools> {   
+  ) -> CreateToolEngineResult<Option<Tools>> {   
   /* Function creation */
   // create the function details and also provide the hashmap of name/type/decription 
   let function_details = match FunctionDetails::new(
@@ -227,7 +237,7 @@ pub fn create_tool_engine(
   // return result Ok(()) or propagates the custom error
   agent_tools.add_function_tool(&[function])?;
   // which is of perfect type `Some(Vec<HashMap<String, serde_json::Value>>)`
-  Some(agent_tools);
+  Ok(Some(agent_tools))
 }
 
 
@@ -236,18 +246,20 @@ pub fn create_tool_engine(
 /// messages which are going to be initializing a struct per agents using `MessagesSent::create_new_message_struct_to_send()` and then formatting the container into
 /// a hashmap using `MessagesSent::format_new_message_to_send(&self)` and then we use that variable to add it to the model settings tools in a vec
 /// using `MessagesSentlist_messages_to_send()` if needed, for the moment this `messages machine` will render the dictionary `HashMap`
-pub fn messages_format_engine(type_user: &UserType, content: &str) -> HashMap<String, String> {
+type MessagesFormatEngineResult<T> = std::result::Result<T, AppError>;
+pub fn messages_format_engine(type_user: &UserType, content: &str) -> MessagesFormatEngineResult<HashMap<String, String>> {
   // initialize a new message
   let agent_message = create_new_message_struct_to_send(&type_user, &content);
   // this will create the dictionary form of the message corresponding to that `struct` `MessagesSent` container.
   let agent_message_dict = agent_message.format_new_message_to_send();
-  agent_message_dict
+  Ok(agent_message_dict)
 }
 
 /* ** MODELSETTINGS ENGINE  ** */
 /// we could use `MessagesSentlist_messages_to_send()` after we just need to mutate the field tools of modelsettings and replace it with this new list for eg.
 /// But we will just use our implementation `ModelSettings::.update_model_settings()` and put None to fields that are already set and do not need updates
 /// initialization of model settings and another to update like in implementation
+type CreateModelSettingsEngineResult<T> = std::result::Result<T, AppError>;
 pub fn create_model_settings_engine(
   model_name: &str,
   model_max_completion: u64,
@@ -255,7 +267,7 @@ pub fn create_model_settings_engine(
   model_message: &[HashMap<String, String>],
   // other field are created with default directly inside fn implementation
   list_tools: &[HashMap<String, serde_json::Value>]
-  ) -> ModelSettings {
+  ) -> CreateModelSettingsEngineResult<ModelSettings> {
   let new_model_setting = ModelSettings::initialize_model_settings_with_tools(
     model_name: &str,
     model_max_completion: u64,
@@ -264,7 +276,7 @@ pub fn create_model_settings_engine(
     list_tools: &[HashMap<String, serde_json::Value>]
 
   );
-  new_model_settings
+  Ok(new_model_settings)
 }
 // call it like that when wanting to update
 // let agent_model_settings.update_model_settings(

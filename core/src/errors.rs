@@ -61,9 +61,18 @@ pub enum AppError {
   CustomJson(String),
 
   /* machine errors */
-  /// History machine messages formatting error
-  #[error("History Message Formatting Error: {0}")]
-  History(String),  
+  /// History machine messages update error
+  #[error("History Message Update Error: {0}")]
+  HistoryUpdate(String),  
+  /// Agent Machine Creation error
+  #[error("Agent Creation Machine Error: {0}")]
+  AgentMachine(String),
+  /// Payload Machine Creation error
+  #[error("Payload Creation Machine Error: {0}")]
+  CreatePayloadMachine(String),
+  /// Call Api Machine error
+  #[error("Call API Machine Error: {0}")]
+  CallApiMachine(String),
 
   /* engine errors  */
   /// api call loop function error
@@ -75,6 +84,24 @@ pub enum AppError {
   /// Agent Creation error
   #[error("Agent Creation Engine Error: {0}")]
   AgentEngine(String),
+  /// Prompt Creation error
+  #[error("Prompt Engine Error: {0}")]
+  PromptEngine(String),
+  /// Schema Creation error
+  #[error("Schema Creation Engine Error: {0}")]
+  SchemaEngine(String),
+  /// GetSchema  error
+  #[error("Get Schema Engine Error: {0}")]
+  GetSchemaEngine(String),
+  /// Create Tool Creation error
+  #[error("Create Tool Creation Engine Error: {0}")]
+  CreateToolEngine(String),
+  /// Messages Formatting  error
+  #[error("Messages Formatting Engine Error: {0}")]
+  MessagesFormatEngine(String),
+  /// Model Setting Creation error
+  #[error("Model Settings Creation Engine Error: {0}")]
+  CreateModelSettingsEngine(String),
 }
 
 /// this is to teach `Rust` about our custom error by implementing `std` errors

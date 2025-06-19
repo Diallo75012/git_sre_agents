@@ -1805,7 +1805,12 @@ pub fn create_payload_fallible() -> Result<serde_json::Value, AppError> {
 | Map error into variant          |\`.map\_err(| e | AppError::Xxx(...))?\`|
 | Let `?` propagate automatically | Implement `From<Error>` for `AppError` |
 
-
+- **use of `#`**
+  - `r#type` is required for using type as a field/variable name in Rust. so we use `#` just one
+  - `r"..."` No quotes inside
+  - `r#"..."#` Contains `"` (quotes) inside
+  - `r##"...#"##` Contains `"#` or more complex nested quotes
+  - INVALID: `r#"text#`	Invalid — unmatched raw string delimiter
 
 
 
@@ -2284,3 +2289,31 @@ We can include code examples inside `///` using triple backticks:
 - Can also create a server locally for presentation of the documentation:
   - create the documentation: `cargo doc --workspace --no-deps`
   - Then copy the `target/doc` folder into a `GitHub Pages repo`, or serve it locally with: `python3 -m http.server 8080 --directory target/doc`
+
+____________________________________________________________________________________________________
+
+# Prompts and Schema
+
+## Prompts
+we create prompts content only in a `prompts.rs` file and those will be enhanced if necessary by using `format!()` macro.
+I also realized that we might need to have a way to inject the names of the manifests folders
+and files so that agents are aware of where to find the files to read. 
+so need to read again those initial prompts content per agent and then decide on the fields necessary to have in the schemas.
+
+## Schemas 
+at the moment schemas have too many fields so we will need to cut those in smaller ones and have more api calls done.
+
+## decision
+So we will use huge schemas with all fields needed at first and then we will cut that in smaller ones mimmicing the LangGraph nodes
+so that we can make several api calls and in function of what the schema is rendering us we will go to one node or another.
+We try here to have simpler schemas with max 2 fields as we don't trust agents to be good eno=augh to fill qualitative schema fields if more than 3 fields.
+So here we are being conservative and try to make it work and have more portable mini nodes.
+so:
+- first make big schemas covering all fields needed for all scenarios that we want to do
+- then group those by one or two fields or max 3 fields not more to have smaller schemas per agent
+- create the chain/flow of action if this or if that.... like conditional edges
+- try to use answered directly and not write to files if possible passing through states updates in place
+  so that the app can work without going in user files by writing, but reading is fine as we will need it for the git repos.
+- use env vars for the git repo path
+- have an object or text that maps each files with a little description of what is that manifest used for so that agent can choose the right file to read.
+- have a function tool that reads the desired file
