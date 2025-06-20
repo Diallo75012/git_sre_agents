@@ -4,7 +4,7 @@ use crate::core::SchemaFieldType;
 use std::collections::HashMap;
 
 /* ** Agents Initial Base Schemas ** */
-/// `human request agent`
+/// `human request agent`schemas
 /// this one will just get tasks and affect to the right agent
 /// task requirements from this schema response will need to be saved in state so that all agents can have access to it
 let human_request_agent_schema = HashMap::from(
@@ -14,48 +14,126 @@ let human_request_agent_schema = HashMap::from(
   ]
 );
 
-/// `main_agent`
-let main_agent_schema = HashMap::from(
+/// `main_agent`schemas
+/* ** main agent > human  ** */
+let main_agent_to_human_schema = HashMap::from(
   [
-  	("communicate_agent", "answer 'true' if you have instruction to communicate to agent otherwise 'false'. if 'true' required other fields to be merge:false, who:'sre1_agent' or 'sre2_agent', instructions: some instructions for the agent, report: false. make sure it is valid JSON str."),
+  	("report", "answer in report way about the task completion, which agent has done the job and why you think it is validated, otherwise why it has failed. make sure it is valid JSON str."),
+  ]
+);
+/* ** main agent own task  ** */
+let main_agent_to_human_schema = HashMap::from(
+  [
   	("merge", "answer 'true' if you have to merge agent work otherwise 'false'. make sure it is valid JSON str."),
-  	("who", "who you have to communicate with or git merge the work of: answer 'sre1_agent', 'sre2_agent' or 'human'. make sure it is valid JSON str."),
+	("who", "who's agent work you need to merge to main branch using git merge tool. answer 'sre1_agent', 'sre2_agent'. make sure it is valid JSON str."),
+  ]
+);
+/* ** main agent > sre agents  ** */
+let main_agent_to_sre_agent_schema = HashMap::from(
+  [
+  	("who", "who you are the instructions for: answer 'sre1_agent', 'sre2_agent'. make sure it is valid JSON str."),
   	("instructions", "express in a concise way what instructions needs to be done. make sure it is valid JSON str."),
-  	("report", "answer 'true' if you have used the report tool to make a report on task completion otherwise 'false'. make sure it is valid JSON str."),
-  	("communicate_human", "answer 'true' if you have merged work and used the discord tool to send report on task to human otherwise 'false'. merge:true, who:'human', instructions: empty string, report: true. make sure it is valid JSON str."),
   ]
 );
 
-/// `pr_agent`
-let pr_agent_schema = HashMap::from(
+/// `pr_agent`schemas
+/* ** pr agent > sre agent  ** */
+// this schema will be used only if invalided work of sre agent, and this will be the redo task process instructions
+let pr_agent_to_sre_agent_schema = HashMap::from(
   [
-  	("communicate", "answer 'true' if you have instruction to communicate to agent otherwise 'false'. make sure it is valid JSON str."),
-  	("pull", "answer 'true' if you have to pull agent work otherwise 'false'. make sure it is valid JSON str."),
-  	("who", "who you have to communicate with or git pull the work of: answer 'sre1_agent', 'sre2_agent' or 'main_agent'. make sure it is valid JSON str."),
-  	("instructions", "express in a concise way what needs to be done. make sure it is valid JSON str."),
-  	("validate", "if 'pull' is true answer 'true' if you validate the agent change otherwise answers 'false', OR if 'pull' is false answer 'nothing'. make sure it is valid JSON str."),  	 	
+  	("instructions", "express in a concise way what is the problem and what needs to be done to comply with the task instructions. make sure it is valid JSON str."),
+  	("agent", "answer 'sre1_agent' if instructions are for 'sre1_agent' otherwise answer 'sre2_agent'. make sure it is valid JSON str."),
+  ]
+);
+/* ** pr agent own task: pull  ** */
+let pr_agent_own_task_pull_schema = HashMap::from(
+  [
+  	("pull", "answer 'true' if you have to git pulled agent work otherwise 'false'. make sure it is valid JSON str."),
+  	("agent", "who's agent work you need to git pull the work from: answer 'sre1_agent', 'sre2_agent'. make sure it is valid JSON str."),
+  ]
+);
+/* ** pr agent own task: validate diffs  ** */
+let pr_agent_own_task_diffs_schema = HashMap::from(
+  [
+  	("agent", "who's agent work has been checked after: answer 'sre1_agent', 'sre2_agent'. make sure it is valid JSON str."),
+  	("validate", "if 'pull' is true answer 'true' if you validate the agent change otherwise answers 'false', OR if 'pull' is false answer 'nothing'. make sure it is valid JSON str."),	 	
   	("reason", "If validate is false provide a reason why you thing the work is not validating the task requirement. make sure it is valid JSON str."),
-  	("diff", "answer 'true' if you have used the diff tool to validate work done judging from task requirements. make sure it is valid JSON str."),
   ]
 );
-
-/// `sre1_agent`
-let sre1_agent_schema = HashMap::from(
+/* ** pr agent > main agent  ** */
+let pr_agent_to_main_agent_schema = HashMap::from(
   [
-  	("communicate", "answer 'true' if you have done all steps (read: true, modified: true, commit: true) and used the agent tool to communicate task done otherwise 'false'. make sure it is valid JSON str."),
-  	("read", "answer 'true' if you have red that manifest that needs to be modified otherwise 'false'. make sure it is valid JSON str."),
-  	("modified", "answer 'true' if read is true and you have modified the manifest following the instruction of your task otherwise 'false'. make sure it is valid JSON str."),
-  	("commit", "answer 'true' if modified is true and you have used the tool to git commit your work otherwise 'false'. make sure it is valid JSON str."),
+  	("agent", "who's agent work has been validated: answer 'sre1_agent', 'sre2_agent'. make sure it is valid JSON str."),
+  	("report", "answer in report way when job is done by agent with which agent and which task has been done and why you validated the task with details. make sure it is valid JSON str."),
   ]
 );
 
-/// `sre2_agent`
-let sre2_agent_schema = HashMap::from(
+/// `sre1_agent`schemas
+/* ** sre1 agent > pr agent  ** */
+let sre1_agent_to_pr_agent_schema = HashMap::from(
   [
-  	("communicate", "answer 'true' if you have done all steps (read: true, modified: true, commit: true) and used the agent tool to communicate task done otherwise 'false'. make sure it is valid JSON str."),
+  	("report", "answer in report way when job is done detailing what you have done and why you believe that the task has been successfully done. make sure it is valid JSON str."),
+  ]
+);
+/* ** sre1 agent own task: identified files  ** */
+let sre1_agent_own_task_identify_files_schema = HashMap::from(
+  [
+  	("manifest", "array of manifest file names you have identified as potentially having the content to perform task. make sure it is valid JSON str."),	
+  ]
+);
+/* ** sre1 agent own task: identified read file  ** */
+let sre1_agent_own_task_read_files_schema = HashMap::from(
+  [
   	("read", "answer 'true' if you have red that manifest that needs to be modified otherwise 'false'. make sure it is valid JSON str."),
-  	("modified", "answer 'true' if read is true and you have modified the manifest following the instruction of your task otherwise 'false'. make sure it is valid JSON str."),
-  	("commit", "answer 'true' if modified is true and you have used the tool to git commit your work otherwise 'false'. make sure it is valid JSON str."),
+  	("manifest", "array of the Yaml Kubernetes manifests you have red and identified has necessary to modify to perform task requirements converted to Json Kubernetes manifest. make sure it is valid JSON str."),
+  	("name", "array of names of the manifest you have identified has corresponding to the targetted task. make sure it is valid JSON str."),  	
+  ]
+);
+/* ** sre1 agent own task: write new manifest  ** */
+let sre1_agent_own_task_write_files_schema = HashMap::from(
+  [
+  	("manifest", "array of the final Json Kubernetes manifest modifed to in accordance to task requirements respectively in corresponding order of manifest name array rendered. make sure it is valid JSON str."),
+  	("name", "array of names of the manifest you have converted to Kubernetes Json manifests has to perform task requirement respectively in corresponding order of manifests array rendered. make sure it is valid JSON str."), 
+  ]
+);
+/* ** sre1 agent own task: commit  ** */
+let sre1_agent_own_task_commit_schema = HashMap::from(
+  [
+  	("commit", "answer 'true' if commit has been performed succefully otherwise answer 'false'. make sure it is valid JSON str."),
   ]
 );
 
+/// `sre2_agent`schemas
+/* ** sre2 agent > pr agent  ** */
+let sre2_agent_to_pr_agent_schema = HashMap::from(
+  [
+  	("report", "answer in report way when job is done detailing what you have done and why you believe that the task has been successfully done. make sure it is valid JSON str."),
+  ]
+);
+/* ** sre2 agent own task: identified files  ** */
+let sre2_agent_own_task_identify_files_schema = HashMap::from(
+  [
+  	("manifest", "array of manifest file names you have identified as potentially having the content to perform task. make sure it is valid JSON str."),	
+  ]
+);
+/* ** sre2 agent own task: identified read file  ** */
+let sre2_agent_own_task_read_files_schema = HashMap::from(
+  [
+  	("read", "answer 'true' if you have red that manifest that needs to be modified otherwise 'false'. make sure it is valid JSON str."),
+  	("manifest", "array of the Yaml Kubernetes manifests you have red and identified has necessary to modify to perform task requirements converted to Json Kubernetes manifest. make sure it is valid JSON str."),
+  	("name", "array of names of the manifest you have identified has corresponding to the targetted task. make sure it is valid JSON str."),  	
+  ]
+);
+/* ** sre2 agent own task: write new manifest  ** */
+let sre2_agent_own_task_write_files_schema = HashMap::from(
+  [
+  	("manifest", "array of the final Json Kubernetes manifest modifed to in accordance to task requirements respectively in corresponding order of manifest name array rendered. make sure it is valid JSON str."),
+  	("name", "array of names of the manifest you have converted to Kubernetes Json manifests has to perform task requirement respectively in corresponding order of manifests array rendered. make sure it is valid JSON str."), 
+  ]
+);
+/* ** sre2 agent own task: commit  ** */
+let sre2_agent_own_task_commit_schema = HashMap::from(
+  [
+  	("commit", "answer 'true' if commit has been performed succefully otherwise answer 'false'. make sure it is valid JSON str."),
+  ]
+);

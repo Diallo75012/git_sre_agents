@@ -2306,7 +2306,7 @@ at the moment schemas have too many fields so we will need to cut those in small
 ## decision
 So we will use huge schemas with all fields needed at first and then we will cut that in smaller ones mimmicing the LangGraph nodes
 so that we can make several api calls and in function of what the schema is rendering us we will go to one node or another.
-We try here to have simpler schemas with max 2 fields as we don't trust agents to be good eno=augh to fill qualitative schema fields if more than 3 fields.
+We try here to have simpler schemas with max 2 fields as we don't trust agents to be good enough to fill qualitative schema fields if more than 3 fields.
 So here we are being conservative and try to make it work and have more portable mini nodes.
 so:
 - first make big schemas covering all fields needed for all scenarios that we want to do
