@@ -4,6 +4,7 @@ resolver = "2"
 
 members = [
   # agents
+  "agents/human_request_agent",
   "agents/main_agent",
   "agents/pr_agent",
   "agents/sre1_worker_agent",

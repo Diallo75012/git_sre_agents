@@ -2309,11 +2309,15 @@ so that we can make several api calls and in function of what the schema is rend
 We try here to have simpler schemas with max 2 fields as we don't trust agents to be good enough to fill qualitative schema fields if more than 3 fields.
 So here we are being conservative and try to make it work and have more portable mini nodes.
 so:
-- first make big schemas covering all fields needed for all scenarios that we want to do
-- then group those by one or two fields or max 3 fields not more to have smaller schemas per agent
-- create the chain/flow of action if this or if that.... like conditional edges
+- [x] first make big schemas covering all fields needed for all scenarios that we want to do
+- [x] then group those by one or two fields or max 3 fields not more to have smaller schemas per agent
+- [ ] create the chain/flow of action if this or if that.... like conditional edges
 - try to use answered directly and not write to files if possible passing through states updates in place
   so that the app can work without going in user files by writing, but reading is fine as we will need it for the git repos.
 - use env vars for the git repo path
-- have an object or text that maps each files with a little description of what is that manifest used for so that agent can choose the right file to read.
-- have a function tool that reads the desired file
+- [ ] have an object or text that maps each files with a little description of what is that manifest used for
+      so that agent can choose the right file to read. we could actually put that in the prompt so that no need to have the step `identify files` for sre
+- [ ] have a function tool that reads the desired file and another that writes llm response from schema json manifest rendered
+- [ ] make all first constants so that we can start reuse and see if the flow planned work well when creting nodes.
+  combinaison of `engines/constant` and maybe `machines/struct impl` if needed as well
+- [ ] finish our first node `human requests` as we have already planned how to construct the api call. need now to code the story.

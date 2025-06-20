@@ -6,22 +6,58 @@
 //! - `modelsettings` definition
 use crate::core::*;
 
+
+
+// all schemas state
+create_schemas_engine(
+    human_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
+    main_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
+    pr_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
+    sre1_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
+    sre2_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>
+  )
+
+
+// different `tools`
+
+
+
+// different `modelsettings` (special this project all are Cerebras Only)
+model_message: messages_format_engine(type_user: &UserType, content: &str)
+
+create_model_settings_engine(
+  model_name: &str,
+  model_max_completion: u64,
+  model_temperature: u64,
+  model_message: &[HashMap<String, String>],
+  // other field are created with default directly inside fn implementation
+  list_tools: &[HashMap<String, serde_json::Value>]
+  )
+
+
 // `human request agent`
+prompt: machine_prompt(role: &UserType, content: &str)
+
+create_agent_engine(
+  role: AgentRole,
+  message: &str,
+  prompt: &MessagesSent,
+  struct_out: &StructOut,
+  task_state: TaskCompletion,
+  llm_settings: &ModelSettings,
+)
 
 
 // `main_agent`
 
 
+
 // `pr_agent`
+
 
 
 // `sre1_agent`
 
 
+
 // `sre2_agent`
-
-
-// different `modelsettings` (special this project all are Cerebras Only)
-
-
-// different `tools`

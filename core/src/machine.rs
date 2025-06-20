@@ -249,7 +249,7 @@ pub fn create_tool_engine(
 type MessagesFormatEngineResult<T> = std::result::Result<T, AppError>;
 pub fn messages_format_engine(type_user: &UserType, content: &str) -> MessagesFormatEngineResult<HashMap<String, String>> {
   // initialize a new message
-  let agent_message = create_new_message_struct_to_send(&type_user, &content);
+  let agent_message = MessagesSent::create_new_message_struct_to_send(&type_user, &content);
   // this will create the dictionary form of the message corresponding to that `struct` `MessagesSent` container.
   let agent_message_dict = agent_message.format_new_message_to_send();
   Ok(agent_message_dict)
@@ -398,17 +398,18 @@ pub fn response_engine() -> {
 todo!(); // need to see what to update in agent
 type ToolOrNotLoopApiCallEngineResult<T> = std::result::Result<T, AppError>;
 pub async fn tool_or_not_loop_api_call_engine(
-  endpoint: &str,
-  history: &mut MessageHistory,
-  new_message: &MessageToAppend,
-  payload: &mut Value,
-  model: &str,
-  tool_choice: Option<ChoiceTool>,
-  tools: Option<&Vec<HashMap<String, serde_json::Value>>>,
-  response_format: Option<&HashMap<String, serde_json::Value>>,
-  agent: Option<&mut Agent>, // Optional agent updates
-  max_loop: usize,
-) -> ToolOrNotLoopApiCallEngineResult<String> {
+    endpoint: &str,
+    history: &mut MessageHistory,
+    new_message: &MessageToAppend,
+    payload: &mut Value,
+    model: &str,
+    tool_choice: Option<ChoiceTool>,
+    tools: Option<&Vec<HashMap<String, serde_json::Value>>>,
+    response_format: Option<&HashMap<String, serde_json::Value>>,
+    agent: Option<&mut Agent>, // Optional agent updates
+    max_loop: usize,
+  ) -> ToolOrNotLoopApiCallEngineResult<String> {
+
   history.append_message_to_history(new_message)?;
   let mut loop_counter = 0;
 
@@ -505,3 +506,25 @@ pub async fn tool_or_not_loop_api_call_engine(
 
 // we can clear history if need as i have create an implementation returning a `result<()>` `.clear_hsitory(&self)`
 // need probably machine to manage checklist update and add a field to agent
+
+
+/* ** RESPONSE FORMAT PART OF API CALL PAYLOAD PART ENGINE  ** */
+// need to do the response format engine
+  response_format: ResponseFormat::new() -> then update ResponseFormat{ Some(CallApiResponseFormat {name: String, strict: bool, schema: Schema,})
+                                         -> then response_format_desired_as_map(&self) to have the final field as HashMap<String, serde_json::Value>
+type ResponseFormatPartOfPayloadResult<T> = std::result::Result<T, AppError>;
+pub async fn response_format_part_of_payload_engine(
+    new_name: String,
+    new_strict: bool,
+    new_schema: Schema
+  ) -> ResponseFormatPartOfPayload<HashMap<String, serde_json::Value>> {
+  // instantiate a new `ResponseFormat`
+  let mut response_format_new = ResponseFormat::new();
+  // we update the fields with new value
+  response_format_new.name = new_name;
+  response_format_new.strict = new_strict;
+  response_format_new.schema = new_schema;
+  // we return the hashmap result or propagate the error
+  let api_comsummable_response_format = response_format_new.response_format_desired_as_map()?;
+  Ok(api_comsummable_response_format)
+}

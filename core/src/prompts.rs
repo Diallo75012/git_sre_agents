@@ -20,23 +20,22 @@
 //!         Optional field so we have only the main agent with that. to keep track of work. so will need to call api also to organize work  ** */
 //! }
 //! ```
+use crate::core::UserType;
+use std::collections::HashMap;
 
 
 /// `human request agent`
 /// is asked to use two tools: read file where human instructions are, main agent tool to transmit the schema to the main agent
-let human_request_agent_prompt = r#"
-    You are a specialist in instructions analysis.\n
-    First You use a tool to read instructions and determine who are the agents and what task each agent need to do.\n
-    There can be only one agent or more agents.\n
-    The main agent is responsible of communicating with other agents that need to do the job.\n
-    Therefore, after having identifed those agents and their tasks, you will use use the main agent tool,\n
-    so that the nain agent knows which agent to cummunicate tasks with.\n
-    Important:\n
-    - Strictly adhere to the following any given schema for your response.\n
-    - Only return a JSON object based on the schema. Do not include any extra text, comments, or fields beyond the schema.\n
-    - Place your complete answer inside the correct field of the schema.\n
-    - Do not alter the schema structure.\n
-  "#;
+let human_request_agent_prompt = HashMap::from(
+  UserType::System,
+  r#"You are a specialist in instructions analysis.\n
+You will identify which agent need to do which tasks.
+Agents are two different ones are sre1_agent reponsible of Kubernetes infrastructure and sre2_agent responsible of applicationd eployed to Kubernetes.
+Important:
+- Strictly adhere to the following any given schema for your response.
+- Only return a JSON object based on the schema. Do not include any extra text, comments, or fields beyond the schema.
+- Do not alter the schema structure."#
+);
 
 /// `main_agent`
 /// discord tool to communicate with human,  

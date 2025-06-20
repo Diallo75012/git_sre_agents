@@ -102,6 +102,14 @@ pub enum AppError {
   /// Model Setting Creation error
   #[error("Model Settings Creation Engine Error: {0}")]
   CreateModelSettingsEngine(String),
+  /// Response Fromat Part Creation error
+  #[error("Response Format Part Creation Engine Error: {0}")]
+  ResponseFormatPart(String),
+  
+  /* agent nodes errors  */
+  /// huamn request analysis node error
+  #[error("Human Request Analysis Node Error: {0}")]
+  RequestAnalysisNode(String),
 }
 
 /// this is to teach `Rust` about our custom error by implementing `std` errors
