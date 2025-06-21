@@ -7,6 +7,8 @@
 use crate::core::*;
 
 
+// different `response_format`
+let new_response_format = response_format_part_of_payload_engine(response_format_name.to_string(), param_strict, new_schema.clone())?;
 
 // all schemas state
 create_schemas_engine(
@@ -18,7 +20,22 @@ create_schemas_engine(
   )
 
 
+
 // different `tools`
+// `read files`
+pub fn read_file_tool() -> {
+  /* tools engine */
+  // to be repeated for same `agent_tools` to add some more
+  let tools = create_tool_engine(
+    new_agent_toos,
+    &fn_name,
+    param_strict, // bool
+    &fn_description,
+    // here we put in a `&[HashMap<String, String>]` all different parameters of the function. so each has settings `name/type/description`
+    &param_settings,
+  )?; // maybe need to have a result istead of retun type: Option<Tools>
+
+}
 
 
 
@@ -34,6 +51,9 @@ create_model_settings_engine(
   list_tools: &[HashMap<String, serde_json::Value>]
   )
 
+
+
+// different `Agents`
 
 // `human request agent`
 prompt: machine_prompt(role: &UserType, content: &str)

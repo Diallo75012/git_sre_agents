@@ -1805,6 +1805,7 @@ pub fn create_payload_fallible() -> Result<serde_json::Value, AppError> {
 | Map error into variant          |\`.map\_err(| e | AppError::Xxx(...))?\`|
 | Let `?` propagate automatically | Implement `From<Error>` for `AppError` |
 
+
 - **use of `#`**
   - `r#type` is required for using type as a field/variable name in Rust. so we use `#` just one
   - `r"..."` No quotes inside
@@ -1813,7 +1814,51 @@ pub fn create_payload_fallible() -> Result<serde_json::Value, AppError> {
   - INVALID: `r#"text#`	Invalid — unmatched raw string delimiter
 
 
+- `insert()` more to `serde_json::Value`
+I was wondering if i can just use the `serde_json::Value` and add more stuff to it and found that we can do it using `as_object_mut()`
+(which returns an `Option`)fromm an `json!()`(which is a `serrde_json::Value`)
 
+```rust
+// closure way
+use std::collections::HashMap;
+use serde_json::*;
+
+fn main() {
+  let a = HashMap::from(
+    [
+     ("junko".to_string(), "shibuya".to_string()),
+     ("abunai".to_string(), "mangakissa".to_string()),
+    ]
+  );
+  let mut b = json!(a);
+  b.as_object_mut().map(|obj| {
+    obj.insert("101".into(), "holidays".into());
+    obj.insert("year".into(), "2007".into());
+  });
+  println!("{:?}", json!(b));
+}
+// returns: `Object {"101": String("holidays"), "abunai": String("mangakissa"), "junko": String("shibuya"), "year": String("2007")}`
+
+// `if let` way
+use serde_json::{json, Value};
+
+fn main() {
+  // Start with a JSON object
+  let mut payload = json!({
+    "model": "cerebras-model",
+    "messages": []
+  });
+
+  // Only insert if it's an Object
+  if let Some(obj) = payload.as_object_mut() {
+    obj.insert("tool_choice".to_string(), json!("auto"));
+    obj.insert("extra_info".to_string(), json!({"enabled": true, "level": 5}));
+  }
+
+  println!("{}", payload);
+}
+// returns `{"extra_info":{"enabled":true,"level":5},"messages":[],"model":"cerebras-model","tool_choice":"auto"}`
+```
 _________________________________________________________________________________________________
 # Tools creation
 ChatGPT suggested way of doing it:
@@ -2317,7 +2362,7 @@ so:
 - use env vars for the git repo path
 - [ ] have an object or text that maps each files with a little description of what is that manifest used for
       so that agent can choose the right file to read. we could actually put that in the prompt so that no need to have the step `identify files` for sre
-- [ ] have a function tool that reads the desired file and another that writes llm response from schema json manifest rendered
+- [ ] have a function tool that reads the desired file and another that writes llm response from schema `json manifest` and `not yaml` rendered
 - [ ] make all first constants so that we can start reuse and see if the flow planned work well when creting nodes.
   combinaison of `engines/constant` and maybe `machines/struct impl` if needed as well
 - [ ] finish our first node `human requests` as we have already planned how to construct the api call. need now to code the story.

@@ -7,6 +7,7 @@ use core::{
   machines::
 };
 
+
 // importa to do when calling this function
 // use core::{
 //   prompts::human_request_agent_prompt,
@@ -15,54 +16,50 @@ use core::{
 
 /// this funciton will be calling llm in order to get what agents are doing which task and update the state `TasksIdentified`
 type HumanRequestAnalysisNodeResult<T> = std::result::Result<T, AppError>;
+
+// for messages, use mutiple messages if needed and put in &[]:
+// when Result is unwrapped returns: `HashMap<String, String>`
+// let message =  messages_format_engine(new_type_user, new_content)?;
+// then put in &[message, message2, ...]
 pub fn human_request_analysis_node(
-    human_request_file_path: &str,
-    prompt: &HashMap<String, String>,
-    schema: &HashMap<String, String>
+    enpoint: &str,  // use env vars
+    // MessageHistory::new()
+    message_history: &mut MessageHistory, // MessageHistory::new()
+    // this get it form the constant `tools` from the specific agent
+    new_tools: Option<&[HashMap<String, serde_json::Value>]>,
+    model_name: &str,
+    messages: &[HashMap<String, String>],
+    new_tool_choice: &Option<ChoiceTool>,
+    new_response_format: &HashMap<String, serde_json::Value>,
+    agent: &mut Agent,
+    max_loop: u64,
   ) -> HumanRequestAnalysisNodeResult<String> {
 
-  endpoint: url string of endpoint to call
-  /* message engine */
-  // create more if needed and add to list in input arg of fn
-  message: messages_format_engine(type_user: &UserType, content: &str)
-  /* tools engine */
-  // to be repeated for same `agent_tools` to add some more
-  tools: create_tool_engine(
-    agent_tools: &mut Tools,
-    &fn_name,
-    param_strict, // bool
-    &fn_description,
-    // here we put in a `&[HashMap<String, String>]` all different parameters of the function. so each has settings `name/type/description`
-    &param_settings,
-  )?; // maybe need to have a result istead of retun type: Option<Tools>
-  paylaod: create_payload_engine(
-    model: &str,
-    messages: &[HashMap<String, String>],
-    tool_choice: Option<ChoiceTool>,
-    tools: Option<&[HashMap<String, Value>]>,
-    response_format: Option<&HashMap<String, Value>>,
-  )
-  let mut history: MessageHistory::new()
-  new_message: MessageToAppend::new(message_role: &str, message_content: &str, message_tool_call_id: &str) // the first message, then function will add to history other messages
-  model: name of a model
-  tool_choice: ChoiceTool::<Auto/Required> or just  None
-  response_format: response_format_part_of_payload_engine(new_name: String, new_strict: bool, new_schema: Schema)
-  agent: not sure yet as we might need to update the function to update a field of the Agent struct with the answer probably
-  max_loop: 0 // here no tools all will be None but this will be used to have a max loop as llm can hallucinate
-  // ... call some engine functions
-  tool_or_not_loop_api_call_engine(
-    endpoint: &str,
-    history: &mut MessageHistory,
-    new_message: &MessageToAppend,
-    payload: &mut Value,
-    model: &str,
-    tool_choice: Option<ChoiceTool>,
-    tools: Option<&Vec<HashMap<String, serde_json::Value>>>,
-    response_format: Option<&HashMap<String, serde_json::Value>>,
-    agent: Option<&mut Agent>, // Optional agent updates
-    max_loop: usize,
-  )
+  // we create a first payload that would be sent as inital payload and later `tool_or_not_loop_api_call_engine` will loop if there is tools
+  // and create new paylaods with new messages using the `history container` and `response_format`
+  let mut paylaod = create_payload_engine(
+    model_name,
+    &[messages.clone()],
+    new_tool_choice.clone(),
+    new_tools,
+    Some(&new_response_format),
+  )?;
+
+  // ... call some engine functions which will get the final response and update the agemt's `communication_message` field
+  let request_analysis_result = tool_or_not_loop_api_call_engine(
+    endpoint,
+    message_history,
+    // &MessagesToAppend::new(message_role: &str, message_content: &str, message_tool_call_id: &str) or &Agent.prompt
+    new_agent_prompt, 
+    &payload,
+    model_name,
+    new_tool_choice.clone(),
+    new_tools,
+    Some(&new_response_format),
+    Some(agent), // Optional agent updates
+    2,
+  )?;
 
   
-  Ok(("Shibuya".to_string()))
+  Ok(request_analysis_result)
 }

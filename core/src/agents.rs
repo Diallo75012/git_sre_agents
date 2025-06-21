@@ -753,7 +753,6 @@ pub struct ResponseFormat {
 
 /// we create a custom type for the ResponseFormat `Result`
 type ResponseFormatResult<T> = std::result::Result<T, AppError>;
-
 impl ResponseFormat {
   pub fn new() -> ResponseFormat {
   	ResponseFormat {
@@ -925,8 +924,9 @@ impl StructOut {
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct Agent {
   pub role: AgentRole,
-  // content of message to be red by other agents  about task
-  pub communication_message: HashMap<String, String>,
+  // content of message to be red by other agents about task
+  // OR keep last message of history ??? so agent when receiving next task it knows what it has done before
+  pub communication_message: serde_json::Value,
   pub prompt: MessagesSent,
   /// Eg. for Human request Analyzer Agent {HumanStructuredOutput.Agent: HumanStructuredOutput.Task }
   /// But at least we are free to add any key pairs
@@ -938,7 +938,9 @@ pub struct Agent {
   /// so we might implement a fucntion here that will for example transform enums in `String`
   pub llm: ModelSettings,
   /* ** Might need to add a field like a checklist so that agent know what need to be done next,
-        Optional field so we have only the main agent with that. to keep track of work. so will need to call api also to organize work  ** */
+        Optional field so we have only the main agent with that. to keep track of work. so will need to call api also to organize work
+        Not sure yet about this field as could be an api call returning structure output array with tasks to be done in order
+        and use that in loop with tools so that agent can do each step by step... still planning maybe never implemented ** */
 }
 
 type AgentResult<T> = std::result::Result<T, AppError>;
@@ -970,7 +972,7 @@ impl Agent {
   pub fn update_agent(
     &mut self,
     agent_role: Option<&AgentRole>,
-    agent_communication_message_to_others: Option<&HashMap<String, String>>,   
+    agent_communication_message_to_others: Option<&serde_json::Value>,   
     agent_prompt_from_file: Option<&MessagesSent>,
     agent_structured_output: Option<&StructOut>,
     agent_task_state: Option<&TaskCompletion>,
@@ -993,9 +995,12 @@ impl Agent {
       // as agents can get communication messages for other agents
       Some(dict) => {
         // we get here the HashMap and will just update what is needed
-        for (_idx, key) in dict.iter().enumerate() {
-          self.communication_message.insert(key.0.clone(), dict[key.0].clone());
-        }
+        // for (_idx, key) in dict.iter().enumerate() {
+          // self.communication_message.insert(key.0.clone(), dict[key.0].clone());
+        // }
+        // we just update by replacing what was there before by new `serde_json::Value`
+        // while in the `api caller engine` function we will be appending to it if tool call.. maybe not needed, we will see
+        self.communication_message = json!(dict);
         // this also works when using only `.iter()` we can get the `k,v`
         // for (k, v) in dict.iter() {
         //   self.communication_message.insert(k.clone(), v.clone());

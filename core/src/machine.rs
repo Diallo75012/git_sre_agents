@@ -342,7 +342,7 @@ fn create_payload_engine(
   let payload = machine_create_payload_with_or_without_tools_structout(
     model,
     messages,
-    tool_choice.clone(),
+    tool_choice.clone(), // can clone even if `None` because `ChoiceTool` struct implements `Clone`
     tools,
     response_format,
   )?;
@@ -400,11 +400,12 @@ type ToolOrNotLoopApiCallEngineResult<T> = std::result::Result<T, AppError>;
 pub async fn tool_or_not_loop_api_call_engine(
     endpoint: &str,
     history: &mut MessageHistory,
+    // this has to be instantiated using `MessagesToAppend::new(...)` or use `Agent.prompt` which is of type MessagesToAppend
     new_message: &MessageToAppend,
     payload: &mut Value,
     model: &str,
     tool_choice: Option<ChoiceTool>,
-    tools: Option<&Vec<HashMap<String, serde_json::Value>>>,
+    tools: Option<&[HashMap<String, serde_json::Value>]>,
     response_format: Option<&HashMap<String, serde_json::Value>>,
     agent: Option<&mut Agent>, // Optional agent updates
     max_loop: usize,
@@ -443,12 +444,20 @@ pub async fn tool_or_not_loop_api_call_engine(
 
       history.append_message_to_history(&tool_response)?;
 
-      if let Some(agent_ref) = agent {
-        agent_ref.communication_message.insert(
-          "last_tool".to_string(),
-          tool_calls[0].function.clone(),
-        );
-      }
+      // maybe not needed to add tool call in object in agent.communication_message
+      // and only at the end of this function update it with the final answer
+      // if let Some(agent_ref) = agent {
+      //   // agent_ref.communication_message.insert(
+      //   //   "last_tool".to_string(),
+      //   //   tool_calls[0].function.clone(),
+      //   // );
+      //   agent_ref.as_object_mut(|obj|
+      //     obj.communication_message.insert(
+      //       "last_tool".to_string(),
+      //       tool_calls[0].function.clone(),
+      //     );
+      //   );
+      // }
 
       let new_messages: Vec<HashMap<String, String>> = history
         .messages
@@ -484,8 +493,31 @@ pub async fn tool_or_not_loop_api_call_engine(
 
   // Reuse the last loop response
   if let Some(resp) = final_response {
-    machine_final_answer(&resp)
-      .ok_or(AppError::Agent("No final answer found in response".into()))
+    let format_final_response = machine_final_answer(&resp); // returns Option<String>
+    match format_final_response {
+      Some(answers) => {
+      	// we update by the agent `communication_message` field by adding the response
+      	if let Some(agent_ref) = agent {
+      	  agent_ref.as_object_mut(|obj|
+      	    obj.communication_message.insert(
+      	      "communicate".to_string(),
+      	      answers.clone(),
+      	    );
+      	  );
+      	}
+      	Ok(answers)
+      },
+      None => Err(AppError::Agent("No final answer found in response".into())),
+    }
+    // we update the field for agent communication with final answer
+    agent_ref.update_agent(
+      agent_role: None,
+      agent_communication_message_to_others: Option<&serde_json::Value>,   
+      agent_prompt_from_file: None,
+      agent_structured_output: None,
+      agent_task_state: None,
+      agent_llm: None,
+    )?;
   } else {
     Err(AppError::Agent("Unexpected: final response not set".into()))
   }
@@ -510,8 +542,6 @@ pub async fn tool_or_not_loop_api_call_engine(
 
 /* ** RESPONSE FORMAT PART OF API CALL PAYLOAD PART ENGINE  ** */
 // need to do the response format engine
-  response_format: ResponseFormat::new() -> then update ResponseFormat{ Some(CallApiResponseFormat {name: String, strict: bool, schema: Schema,})
-                                         -> then response_format_desired_as_map(&self) to have the final field as HashMap<String, serde_json::Value>
 type ResponseFormatPartOfPayloadResult<T> = std::result::Result<T, AppError>;
 pub async fn response_format_part_of_payload_engine(
     new_name: String,
