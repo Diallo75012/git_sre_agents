@@ -11,14 +11,18 @@ use crate::core::*;
 let new_response_format = response_format_part_of_payload_engine(response_format_name.to_string(), param_strict, new_schema.clone())?;
 
 // all schemas state
-create_schemas_engine(
-    human_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
-    main_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
-    pr_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
-    sre1_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
-    sre2_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>
-  )
-
+let all_schemas__structout_constant = create_schemas_engine(
+  human_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
+  main_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
+  pr_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
+  sre1_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
+  sre2_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>
+)?; // Result<StructOut> -> StructOut
+// agent specific schema using agent role
+let request_analyzer_agent_schema = get_specific_agent_schema_engine(
+  &all_schemas__structout_constant,
+  &AgentRole::RequestAnalyzer
+)?; // Result<Schema> -> Schema
 
 
 // different `tools`

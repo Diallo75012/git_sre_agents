@@ -2366,3 +2366,6 @@ so:
 - [ ] make all first constants so that we can start reuse and see if the flow planned work well when creting nodes.
   combinaison of `engines/constant` and maybe `machines/struct impl` if needed as well
 - [ ] finish our first node `human requests` as we have already planned how to construct the api call. need now to code the story.
+
+
+have done the first version of the first `node` now need to create all `constants`

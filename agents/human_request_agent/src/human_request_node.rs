@@ -15,8 +15,8 @@ use core::{
 // }
 
 /// this funciton will be calling llm in order to get what agents are doing which task and update the state `TasksIdentified`
+/// therefore it will use `read file` tool and then answer using the structured output schema
 type HumanRequestAnalysisNodeResult<T> = std::result::Result<T, AppError>;
-
 // for messages, use mutiple messages if needed and put in &[]:
 // when Result is unwrapped returns: `HashMap<String, String>`
 // let message =  messages_format_engine(new_type_user, new_content)?;
