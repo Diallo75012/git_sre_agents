@@ -84,7 +84,7 @@ pub enum AppError {
   /// Agent Creation error
   #[error("Agent Creation Engine Error: {0}")]
   AgentEngine(String),
-  /// Prompt Creation error
+  /// Prompt Creation error and also getting prompt template and making the actual api sent prompt error  
   #[error("Prompt Engine Error: {0}")]
   PromptEngine(String),
   /// Schema Creation error
@@ -110,6 +110,7 @@ pub enum AppError {
   /// huamn request analysis node error
   #[error("Human Request Analysis Node Error: {0}")]
   RequestAnalysisNode(String),
+
 }
 
 /// this is to teach `Rust` about our custom error by implementing `std` errors

@@ -78,6 +78,9 @@ pub async fn machine_api_call( // done!
   endpoint: &str,
   payload: &Value,
 ) -> CallApiResult<LlmResponse> {
+  // we initalize a client
+  let client = Client::new(); 
+
   // we instantiate headers, that might probably become a `CONST` that i am going to just import and use are input parameter to my funtions
   // so that i have only one point calling the .env file having the credentials 
   let headers = get_auth_headers().map_err(|e| AppError::EnvSecret(format!("Failed to get headers: {}", e)))?;
@@ -215,12 +218,12 @@ pub fn get_specific_agent_schema_engine(full_struct_out: &StructOut, agent_role:
 type CreateToolEngineResult<T> = std::result::Result<T, AppError>;
 pub fn create_tool_engine(
     agent_tools: &mut Tools,
-    &fn_name,
-    param_strict, // bool
-    &fn_description,
+    fn_name: &str,
+    param_strict: bool,
+    &fn_description: &str,
     // here we put in a `&[HashMap<String, String>]` all different parameters of the function. so each has settings `name/type/description`
-    &param_settings,
-  ) -> CreateToolEngineResult<Option<Tools>> {   
+    param_settings: &[HashMap<String, String>],
+  ) -> CreateToolEngineResult<Tools> {   
   /* Function creation */
   // create the function details and also provide the hashmap of name/type/decription 
   let function_details = match FunctionDetails::new(
@@ -237,9 +240,21 @@ pub fn create_tool_engine(
   // return result Ok(()) or propagates the custom error
   agent_tools.add_function_tool(&[function])?;
   // which is of perfect type `Some(Vec<HashMap<String, serde_json::Value>>)`
-  Ok(Some(agent_tools))
+  Ok(agent_tools)
 }
 
+/* ** PROMPT GETTING ENGINE ** */
+/// we need to get the prompts created returned as tuple so that we can inject `user_type` and `content` to the messages machine or other message engine
+type GetPromptUserAndContentEngineResult<T> = std::result::Result<T, AppError>;
+fn get_prompt_user_and_content_engine(prompt: &HashMap<UserType, &str>) -> GetPromptUserAndContentEngineResult<(UserType, String)> { 
+  let mut type_user = UserType::Assistant;
+  let mut content = "".to_string();
+  for elem in prompt.iter() {
+    type_user = elem.0.clone();
+    content = elem.1.to_string();
+  }
+  Ok((type_user, content))
+}
 
 /* ** MESSAGES MACHINE ** */
 /// we need to initialize a new one for each that we want to create and it will store an empty message list that can be updated with `system/assistant/user`
@@ -319,7 +334,7 @@ pub fn create_agent_engine(
 //   agent_role: Option<&AgentRole>,
 //   agent_communication_message_to_others: Option<&HashMap<String, String>>,   
 //   agent_prompt_from_file: Option<&MessagesSent>,
-//   agent_structured_output: Option<&StructOut>,
+//   agent_structured_output: Option<&Schema>,
 //   agent_task_state: Option<&TaskCompletion>,
 //   agent_llm: Option<&ModelSettings>,
 // )?;

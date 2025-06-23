@@ -59,8 +59,9 @@ pub enum SchemaFieldType {
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub enum TaskCompletion {
   Done,
-  #[default]Processing,
+  Processing,
   Error,
+  #[default]Idle,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -81,7 +82,8 @@ pub enum ChoiceTool {
   Required,	
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+/// here need to derive `Hash`, `Eq`, `PartialEq` because we are using this custom types in `HashMap`. so needed for loop,push,indexing..etc... 
+#[derive(Serialize, Deserialize, Debug, Clone, Default, Hash, Eq, PartialEq)]
 pub enum UserType {
   Assistant,
   #[default]User,
@@ -931,7 +933,7 @@ pub struct Agent {
   /// Eg. for Human request Analyzer Agent {HumanStructuredOutput.Agent: HumanStructuredOutput.Task }
   /// But at least we are free to add any key pairs
   /// use "StructOut::get_by_role(&self, role: &AgentRole)" to get it
-  pub structured_output: StructOut,
+  pub structured_output: Schema,
   pub task_state: TaskCompletion,
   /// this is where all tools will be set and hold all necessary fields
   /// but still will need to use those fields to construct what the API will consume at the end,
@@ -947,9 +949,9 @@ type AgentResult<T> = std::result::Result<T, AppError>;
 impl Agent {
   pub fn new(
     agent_role: &AgentRole,
-    agent_communication_message_to_others: &HashMap<String, String>,   
+    agent_communication_message_to_others: &serde_json::Value,// &HashMap<String, String>,   
     agent_prompt_from_file: &MessagesSent,
-    agent_strutured_output: &StructOut,
+    agent_strutured_output: &Schema,
     agent_task_state: &TaskCompletion,
     agent_llm: &ModelSettings,
   ) -> AgentResult<Agent> {
@@ -974,7 +976,7 @@ impl Agent {
     agent_role: Option<&AgentRole>,
     agent_communication_message_to_others: Option<&serde_json::Value>,   
     agent_prompt_from_file: Option<&MessagesSent>,
-    agent_structured_output: Option<&StructOut>,
+    agent_structured_output: Option<&Schema>,
     agent_task_state: Option<&TaskCompletion>,
     agent_llm: Option<&ModelSettings>,
   // we just a return a confirmation `String` or `Error` so use our custom `AgentResult`

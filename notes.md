@@ -1859,6 +1859,60 @@ fn main() {
 }
 // returns `{"extra_info":{"enabled":true,"level":5},"messages":[],"model":"cerebras-model","tool_choice":"auto"}`
 ```
+
+- **custom enum** looping and using `HashMap`
+I had t o create a function that would use the `HashMap` prompts and return the `key/value` in the for of a tuple (`UserType`, `String`)
+so that i could just pull the prompts and use after that the funciton to format my specific prompt.
+Using the `Rust Playground` i found that to make the operation and access `key/value` as i am using custom type in `HashMap`,
+I need to implement `Hash` to the `enum` `UserType` but found that i can just `derive` it, and also need `Eq` to be implementent.
+so `Eq` comes always with `PartialEq` so i have `derive` those two as well.
+I might change the message formatting engine to just accept prompts or have two different functions so that I ahve flexibility to change later on.
+```rust
+// import
+use std::collections::HashMap;
+
+// derives and enum custom types
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+enum UserType {
+  User,
+  Assistant,
+}
+
+// function that u might incroporate to messages formatting engine or just leave it like that
+fn get_prompt_user_and_content(prompt: &HashMap<UserType, &str>) -> (UserType, String) { 
+  let mut type_user = UserType::Assistant;
+  let mut content = "".to_string();
+  for elem in prompt.iter() {
+    type_user = elem.0.clone();
+    content = elem.1.to_string();
+  }
+  (type_user, content)
+}
+
+// testing its use
+fn main() {
+  let a = HashMap::from(
+    [
+      (UserType::User, r#"Sangoku"#),
+    ]
+  );
+  
+  let (user_t, name) = get_prompt_user_and_content(&a);
+  println!("user_type: {:?}\nname: {:?}", user_t, name);
+}
+
+// Outputs:
+user_type: User
+name: "Sangoku"
+```
+
+
+
+
+
+
+
+
 _________________________________________________________________________________________________
 # Tools creation
 ChatGPT suggested way of doing it:
@@ -2369,3 +2423,38 @@ so:
 
 
 have done the first version of the first `node` now need to create all `constants`
+
+
+# cerebras model overview done by `ChatGPT`
+I will have to choose models so I gave the link to the `github` repository and ask `ChatGPT` to provide advice in which model I should use.
+```markdown
+Summary of Model Choices: All recommended Cerebras models (17B, 32B, 70B) support the required tool-calling and schema features
+                          the Cerebras inference API exposes these uniformly. The differences are in context length and intelligence:
+- Llama 70B Instruct: best accuracy for understanding complex issues and strict output adherence;
+                      8K context (expandable to 128K);
+                      higher cost. 
+                      Use for the most critical reasoning-intensive agents (e.g. the main planner, complex diagnosis).
+- Llama-4-Scout 17B (16k): good general capability, much faster, with extended context window out-of-box (16k) which is great for log-heavy tasks.
+                           Use for straightforward tasks or where speed matters and the risk of minor errors is acceptable.
+- Qwen 32B: strong at following instructions and possibly better with coding or knowledge tasks than 17B, at moderate cost.
+            A middle-ground option if 70B is too slow but 17B struggles with a particular domain challenge.
+```
+
+# `ChatGPT` advice on `constants.rs` and `machines.rs`
+I keep thsoe advices here for learning purpose but I have used the `constant.rs` only to simulate constant variables but will not use any but
+`ChatGPT-san` told me what would be best and also to consider how I use `Option` and `Clone`
+```markdown
+- constants.rs Usage
+  currently using let statements in constants.rs, which is not valid unless they are in a function.
+  To make this file real constants or configuration, either:
+    - Define them as pub static ref (with lazy_static or once_cell).
+    - Or make `pub fn build_agent_request_analyzer() -> Agent { ... }``.
+```rust
+use once_cell::sync::Lazy;
+pub static ref REQUEST_ANALYZER_AGENT: Agent = build_request_analyzer_agent();
+```
+- Option<&Vec<_>> and Clones
+  correctly clone `Option<ChoiceTool>` safely. But remember `Option<&Vec<T>>` is **not always cheap**.
+  If used often in dynamic calls, you may want to wrap all payload inputs in a `PayloadBuilder` struct for ergonomic chaining and performance.
+
+
