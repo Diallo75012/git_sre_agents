@@ -54,14 +54,14 @@ pub fn read_file_tool(file_path: &str) -> String {
 
 let read_file_tool_description = r#"This tool reads files by providing the full content of the file to be analyzed
 Arguments `file_path`: The path of where is the file located to be able to read its content
-Returns `String`: The content of the file."#
+Returns `String`: The content of the file."#;
 /* tools engine */
 /// to be repeated for same `agent_tools` to add some more
 /// this is the container and will be filled with our new tool
 let mut new_agent_tool = agents::Tools::new();
 /// we need to just create an `HashMap` of the `param_settings` `name/type/description`
 /// this is the example for just one parameter settings. the function `create_tool_engine` takes a list if more just create more `param_settings`
-let param_settings =  let param_setting_1 = HashMap::from(
+let param_settings = HashMap::from(
   [
     ("name".to_string(), "file_path".to_string()),
     ("type".to_string(), "string".to_string()),
@@ -131,8 +131,9 @@ let request_analyzer_agent = create_agent_engine(
 // different `modelsettings` (special this project all are Cerebras Only)
 /// create several `model_messages` and put in the list that will be used by `ModelSettings` field `model_message`
 let model_message_formatted_hashmap_prompt = messages_format_engine(
-  &request_analyzer_agent.prompt.type_user,
-  &request_analyzer_agent.prompt.request_analyzer_content
+  // `user_type` and `content` are field from the struct `MessagesSent` of `request_analyzer_agent.prompt`
+  &request_analyzer_agent.prompt.user_type,
+  &request_analyzer_agent.prompt.content,
 )?; // can create more of those.
 
 let request_analyzer_model_settings = create_model_settings_engine(

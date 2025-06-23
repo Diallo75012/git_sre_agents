@@ -88,6 +88,7 @@ pub enum UserType {
   Assistant,
   #[default]User,
   System,
+  Tool,
 }
 /*
 /// can also implement default manually like that and get `Auto` as default
@@ -415,6 +416,7 @@ impl MessagesSent {
       UserType::User => "user".to_string(),
       UserType::Assistant => "assistant".to_string(),
       UserType::System => "system".to_string(),
+      UserType::Tool => "tool".to_string(),
     };
   	Self {
   	  user_type: t_user,

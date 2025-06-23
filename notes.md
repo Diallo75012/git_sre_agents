@@ -354,7 +354,7 @@ kubectl port-forward pod/nginx-585f69b946-qw57t 8080:80
 - [x] clone the `main repo` in the `human side` same as if the human had cloned that repo and want to check the changes from agents.
 - [ ] make all agents prompt files and a function for prompt formatting that would use the `format!()` macro to create prompts/text needed
 - [ ] consider using channels and threads so that the communication can be parallelized if multi tool call
-- [ ] use loop for tool call until getting the answer fully done (so maybe create this until it work and then integrate in project)
+- [x] use loop for tool call until getting the answer fully done (so maybe create this until it work and then integrate in project)
 - [ ] study the api returned messages/tool use/error to be able to `deserialize` what we want properly
 - [ ] prepare a RUST workspace in the model of previous project and here modularize the flow of actions having each agentif flow on its own
      and one core unit and bunble the applicaiton with only one app binary.
@@ -598,6 +598,38 @@ if tool_calls:
 else:
   print("No tool calls were made by the model.")
 ```
+
+- resume of steps in tool call
+```markdown
+Step 1. We send → prompt + tools (metadata) + tool_choice + (maybe schema)
+Step 2. LLM replies → with tool call (function name + parameters) instead of final answer
+Step 3. Our loop detects → tool_call in `choices[0].message.tool_calls`
+Step 4. We (the developer) execute the tool → simulate / really run it
+Step 5. We append tool **result** to the message history as role="tool"
+Step 6. We send back to the LLM → updated message history
+Step 7. LLM now has all it needs → gives the **final answer** (or another tool call)
+
+```
+**Who Actually Runs the Tool?**
+The **LLM does not execute the tool**.
+It simply instructs us:
+`"Please run this function with these arguments."`
+
+So our loop must do:
+```rust
+// simulate execution of tool (can be mock or real call)
+let output = read_file_tool(file_path);
+```
+Then reply to the LLM with a message:
+```json
+{
+  "role": "tool",
+  "tool_call_id": "tool-call-xyz",
+  "content": "The file contains Prometheus configuration for monitoring nginx."
+}
+```
+And resend that to Cerebras.
+
 
 ## REQWEST 
 - Pass in headers (diffent ways)
@@ -2410,16 +2442,7 @@ So here we are being conservative and try to make it work and have more portable
 so:
 - [x] first make big schemas covering all fields needed for all scenarios that we want to do
 - [x] then group those by one or two fields or max 3 fields not more to have smaller schemas per agent
-- [ ] create the chain/flow of action if this or if that.... like conditional edges
-- try to use answered directly and not write to files if possible passing through states updates in place
-  so that the app can work without going in user files by writing, but reading is fine as we will need it for the git repos.
-- use env vars for the git repo path
-- [ ] have an object or text that maps each files with a little description of what is that manifest used for
-      so that agent can choose the right file to read. we could actually put that in the prompt so that no need to have the step `identify files` for sre
-- [ ] have a function tool that reads the desired file and another that writes llm response from schema `json manifest` and `not yaml` rendered
-- [ ] make all first constants so that we can start reuse and see if the flow planned work well when creting nodes.
-  combinaison of `engines/constant` and maybe `machines/struct impl` if needed as well
-- [ ] finish our first node `human requests` as we have already planned how to construct the api call. need now to code the story.
+
 
 
 have done the first version of the first `node` now need to create all `constants`
@@ -2457,4 +2480,15 @@ pub static ref REQUEST_ANALYZER_AGENT: Agent = build_request_analyzer_agent();
   correctly clone `Option<ChoiceTool>` safely. But remember `Option<&Vec<T>>` is **not always cheap**.
   If used often in dynamic calls, you may want to wrap all payload inputs in a `PayloadBuilder` struct for ergonomic chaining and performance.
 
+# Next
+- [ ] create the chain/flow of action if this or if that.... like conditional edges
+- try to use answered directly and not write to files if possible passing through states updates in place
+  so that the app can work without going in user files by writing, but reading is fine as we will need it for the git repos.
+- use env vars for the git repo path
+- [ ] have an object or text that maps each files with a little description of what is that manifest used for
+      so that agent can choose the right file to read. we could actually put that in the prompt so that no need to have the step `identify files` for sre
+- [ ] have a function tool that reads the desired file and another that writes llm response from schema `json manifest` and `not yaml` rendered
+- [x] make all first constants so that we can start reuse and see if the flow planned work well when creting nodes.
+  combinaison of `engines/constant` and maybe `machines/struct impl` if needed as well
+- [x] finish our first node `human requests` as we have already planned how to construct the api call. need now to code the story.
 

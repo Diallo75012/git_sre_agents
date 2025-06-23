@@ -450,9 +450,13 @@ pub async fn tool_or_not_loop_api_call_engine(
         break;
       }
 
-      // Simulate tool execution
+      /* We simulate use of the tool by calling the function ourselves and getting the answer and adding to the hsitory */
+      /* or use another node function to use tools and get the output from it and add to the history */
+      /* Eg.: simulate execution of tool (can be mock or real call) */
+      /* let output = read_file_tool(file_path); */
+      // Simulate tool execution (so here find a way to get the tool call response and add it to history)
       let tool_response = MessageToAppend::new(
-        "tool",
+        "tool", // role `MUST` be `tool`
         &format!("Executed tool: {}", tool_calls[0].function),
         &tool_calls[0].id,
       );
