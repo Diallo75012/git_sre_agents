@@ -128,7 +128,7 @@ We will create a drift in the infrastructure.
   Will append to the same report file what was the issue and his advice.
 - One SRE will create a training for staff like a one page easy to read to make the language easier to understand for developpers of this small company
   Will read the files where otehr agents have reported what went wrong and how to prevent it to happen.
-  Can use a toold for internet search if needed to make the report more valuable.
+  Can use a tools for internet search if needed to make the report more valuable.
   Always talk about impact on customers and slo's and positive and negative
 
 
@@ -436,7 +436,7 @@ curl --location 'https://api.cerebras.ai/v1/chat/completions' \
 **object** (`NEED`): string, defines the type of call `chat.completion` or ...
 
 - api call response example
-```bash
+```json
 {
   "id": "chatcmpl-292e278f-514e-4186-9010-91ce6a14168b",
   "choices": [
@@ -467,6 +467,30 @@ curl --location 'https://api.cerebras.ai/v1/chat/completions' \
     "total_time": 0.022224903106689453,
     "created": 1723733419
   }
+}
+```
+- api call response with tool choosen example
+```json
+{
+  "choices": [
+    {
+      "message": {
+        "tool_calls": [
+          {
+            "id": "tool-call-abc123",
+            "function": "read_file_tool",
+            "arguments": {
+              "file_path": "/path/to/file.yaml"
+            }
+          }
+        ],
+        "role": "assistant",
+        "content": null
+      },
+      "finish_reason": "tool_calls"
+    }
+  ],
+  "object": "chat.completion"
 }
 ```
 
@@ -2492,3 +2516,80 @@ pub static ref REQUEST_ANALYZER_AGENT: Agent = build_request_analyzer_agent();
   combinaison of `engines/constant` and maybe `machines/struct impl` if needed as well
 - [x] finish our first node `human requests` as we have already planned how to construct the api call. need now to code the story.
 
+
+We need to create a tool execution funciton for our call api loop REACT funciton
+
+
+# call test using Curl only
+```bash
+curl --location 'https://api.cerebras.ai/v1/chat/completions' --header 'Content-Type: application/json' --header "Authorization: Bearer ${CEREBRAS_API_KEY}" --data '{
+  "model": "llama-4-scout-17b-16e-instruct",
+  "stream": false,
+  "max_tokens": 2048,
+  "temperature": 0.2,
+  "top_p": 1,
+  "messages": [
+    {
+      "role": "system",
+      "content": "you are a very helpful assistant who always answer using a Tokyo Japan anecdocte"
+    }, {"role": "user", "content": "I can see that Sakura trees are not present in antartica"}
+  ]
+}'
+Outputs:
+{
+  "id":"chatcmpl-b8190ad6-c54d-4795-a494-e2589a5b900d",
+  "choices":
+    [
+      {
+        "finish_reason":"stop",
+        "index":0,
+        "message":
+          {
+            "content":"My friend, you're absolutely right! The beautiful Sakura trees, also known as Japanese Cherry Blossoms,
+                       are not found in Antarctica. You know, I was reminded of a story about a Japanese research station in Antarctica,
+                       Mizuho Station, which is located in East Antarctica.
+
+                       One year, a team of Japanese researchers, who were stationed there, decided to celebrate the Cherry Blossom season, 
+                       despite being thousands of miles away from Japan. They brought a few Sakura tree saplings and some soil from Japan, 
+                       and attempted to plant them near the station. However, due to the harsh Antarctic climate, the saplings didn't survive.
+
+                       But, what was remarkable was that one of the researchers, a kind-hearted botanist, had brought a small, artificial Sakura tree, 
+                       which she had made herself using wire, paper, and other materials. She placed it near the station's entrance, 
+                       and it became a symbol of hope and resilience in the face of the extreme Antarctic environment.
+
+                       Every year, when the Cherry Blossom season arrives in Japan,
+                       the researchers at Mizuho Station would gather around the artificial Sakura tree, share stories,
+                       and reminisce about the beauty of Japan's famous blooms. It was a small, yet meaningful way to connect with their homeland,
+                       and to celebrate the fleeting beauty of the Sakura season, even in one of the most inhospitable places on Earth.
+
+                       So, my friend, while Sakura trees may not thrive in Antarctica, their spirit and beauty can still be found,
+                       even in the most unexpected places!","role":"assistant"
+          }
+      }
+    ],
+  "created":1750792400,"model":"llama-4-scout-17b-16e-instruct",
+  "system_fingerprint":"fp_f16e6ab10add9fb1916b",
+  "object":"chat.completion",
+  "usage":
+    {
+      "prompt_tokens":46,
+      "completion_tokens":318,
+      "total_tokens":364,
+      "prompt_tokens_details":
+        {
+          "cached_tokens":0
+        }
+    }
+  ,"time_info":
+    {
+      "queue_time":0.000782863,
+      "prompt_time":0.001728145,
+      "completion_time":0.222789849,
+      "total_time":0.22653818130493164,
+      "created":1750792400
+    }
+}
+```
+need to ytpe the `const`
+have to create the full StructOut with all schemas from the ones we have created so that this structout is full
+so we can then test the api call using what is in main.rs and fixing bugs

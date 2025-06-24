@@ -164,9 +164,15 @@ impl MessageHistory {
 }
 
 #[derive(Deserialize, Debug, Clone, Default)]
+pub struct ToolFunction {
+  pub name: String,
+  pub arguments: serde_json::Value, // or `HashMap<String, Value>
+}
+
+#[derive(Deserialize, Debug, Clone, Default)]
 pub struct ToolCall {
   // response.choices[0].message.tool_calls[0].function
-  pub function: String,
+  pub function: ToolFunction,
   // response.choices[0].message.tool_calls[0].id
   pub id: String,
 }

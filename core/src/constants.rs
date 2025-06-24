@@ -8,16 +8,9 @@ use crate::core::*;
 
 
 
-// different `response_format`
-/// here we create the response format part of the api call payload sent. This result unwrapped returns a `HashMap<String, serde_json::Value>`
-let request_analyzer_response_format_part = response_format_part_of_payload_engine(
-  response_format_name.to_string(),
-  param_strict,
-  request_analyzer_agent_schema.clone()
-)?;
-
 // all schemas state
-let all_schemas__structout_constant = create_schemas_engine(
+// NEED TO CREATE EVERY SINGLE SCHEMAS BEFORE TESTING API CALL
+const all_schemas_structout_constant = create_schemas_engine(
   human_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
   main_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
   pr_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
@@ -25,10 +18,20 @@ let all_schemas__structout_constant = create_schemas_engine(
   sre2_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>
 )?; // Result<StructOut> -> StructOut
 // agent specific schema using agent role
-let request_analyzer_agent_schema = get_specific_agent_schema_engine(
-  &all_schemas__structout_constant,
+const request_analyzer_agent_schema = machine::get_specific_agent_schema_engine(
+  &all_schemas_structout_constant,
   &AgentRole::RequestAnalyzer
 )?; // Result<Schema> -> Schema
+
+
+// different `response_format`
+/// here we create the response format part of the api call payload sent. This result unwrapped returns a `HashMap<String, serde_json::Value>`
+const request_analyzer_response_format_part = machine::response_format_part_of_payload_engine(
+  response_format_name.to_string(),
+  param_strict,
+  request_analyzer_agent_schema.clone()
+)?;
+
 
 
 // different `tools` with they `Rust` `docstring` like for `Python` tools
@@ -52,7 +55,7 @@ pub fn read_file_tool(file_path: &str) -> String {
   file_content
 }
 
-let read_file_tool_description = r#"This tool reads files by providing the full content of the file to be analyzed
+const read_file_tool_description = r#"This tool reads files by providing the full content of the file to be analyzed
 Arguments `file_path`: The path of where is the file located to be able to read its content
 Returns `String`: The content of the file."#;
 /* tools engine */
@@ -75,7 +78,7 @@ let param_settings = HashMap::from(
 );
 /// after ca then create tools by adding to the same `new_agent_tool` with other tool function parameters
 /// this will create the initial tool and if the same is used add more tools to that `Tools.tools` `Vec<HashMap<String, serde_json::Value>>`
-let tools = create_tool_engine(
+const tools = machine::create_tool_engine(
   new_agent_tool, // Tools
   "read_file_tool",
   true,
@@ -92,10 +95,10 @@ let tools = create_tool_engine(
 
 // `human request agent`
 /// not returning result but `MessageSent` struct. save the agent specific prompts like that and use in agent creation by getting the specific prompt first
-let user_type, request_analyzer_content = get_prompt_user_and_content_engine(&prompts::human_request_agent_prompt)?;
+let user_type, request_analyzer_content = machine::get_prompt_user_and_content_engine(&prompts::human_request_agent_prompt)?;
 /// type `MessagesSent` that can be stored in `Agent.prompt` so that we can create prompts from that field`
 let request_analyzer_agent_prompt =  machine::machine_prompt(&user_type, &request_analyzer_content);
-let request_analyzer_agent = create_agent_engine(
+const request_analyzer_agent = create_agent_engine(
   // `AgentRole::RequestAnalyzer`
   role: AgentRole::RequestAnalyzer,
   message: &str,
@@ -130,13 +133,13 @@ let request_analyzer_agent = create_agent_engine(
 
 // different `modelsettings` (special this project all are Cerebras Only)
 /// create several `model_messages` and put in the list that will be used by `ModelSettings` field `model_message`
-let model_message_formatted_hashmap_prompt = messages_format_engine(
+let model_message_formatted_hashmap_prompt = machine::messages_format_engine(
   // `user_type` and `content` are field from the struct `MessagesSent` of `request_analyzer_agent.prompt`
   &request_analyzer_agent.prompt.user_type,
   &request_analyzer_agent.prompt.content,
 )?; // can create more of those.
 
-let request_analyzer_model_settings = create_model_settings_engine(
+const request_analyzer_model_settings = machine::create_model_settings_engine(
   model_name: &str, // to be defines (need tocheck cerebras llama4 17b or llama 70b)
   model_max_completion: u64,
   model_temperature: u64,
@@ -149,7 +152,7 @@ let request_analyzer_model_settings = create_model_settings_engine(
 
 // different paylaods
 // request_analyzer paylaod
-let request_analyzer_payload = create_payload_engine(
+const request_analyzer_payload = machine::create_payload_engine(
   model: &str, // // to be defines (need tocheck cerebras llama4 17b or llama 70b). probably `env vars`
   messages: &model_message_formatted_hashmap_prompt, // &[HashMap<String, String>],
   tool_choice: Some(ChoiceTool::Required), // ChoiceTool::Required as we want to make sure it read the files using the tool

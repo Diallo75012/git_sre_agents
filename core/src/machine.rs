@@ -144,6 +144,28 @@ pub fn machine_final_answer(llm_response: &LlmResponse) -> Option<String> { // d
 }
 
 
+/// This function receives the name and arguments of the tool call and dispatches the appropriate logic.
+/// The return type is a JSON value that will be added to the message history.
+pub fn execute_tools_machine(tool_name: &str, arguments: &Value) -> Result<Value, AppError> {
+  match tool_name {
+    "read_file_tool" => {
+      let file_path = arguments
+        .get("file_path")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| AppError::Tool("Missing `file_path` argument for `read_file_tool`".into()))?;
+
+      let file_content = read_file_tool(file_path)
+        .map_err(|e| AppError::Tool(format!("Error executing `read_file_tool`: {}", e)))?;
+
+      Ok(json!({ "output": file_content }))
+    }
+    /* add other tools here to be detected as we create tool so that this function machine will be able to execute any of our tools */
+
+    _ => Err(AppError::Tool(format!("Unknown tool name: {}", tool_name))),
+  }
+}
+
+
 /*----------------------  ENGINES  ----------------------*/
 /* ** PROMPTS ENGINE ** */
 /// `machine_prompt()` is making the struct `MessagesSent` but `format_new_message_to_send()` is never called to make `[{role:..., content:...}]`:
@@ -152,7 +174,7 @@ pub fn machine_final_answer(llm_response: &LlmResponse) -> Option<String> { // d
 type PromptEngineResult<T> = std::result::Result<T, AppError>;
 pub fn engine_prompt(role: &UserType, content: &str) -> PromptEngineResult<HashMap<String, String>> {
   // which create the struct
-  let agent_struct_prompt = machine_prompt(role: &UserType, content: &str);
+  let agent_struct_prompt = machine_prompt(role, content);
   // which return as `[{"role": ..., "content": ...}]`
   let agent_prompt = agent_struct_prompt.format_new_message_to_send();
   Ok(agent_prompt)
@@ -231,7 +253,7 @@ pub fn create_tool_engine(
     param_strict,
     fn_description,
     param_settings,
-    )?;
+  )?;
   //get the function created
   // can use this as well (other implementation) let function = function details.create_function_with_parameters_object()?;
   let function = create_function_part(&function_details)?; // unwrapping become `HashMap<String, serde_json::Value>` type
@@ -386,7 +408,7 @@ fn create_payload_engine(
 /// or if we need to call again if there are many tools, the agent would loop and decide when it is done and we would store the history of messages.
 /// the `headers::get_auth_headers()` will be called inside this function to get an encapsulation and not get secret leaked, it will be built at
 /// runtime and just to call the api
-pub fn response_engine() -> {
+pub fn response_engine() -> Value {
   // we do not implement nothing here as we will be just using the big loop funciton call for all our api calls
   // tools or not. schema or not, this RESPONSE ENGINE is already there in the form of RESPONSE MACHINE
 }
@@ -433,6 +455,7 @@ pub async fn tool_or_not_loop_api_call_engine(
   let mut final_response: Option<LlmResponse> = None;
 
   loop {
+    println!("Max Loop: {}", json!(max_loop));
     // we set a `max loop` and return error if it is looping to much as we might get some api call issues as well
     if loop_counter >= max_loop {
       return Err(AppError::Agent(format!(
@@ -442,26 +465,29 @@ pub async fn tool_or_not_loop_api_call_engine(
     }
 
     let llm_response = machine_api_call(endpoint, payload).await?;
-
+    println!("Llm Response: {}", json!(llm_response));
+    
     if let Some(tool_calls) = machine_api_response(&llm_response) {
       if tool_calls.is_empty() {
         // No tool, store final response and exit
         final_response = Some(llm_response);
         break;
       }
-
-      /* We simulate use of the tool by calling the function ourselves and getting the answer and adding to the hsitory */
-      /* or use another node function to use tools and get the output from it and add to the history */
-      /* Eg.: simulate execution of tool (can be mock or real call) */
-      /* let output = read_file_tool(file_path); */
-      // Simulate tool execution (so here find a way to get the tool call response and add it to history)
+      // we instantiate the name and the arguments
+      let tool_call = &tool_calls[0];
+      println!("Tool Call: {}", json!(tool_call));
+      let tool_name = &tool_call.function.name;
+      println!("Tool Name: {}", json!(tool_name));      
+      let arguments = &tool_call.function.arguments;
+      println!("Tool Arguments: {}", json!(arguments));
+      /// we will then pass the tool name and arguments to our machine that execute tools
+      println!("final_response: {}", final_response);
+      let tool_output = execute_tools_machine(&tool_name, arguments)?;
       let tool_response = MessageToAppend::new(
-        "tool", // role `MUST` be `tool`
-        &format!("Executed tool: {}", tool_calls[0].function),
-        &tool_calls[0].id,
+        "tool",
+        &tool_output.to_string(),  // safely stringified JSON
+        &tool_call.id,
       );
-
-      history.append_message_to_history(&tool_response)?;
 
       // maybe not needed to add tool call in object in agent.communication_message
       // and only at the end of this function update it with the final answer

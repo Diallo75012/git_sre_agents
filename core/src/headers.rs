@@ -2,6 +2,7 @@
 //! and 'NOT' be stored in any `CONST` or `static` var as it would have the same lifetime as the app
 //! creating some security issues and having the credential leak, or appear in traces...etc...
 use std::env;
+use serde_json::json;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use crate::{
   errors::AppError,
@@ -21,12 +22,12 @@ pub fn get_auth_headers() -> HeadersResult<HeaderMap> {
    	Err(e) => {
       println!("{}", AppError::EnvSecret(format!("An error occurred while trying to access env var `city`: {}", e)));
     },
-  }
+  };
 
   let mut headers = HeaderMap::new();
   headers.insert(
     AUTHORIZATION,
-    HeaderValue::from_str(&format!("Bearer {}", api_key))
+    HeaderValue::from_str(&format!("Bearer {}", json!(api_key)))
       .map_err(|e| AppError::EnvSecret(format!("Invalid API key format: {}", e)))?,
   );
 

@@ -19,6 +19,8 @@ use core::{
   	Schema,
   	StructOut,
   },
+  machine::*,
+  constants::*,
 };
 
 
@@ -170,6 +172,22 @@ async fn run() {
       Ok(final_json) => println!("jsonyfied StructOut: {}", final_json),
       Err(e) => eprintln!("Error serializing schema_big_state to JSON: {}", e),
     }
+
+  let api_call = machine::tool_or_not_loop_api_call_engine(
+    endpoint: "https://api.cerebras.ai/v1/chat/completions",
+    history: &mut MessageHistory::new(),
+    // this has to be instantiated using `MessagesToAppend::new(...)` or use `Agent.prompt` which is of type MessagesToAppend
+    new_message: &constants::request_analyzer_agent.prompt,
+    payload: &mut constants::request_analyzer_payload,
+    model: "llama-4-scout-17b-16e-instruct",
+    tool_choice: Some(ChoiceTool::Auto), // or `::Required`
+    tools: Some(constants::request_analyzer_model_settings.list_tools),
+    response_format: Some(request_analyzer_response_format_part),
+    agent: Some(&mut constants::request_analyzer_agent), // Optional agent updates
+    max_loop: 3,
+  )?:
+
+ println("Api Call: {}", api_call);
 }
 
 
