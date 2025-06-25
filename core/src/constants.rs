@@ -9,28 +9,68 @@ use crate::core::*;
 
 
 // all schemas state
+// let b = HashMap::from(
+//   [
+//     ("location".to_string(), &SchemaFieldType::String),
+//     ("decision_true_false".to_string(), &SchemaFieldType::Bool),
+//     ("precision".to_string(), &SchemaFieldType::Int),
+//   ]
+// );
+const human_schema: HashMap<String, &SchemaFieldType::String> = HashMap::from([("sre1_agent".to_string(), &SchemaFieldType::String),("sre2_agent".to_string(), &SchemaFieldType::String),]);
+
+const main_to_human_schema: HashMap<String, &SchemaFieldType::String> = HashMap::from([("report".to_string(), &SchemaFieldType::String),]);
+const main_own_task_schema: HashMap<String, &SchemaFieldType::String> = HashMap::from([("merge".to_string(), &SchemaFieldType::Bool),("who".to_string(), &SchemaFieldType::String),]);
+const main_to_sre_schema: HashMap<String, &SchemaFieldType::String> = HashMap::from([("who".to_string(), &SchemaFieldType::String),("instructions".to_string(), &SchemaFieldType::String),]);
+
+const pr_to_sre_schema: HashMap<String, &SchemaFieldType::String> = HashMap::from([("instructions".to_string(), &SchemaFieldType::String), ("agent".to_string(), &SchemaFieldType::String),]);
+const pr_own_task_pull_schema: HashMap<String, &SchemaFieldType::String> = HashMap::from([("pull".to_string(), &SchemaFieldType::Bool),("agent".to_string(), &SchemaFieldType::String),]);
+const pr_own_task_diff_schema: HashMap<String, &SchemaFieldType::String> = HashMap::from([("agent".to_string(), &SchemaFieldType::String),("validate".to_string(), &SchemaFieldType::Bool), ("reason".to_string(), &SchemaFieldType::String),]);
+const pr_to_main_schema: HashMap<String, &SchemaFieldType::String> = HashMap::from([("agent".to_string(), &SchemaFieldType::String),("report".to_string(), &SchemaFieldType::String),]);
+
+const sre1_to_pr_schema: HashMap<String, &SchemaFieldType::String> = HashMap::from([("report".to_string(), &SchemaFieldType::String),]);
+const sre1_own_task_identfy_files_schema: HashMap<String, &SchemaFieldType::String> = HashMap::from([("nanifest".to_string(), &SchemaFieldType::Bool),]);
+const sre1_own_task_read_files_schema: HashMap<String, &SchemaFieldType::String> = HashMap::from([("read".to_string(), &SchemaFieldType::Bool),("manifest".to_string(), &SchemaFieldType::String), ("name".to_string(), &SchemaFieldType::String),]);
+const sre1_own_task_write_files_schema: HashMap<String, &SchemaFieldType::String> = HashMap::from([("manifest".to_string(), &SchemaFieldType::String),("name".to_string(), &SchemaFieldType::String),]);
+const sre1_own_task_commit_schema: HashMap<String, &SchemaFieldType::String> = HashMap::from([("commit".to_string(), &SchemaFieldType::Bool),]);
+
+const sre2_to_pr_schema: HashMap<String, &SchemaFieldType::String> = HashMap::from([("report".to_string(), &SchemaFieldType::String),]);
+const sre2_own_task_identfy_files_schema: HashMap<String, &SchemaFieldType::String> = HashMap::from([("nanifest".to_string(), &SchemaFieldType::Bool),]);
+const sre2_own_task_read_files_schema: HashMap<String, &SchemaFieldType::String> = HashMap::from([("read".to_string(), &SchemaFieldType::Bool),("manifest".to_string(), &SchemaFieldType::String), ("name".to_string(), &SchemaFieldType::String),]);
+const sre2_own_task_write_files_schema: HashMap<String, &SchemaFieldType::String> = HashMap::from([("manifest".to_string(), &SchemaFieldType::String),("name".to_string(), &SchemaFieldType::String),]);
+const sre2_own_task_commit_schema: HashMap<String, &SchemaFieldType::String> = HashMap::from([("commit".to_string(), &SchemaFieldType::Bool),]);
+
+
 // NEED TO CREATE EVERY SINGLE SCHEMAS BEFORE TESTING API CALL
-const all_schemas_structout_constant = create_schemas_engine(
-  human_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
-  main_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
-  pr_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
-  sre1_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
-  sre2_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>
-)?; // Result<StructOut> -> StructOut
+const all_schemas_structout_constant: agents::StructOut = match machine::create_schemas_engine(
+    human_schema,
+    main_to_sre_schema,
+    pr_to_sre_schema,
+    sre1_to_pr_schema,
+    sre2_to_pr_schema,
+  ) {
+	Ok(structout) => structout,
+	Err(e) => {},// here propage the error from the engine custom error 
+}; // Result<StructOut> -> StructOut
 // agent specific schema using agent role
-const request_analyzer_agent_schema = machine::get_specific_agent_schema_engine(
-  &all_schemas_structout_constant,
-  &AgentRole::RequestAnalyzer
-)?; // Result<Schema> -> Schema
+const request_analyzer_agent_schema: agents::Schema = match machine::get_specific_agent_schema_engine(
+    &all_schemas_structout_constant,
+    &AgentRole::RequestAnalyzer
+  ) {
+    Ok(schema) => schema,
+    Err(e) => {}, //here same we proagate the custom error engine	
+}; // Result<Schema> -> Schema
 
 
 // different `response_format`
 /// here we create the response format part of the api call payload sent. This result unwrapped returns a `HashMap<String, serde_json::Value>`
-const request_analyzer_response_format_part = machine::response_format_part_of_payload_engine(
-  response_format_name.to_string(),
-  param_strict,
-  request_analyzer_agent_schema.clone()
-)?;
+const request_analyzer_response_format_part: HashMap<String, serde_json::Value> = match machine::response_format_part_of_payload_engine(
+    response_format_name.to_string(),
+    param_strict,
+    request_analyzer_agent_schema.clone()
+  ) {
+    Ok(response_format_object) => response_format_object,
+    Err(e) => {}, // to be propagating error of engine  	
+};
 
 
 
@@ -55,16 +95,16 @@ pub fn read_file_tool(file_path: &str) -> String {
   file_content
 }
 
-const read_file_tool_description = r#"This tool reads files by providing the full content of the file to be analyzed
+const read_file_tool_description: &str = r#"This tool reads files by providing the full content of the file to be analyzed
 Arguments `file_path`: The path of where is the file located to be able to read its content
 Returns `String`: The content of the file."#;
 /* tools engine */
 /// to be repeated for same `agent_tools` to add some more
 /// this is the container and will be filled with our new tool
-let mut new_agent_tool = agents::Tools::new();
+static mut new_agent_tool: agents::Tools  = agents::Tools::new();
 /// we need to just create an `HashMap` of the `param_settings` `name/type/description`
 /// this is the example for just one parameter settings. the function `create_tool_engine` takes a list if more just create more `param_settings`
-let param_settings = HashMap::from(
+static param_settings: HashMap<String, String> = HashMap::from(
   [
     ("name".to_string(), "file_path".to_string()),
     ("type".to_string(), "string".to_string()),
@@ -78,14 +118,17 @@ let param_settings = HashMap::from(
 );
 /// after ca then create tools by adding to the same `new_agent_tool` with other tool function parameters
 /// this will create the initial tool and if the same is used add more tools to that `Tools.tools` `Vec<HashMap<String, serde_json::Value>>`
-const tools = machine::create_tool_engine(
-  new_agent_tool, // Tools
-  "read_file_tool",
-  true,
-  read_file_tool_description,
-  // here we put in a `&[HashMap<String, String>]` all different parameters of the function. so each has settings `name/type/description`
-  &param_settings // &[HashMap<String, String>],
-)?; // maybe need to have a result istead of retun type: Tools when unwrapped
+const tools: agents::Tools = match machine::create_tool_engine(
+    new_agent_tool, // Tools
+    "read_file_tool",
+    true,
+    read_file_tool_description,
+    // here we put in a `&[HashMap<String, String>]` all different parameters of the function. so each has settings `name/type/description`
+    &param_settings // &[HashMap<String, String>],
+  ) {
+    Ok(tool_object) => tool_object,
+    Err(e) => {}, // to be propagating error of engine   
+}; // maybe need to have a result istead of retun type: Tools when unwrapped
 
 
 
@@ -95,22 +138,39 @@ const tools = machine::create_tool_engine(
 
 // `human request agent`
 /// not returning result but `MessageSent` struct. save the agent specific prompts like that and use in agent creation by getting the specific prompt first
-let user_type, request_analyzer_content = machine::get_prompt_user_and_content_engine(&prompts::human_request_agent_prompt)?;
+const user_type_and_content: Tuple = match machine::get_prompt_user_and_content_engine(
+    &prompts::human_request_agent_prompt
+  ) {
+    Ok((type_user, content)) => (type_user, content),
+    Err(e) => {}, // to be propagating error of engine 	
+};
+const user_type: UserType = user_type_and_content.0;
+const request_analyzer_content: String = user_type_and_content.1;
+
 /// type `MessagesSent` that can be stored in `Agent.prompt` so that we can create prompts from that field`
-let request_analyzer_agent_prompt =  machine::machine_prompt(&user_type, &request_analyzer_content);
-const request_analyzer_agent = create_agent_engine(
-  // `AgentRole::RequestAnalyzer`
-  role: AgentRole::RequestAnalyzer,
-  message: &str,
-  // defined here by `request_analyzer_prompt` variable
-  prompt: &request_analyzer_agent_prompt,
-  // agent specific `Schema` created by defined here `request_analyzer_agent_schema` variable
-  struct_out: &request_analyzer_agent_schema,
-  // `Done` or  `Processing` or `Error` or `Idle` and will be `Idle` by defualt
-  task_state: TaskCompletion::Idle,
-  // ModelSettings created here will be selected here: `request_analyzer_model_settings`
-  llm_settings: &request_analyzer_model_settings,
-)?;
+const request_analyzer_agent_prompt: agents::MessageSent =  match machine::machine_prompt(
+    &user_type,
+    &request_analyzer_content
+  ) {
+    Ok(prompt) => prompt,
+    Err(e) => {}, // to be propagating error of engine
+};
+const request_analyzer_agent: agents::Agent = match machine::create_agent_engine(
+    // `AgentRole::RequestAnalyzer`
+    AgentRole::RequestAnalyzer,
+    "",
+    // defined here by `request_analyzer_prompt` variable
+    &request_analyzer_agent_prompt,
+    // agent specific `Schema` created by defined here `request_analyzer_agent_schema` variable
+    &request_analyzer_agent_schema,
+    // `Done` or  `Processing` or `Error` or `Idle` and will be `Idle` by defualt
+    TaskCompletion::Idle,
+    // ModelSettings created here will be selected here: `request_analyzer_model_settings`
+    &request_analyzer_model_settings,
+  ) {
+    Ok(new_agent) => new_agent,
+    Err(e) => {}, // to be propagating error of engine   	
+};
 
 
 // `main_agent`

@@ -242,13 +242,13 @@ pub fn create_tool_engine(
     agent_tools: &mut Tools,
     fn_name: &str,
     param_strict: bool,
-    &fn_description: &str,
+    fn_description: &str,
     // here we put in a `&[HashMap<String, String>]` all different parameters of the function. so each has settings `name/type/description`
     param_settings: &[HashMap<String, String>],
   ) -> CreateToolEngineResult<Tools> {   
   /* Function creation */
   // create the function details and also provide the hashmap of name/type/decription 
-  let function_details = match FunctionDetails::new(
+  let function_details = FunctionDetails::new(
     fn_name,
     param_strict,
     fn_description,
@@ -256,13 +256,13 @@ pub fn create_tool_engine(
   )?;
   //get the function created
   // can use this as well (other implementation) let function = function details.create_function_with_parameters_object()?;
-  let function = create_function_part(&function_details)?; // unwrapping become `HashMap<String, serde_json::Value>` type
+  let function = Function::create_function_part(&function_details)?; // unwrapping become `HashMap<String, serde_json::Value>` type
 
   /* Tool creation */
   // return result Ok(()) or propagates the custom error
   agent_tools.add_function_tool(&[function])?;
   // which is of perfect type `Some(Vec<HashMap<String, serde_json::Value>>)`
-  Ok(agent_tools)
+  Ok(agent_tools.clone())
 }
 
 /* ** PROMPT GETTING ENGINE ** */
@@ -305,12 +305,12 @@ pub fn create_model_settings_engine(
   // other field are created with default directly inside fn implementation
   list_tools: &[HashMap<String, serde_json::Value>]
   ) -> CreateModelSettingsEngineResult<ModelSettings> {
-  let new_model_setting = ModelSettings::initialize_model_settings_with_tools(
-    model_name: &str,
-    model_max_completion: u64,
-    model_temperature: u64,
-    model_message: &[HashMap<String, String>],
-    list_tools: &[HashMap<String, serde_json::Value>]
+  let new_model_settings = ModelSettings::initialize_model_settings_with_tools(
+    model_name,
+    model_max_completion,
+    model_temperature,
+    model_message,
+    list_tools,
 
   );
   Ok(new_model_settings)

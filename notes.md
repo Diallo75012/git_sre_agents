@@ -2593,3 +2593,6 @@ Outputs:
 need to ytpe the `const`
 have to create the full StructOut with all schemas from the ones we have created so that this structout is full
 so we can then test the api call using what is in main.rs and fixing bugs
+
+const done for all variables in constants.rs and used mtach pattern and need to propagate each custom errors, that leg part is not done yet
+also we will need to instantiate all scenario const there or find a way to make the full schema structout more dynamic.. need to check all `impl`
