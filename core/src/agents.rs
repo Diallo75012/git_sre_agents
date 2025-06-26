@@ -6,6 +6,7 @@
 //! `derive` `Eq` for full total equality useful for `sets`, `maps`. also floats can't be totally equal like `f32` or other floats as flaoting numbers can differ a bit (not fully total precision)
 //! `derive` `PartialEq` for use of `==` and `!=` for those `struct` `field`
 //! `derive` `Default` to initialize `struct` with initial values so no need implementation of `.new()` for the `struct`
+use std::fmt;
 use serde::{Deserialize, Serialize};
 use serde_json::{Result, json};
 use std::collections::{
@@ -27,11 +28,11 @@ fn object() -> String {
   "object".to_string()
 }
 
-fn json_object() -> String {
+pub fn json_object() -> String {
   "json_object".to_string()
 }
 
-fn json_schema() -> String {
+pub fn json_schema() -> String {
   "json_schema".to_string()
 }
 
@@ -163,13 +164,13 @@ impl MessageHistory {
   }
 }
 
-#[derive(Deserialize, Debug, Clone, Default)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct ToolFunction {
   pub name: String,
   pub arguments: serde_json::Value, // or `HashMap<String, Value>
 }
 
-#[derive(Deserialize, Debug, Clone, Default)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct ToolCall {
   // response.choices[0].message.tool_calls[0].function
   pub function: ToolFunction,
@@ -177,26 +178,35 @@ pub struct ToolCall {
   pub id: String,
 }
 
-#[derive(Deserialize, Debug, Clone, Default)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct ResponseMessage {
   pub content: String,
   pub role: String,
   pub tool_calls: Vec<ToolCall>,
 }
 
-#[derive(Deserialize, Debug, Clone, Default)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct ResponseChoices {
   pub finish_reason: String,
   pub message: ResponseMessage,
 }
 
-/// here we will be `deserializing` the llm's response
-#[derive(Deserialize, Debug, Clone, Default)]
+/// here we will be `deserializing` the llm's response, but also serialize to save it (need then to add it to all nested other structs above)
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct LlmResponse {
   /// using `serde` to match the actual real name returned by the `cerebras` api
   pub choices: Vec<ResponseChoices>,
   /// **object** (`NEED`): string, defines the type of call `chat.completion` or ...
   pub object: String,
+}
+
+impl fmt::Display for LlmResponse {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match serde_json::to_string_pretty(self) {
+      Ok(json) => write!(f, "{json}"),
+      Err(_) => write!(f, "Failed to serialize LlmResponse"),
+    }
+  }
 }
 
 
@@ -717,7 +727,7 @@ impl Payload {
     model: &str,
     messages: &[HashMap<String, String>],
     tool_choice: Option<ChoiceTool>,
-    tools: Option<&Vec<HashMap<String, serde_json::Value>>>,
+    tools: Option<&[HashMap<String, serde_json::Value>]>,
     response_format: Option<&HashMap<String, serde_json::Value>>,
   ) -> PayloadResult<serde_json::Value> {
     // we start here with a normal `payload` basic one with text and will add some more fields if we got some tools or structured output.
@@ -968,7 +978,7 @@ impl Agent {
     role: agent_role.clone(),
     communication_message: agent_communication_message_to_others.clone(),
     // we store `role` and `content` and use implemented function to build the api call from the `Agent` container 
-    // using `MessagesSent::create_new_message_to_send()` 
+    // using `MessagesSent::create_new_message_struct_to_send()` 
     prompt: agent_prompt_from_file.clone(),
     structured_output: agent_strutured_output.clone(),
     task_state: agent_task_state.clone(),

@@ -73,6 +73,9 @@ pub enum AppError {
   /// Call Api Machine error
   #[error("Call API Machine Error: {0}")]
   CallApiMachine(String),
+  /// Prompt Machine error
+  #[error("Prompt Machine Error: {0}")]
+  PromptMachine(String),
 
   /* engine errors  */
   /// api call loop function error
@@ -87,6 +90,9 @@ pub enum AppError {
   /// Prompt Creation error and also getting prompt template and making the actual api sent prompt error  
   #[error("Prompt Engine Error: {0}")]
   PromptEngine(String),
+  /// tuple `(TypeUser Content)` creation from prompt template error 
+  #[error("Get Prompt User/Content Engine Error: {0}")]
+  GetPromptUserContentEngine(String),
   /// Schema Creation error
   #[error("Schema Creation Engine Error: {0}")]
   SchemaEngine(String),
@@ -96,6 +102,9 @@ pub enum AppError {
   /// Create Tool Creation error
   #[error("Create Tool Creation Engine Error: {0}")]
   CreateToolEngine(String),
+  /// Execute Tool Creation error
+  #[error("Excecute Tool Creation Engine Error: {0}")]
+  ExecuteToolEngine(String),
   /// Messages Formatting  error
   #[error("Messages Formatting Engine Error: {0}")]
   MessagesFormatEngine(String),

@@ -1962,8 +1962,29 @@ user_type: User
 name: "Sangoku"
 ```
 
-
-
+- implementation of `Display` **beware**
+Beware to not create a `stackoverflow` due to recursive call when badly implementing `Display`
+if returning `self` it will not work and create major issues.
+```rust
+// bad example
+impl fmt::Display for LlmResponse {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+      write!(f, "{}", self) // `self` creates a recursion `fmt` is called and then `self` and then `self` call again `fmt` and so on...
+  }
+}
+```
+better `serialize` to a good `json` and use lifetime `<'_>`: here shorthand for `fn fmt<'a>(&'a self, f: &mut fmt::Formatter<'a>)`
+```rust
+// good example
+impl fmt::Display for LlmResponse {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+      match serde_json::to_string_pretty(self) {
+          Ok(json) => write!(f, "{json}"),
+          Err(_) => write!(f, "Failed to serialize LlmResponse"),
+      }
+  }
+}
+```
 
 
 

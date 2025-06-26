@@ -7,6 +7,7 @@ use crate::{
   errors::AppError,
   headers::get_auth_headers,
 };
+use crate::constants;
 use reqwest::{
   Client,
   header::{
@@ -15,7 +16,6 @@ use reqwest::{
     AUTHORIZATION,
   },
 };
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 
@@ -24,28 +24,28 @@ use std::collections::HashMap;
 
 /// this will make prompts {role:...., content:....}
 pub fn machine_prompt(role: &UserType, content: &str) -> MessagesSent { // done!
-  MessagesSent::create_new_message_to_send(role, content)
+  MessagesSent::create_new_message_struct_to_send(role, content)
 }
 
 /// we will here create the agent machine
 type AgentMachineResult<T> = std::result::Result<T, AppError>;
 pub fn machine_agent( // done!
   role: AgentRole,
-  message: &str,
+  message: &serde_json::Value,
   prompt: &MessagesSent,
-  struct_out: &StructOut,
+  struct_out: &Schema,
   task_state: TaskCompletion,
   llm_settings: &ModelSettings,
 ) -> AgentMachineResult<Agent> {
-  Ok(Agent::new(
+   let agent =  Agent::new(
       &role,
       message,
       prompt,
       struct_out,
       &task_state,
       llm_settings,
-    )
-  )
+   )?;
+  Ok(agent)
 }
 
 /// Construct a payload that includes tools and/or response_format schema optionally
@@ -130,7 +130,7 @@ pub fn machine_history_update( // done!
     .append_message_to_history(new_message)
     // using here `map_err(||...)?;` way and it is very handy
     // so we can propagate the error to the machine if any, else we just keep going... fine
-    .map_err(|e| AppError::History(format!("Error updating history: {}", e)))?;
+    .map_err(|e| AppError::HistoryUpdate(format!("Error updating history: {}", e)))?;
 
   Ok(json!(message))
 }
@@ -152,16 +152,16 @@ pub fn execute_tools_machine(tool_name: &str, arguments: &Value) -> Result<Value
       let file_path = arguments
         .get("file_path")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| AppError::Tool("Missing `file_path` argument for `read_file_tool`".into()))?;
+        .ok_or_else(|| AppError::ExecuteToolEngine("Missing `file_path` argument for `read_file_tool`".into()))?;
 
-      let file_content = read_file_tool(file_path)
-        .map_err(|e| AppError::Tool(format!("Error executing `read_file_tool`: {}", e)))?;
+      let file_content = constants::read_file_tool(file_path)
+        .map_err(|e| AppError::ExecuteToolEngine(format!("Error executing `read_file_tool`: {}", e)))?;
 
       Ok(json!({ "output": file_content }))
     }
     /* add other tools here to be detected as we create tool so that this function machine will be able to execute any of our tools */
 
-    _ => Err(AppError::Tool(format!("Unknown tool name: {}", tool_name))),
+    _ => Err(AppError::ExecuteToolEngine(format!("Unknown tool name: {}", tool_name))),
   }
 }
 
@@ -188,24 +188,24 @@ pub fn engine_prompt(role: &UserType, content: &str) -> PromptEngineResult<HashM
 /// And then, we need to build one unique structured output `struct` that will store those schemas using: `StructuredOutput::build_schema()`
 type CreateSchemaEngineResult<T> = std::result::Result<T, AppError>;
 pub fn create_schemas_engine(
-    human_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
-    main_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
-    pr_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
-    sre1_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>,
-    sre2_schema_initial_hasmap: HashMap<String, &SchemaFieldType::String>
+    human_schema_initial_hasmap: HashMap<String, &SchemaFieldType>,
+    main_schema_initial_hasmap: HashMap<String, &SchemaFieldType>,
+    pr_schema_initial_hasmap: HashMap<String, &SchemaFieldType>,
+    sre1_schema_initial_hasmap: HashMap<String, &SchemaFieldType>,
+    sre2_schema_initial_hasmap: HashMap<String, &SchemaFieldType>
   ) -> CreateSchemaEngineResult<StructOut> {
   // we initialize the different schemas
-  human_schema = StructOut::build_schema(&human_schema_initial_hasmap);
-  main_schema = StructOut::build_schema(&main_schema_initial_hasmap);
-  pr_schema = StructOut::build_schema(&pr_schema_initial_hasmap);
-  sre1_schema = StructOut::build_schema(&sre1_schema_initial_hasmap);
-  sre2_schema = StructOut::build_schema(&sre2_schema_initial_hasmap);
+  let human_schema = StructOut::build_schema(&human_schema_initial_hasmap);
+  let main_schema = StructOut::build_schema(&main_schema_initial_hasmap);
+  let pr_schema = StructOut::build_schema(&pr_schema_initial_hasmap);
+  let sre1_schema = StructOut::build_schema(&sre1_schema_initial_hasmap);
+  let sre2_schema = StructOut::build_schema(&sre2_schema_initial_hasmap);
 
   // we create our structout holding all the different schemas
   let all_agents_sturctured_output_storage = StructOut::new(
     &human_schema,
-    &main_agent_schema,
-    &pr_agent_schema,
+    &main_schema,
+    &pr_schema,
     &sre1_schema,
     &sre2_schema,
   );
@@ -215,9 +215,10 @@ pub fn create_schemas_engine(
 /// we can consider it to be a constant and just get from it struct we need when calling `Cerebras`
 type GetSchemaEngineResult<T> = std::result::Result<T, AppError>;
 pub fn get_specific_agent_schema_engine(full_struct_out: &StructOut, agent_role: &AgentRole) -> GetSchemaEngineResult<Schema> {
-  let all_agents_sturctured_output_storage_json_map = StructOut::struct_out_to_json_map(full_struct_out);
-  if let Some(schema) = all_agents_sturctured_output_storage.get_by_role(agent_role) {
-    Ok(schema)
+  if let Some(target_schema) = full_struct_out.get_by_role(agent_role) {
+    Ok(target_schema.clone())
+  } else {
+  	Err(AppError::GetSchemaEngine("get specific agent schema error".to_string()))
   }
 }
 
@@ -334,9 +335,9 @@ pub fn create_model_settings_engine(
 type CreateAgentEngineResult<T> = std::result::Result<T, AppError>;
 pub fn create_agent_engine(
   role: AgentRole,
-  message: &str,
+  message: &serde_json::Value,
   prompt: &MessagesSent,
-  struct_out: &StructOut,
+  struct_out: &Schema,
   task_state: TaskCompletion,
   llm_settings: &ModelSettings,
 ) -> CreateAgentEngineResult<Agent> {
@@ -402,16 +403,16 @@ fn create_payload_engine(
 
 
 /* ** RESPONSE ENGINE  ** */
-/// here we will parse the response.
-/// we will need the `payload machine`, `api keys` from a `.env` file and the endpoint where we send it to.
-/// so here we calling and getting a result response, in next machines we will need to analyze this response to know if we call any tool or not,
-/// or if we need to call again if there are many tools, the agent would loop and decide when it is done and we would store the history of messages.
-/// the `headers::get_auth_headers()` will be called inside this function to get an encapsulation and not get secret leaked, it will be built at
-/// runtime and just to call the api
-pub fn response_engine() -> Value {
+// here we will parse the response.
+// we will need the `payload machine`, `api keys` from a `.env` file and the endpoint where we send it to.
+// so here we calling and getting a result response, in next machines we will need to analyze this response to know if we call any tool or not,
+// or if we need to call again if there are many tools, the agent would loop and decide when it is done and we would store the history of messages.
+// the `headers::get_auth_headers()` will be called inside this function to get an encapsulation and not get secret leaked, it will be built at
+// runtime and just to call the api
+// pub fn response_engine() -> Value {
   // we do not implement nothing here as we will be just using the big loop funciton call for all our api calls
   // tools or not. schema or not, this RESPONSE ENGINE is already there in the form of RESPONSE MACHINE
-}
+// }
 
 /* ** API CALL ENGINE  ** */
 /// - this machine is special as it will use the `response machine` and then will have a logic flow to determine:
@@ -432,9 +433,8 @@ pub fn response_engine() -> Value {
 /// )
 /// ```
 /// so this function is for the api call in a loop way with or without tools 
-todo!(); // need to see what to update in agent
 type ToolOrNotLoopApiCallEngineResult<T> = std::result::Result<T, AppError>;
-pub async fn tool_or_not_loop_api_call_engine(
+pub async fn tool_or_not_loop_api_call_engine( // done!
     endpoint: &str,
     history: &mut MessageHistory,
     // this has to be instantiated using `MessagesToAppend::new(...)` or use `Agent.prompt` which is of type MessagesToAppend
@@ -449,7 +449,7 @@ pub async fn tool_or_not_loop_api_call_engine(
   ) -> ToolOrNotLoopApiCallEngineResult<String> {
 
   history.append_message_to_history(new_message)?;
-  let mut loop_counter = 0;
+  let loop_counter = 0;
 
   // Hold the final response without re-calling the API again after loop
   let mut final_response: Option<LlmResponse> = None;
@@ -480,29 +480,17 @@ pub async fn tool_or_not_loop_api_call_engine(
       println!("Tool Name: {}", json!(tool_name));      
       let arguments = &tool_call.function.arguments;
       println!("Tool Arguments: {}", json!(arguments));
-      /// we will then pass the tool name and arguments to our machine that execute tools
-      println!("final_response: {}", final_response);
+      // we will then pass the tool name and arguments to our machine that execute tools
+      println!("final_response: {:?}", final_response);
       let tool_output = execute_tools_machine(&tool_name, arguments)?;
+
+      // we create a new `MessageToAppend` instance and add it to the history
       let tool_response = MessageToAppend::new(
         "tool",
         &tool_output.to_string(),  // safely stringified JSON
         &tool_call.id,
       );
-
-      // maybe not needed to add tool call in object in agent.communication_message
-      // and only at the end of this function update it with the final answer
-      // if let Some(agent_ref) = agent {
-      //   // agent_ref.communication_message.insert(
-      //   //   "last_tool".to_string(),
-      //   //   tool_calls[0].function.clone(),
-      //   // );
-      //   agent_ref.as_object_mut(|obj|
-      //     obj.communication_message.insert(
-      //       "last_tool".to_string(),
-      //       tool_calls[0].function.clone(),
-      //     );
-      //   );
-      // }
+      history.append_message_to_history(&tool_response)?;
 
       let new_messages: Vec<HashMap<String, String>> = history
         .messages
@@ -542,27 +530,21 @@ pub async fn tool_or_not_loop_api_call_engine(
     match format_final_response {
       Some(answers) => {
       	// we update by the agent `communication_message` field by adding the response
-      	if let Some(agent_ref) = agent {
-      	  agent_ref.as_object_mut(|obj|
-      	    obj.communication_message.insert(
-      	      "communicate".to_string(),
-      	      answers.clone(),
-      	    );
-      	  );
-      	}
+        if let Some(agent_ref) = agent {
+          if let Some(obj) = agent_ref.communication_message.as_object_mut() {
+            obj.insert(
+             "communicate".to_string(),
+             json!(answers.clone()),
+            );
+          // printing to check if message has been properly updated in place or not..
+          println!("After: {}", agent_ref.communication_message);
+          }
+        }
       	Ok(answers)
       },
       None => Err(AppError::Agent("No final answer found in response".into())),
     }
     // we update the field for agent communication with final answer
-    agent_ref.update_agent(
-      agent_role: None,
-      agent_communication_message_to_others: Option<&serde_json::Value>,   
-      agent_prompt_from_file: None,
-      agent_structured_output: None,
-      agent_task_state: None,
-      agent_llm: None,
-    )?;
   } else {
     Err(AppError::Agent("Unexpected: final response not set".into()))
   }
@@ -589,16 +571,21 @@ pub async fn tool_or_not_loop_api_call_engine(
 // need to do the response format engine
 type ResponseFormatPartOfPayloadResult<T> = std::result::Result<T, AppError>;
 pub async fn response_format_part_of_payload_engine(
-    new_name: String,
+    new_name: String, // use `Schema` name
     new_strict: bool,
-    new_schema: Schema
-  ) -> ResponseFormatPartOfPayload<HashMap<String, serde_json::Value>> {
+    new_schema: Schema,
+    new_type: String, // `agents::json_schema()` or `agents::json_object()`
+  ) -> ResponseFormatPartOfPayloadResult<HashMap<String, serde_json::Value>> {
   // instantiate a new `ResponseFormat`
   let mut response_format_new = ResponseFormat::new();
-  // we update the fields with new value
-  response_format_new.name = new_name;
-  response_format_new.strict = new_strict;
-  response_format_new.schema = new_schema;
+  // we create a new apicallresponseformat
+  let api_call_response_format = CallApiResponseFormat {
+    name: new_name,
+    strict: new_strict,
+    schema: new_schema,  	
+  };
+  response_format_new.r#type = new_type;
+  response_format_new.schema = Some(api_call_response_format);
   // we return the hashmap result or propagate the error
   let api_comsummable_response_format = response_format_new.response_format_desired_as_map()?;
   Ok(api_comsummable_response_format)
