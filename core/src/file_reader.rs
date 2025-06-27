@@ -9,7 +9,7 @@ pub fn read_file(file_path: &str) -> Result::<String, AppError> {
   /// returning a `std::io::Result<String>` that we are going to match on
   let content = fs::read_to_string(file_path);
   match content {
-  	Ok(text) => Ok(text),
-  	Err(e) => Err(AppError::FileRead(e.to_string())), 
+    Ok(text) => Ok(text),
+    Err(e) => Err(AppError::FileRead(e.to_string())), 
   }
 }

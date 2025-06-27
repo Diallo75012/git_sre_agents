@@ -418,8 +418,8 @@ impl Tools {
 /********** NEED TO ADD A STRUCT FOR MESSAGES SENT TO API FORMATTED SO AN IMPL WITH IT *************/
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct MessagesSent {
-  user_type: String,
-  content: String,
+  pub user_type: String,
+  pub content: String,
 }
 
 // [{"content": "Hello!", "role": "user"}]
@@ -631,8 +631,8 @@ pub struct Schema {
   /// type is always to be set to 'object'
   #[serde(default = "object")]
   #[serde(rename = "type")]
-  r#type: String,
-  properties: HashMap<String, HashMap<String, String>>,
+  pub r#type: String,
+  pub properties: HashMap<String, HashMap<String, String>>,
   #[serde(skip_serializing_if = "Vec::is_empty")]
   pub required: Vec<String>,
   // this one will remain `False` as we have decided to not use this field in this project
@@ -757,11 +757,11 @@ impl Payload {
 
 #[derive(Serialize, Debug, Clone)]
 pub struct CallApiResponseFormat {
-  name: String,
+  pub name: String,
   // True/False to enforce or not the schema
-  strict: bool,
+  pub strict: bool,
   // this is where we put the schema sent to the API
-  schema: Schema,
+  pub schema: Schema,
 }
 #[derive(Serialize, Debug, Clone)]
 pub struct ResponseFormat {
@@ -1075,8 +1075,8 @@ impl Agent {
 #[allow(non_snake_case)]
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct TasksIdentified {
-  sre1: String,
-  sre2: String,
+  pub sre1: String,
+  pub sre2: String,
 }
 
 /// we will enter tasks for agents and this state create will leave as long as agent are working

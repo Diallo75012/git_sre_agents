@@ -1986,7 +1986,12 @@ impl fmt::Display for LlmResponse {
 }
 ```
 
-
+- `async` functions
+got to learn that wehn i saw that one of my formatter function was using `async` and realize that it doesn't need to be using `async`
+I did a logic in which mmy functions are returning `results` and with `async` it returns a `Future<Result..>` so needs an `await` on
+whatever is calling that `async` function to get the nested `result`.
+use `async` only if the function is calling another `http/https` stuff like a `api endpoint` or `waiting a service response` or a `database`
+**otherwise** just keep it `normal function`.
 
 
 

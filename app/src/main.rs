@@ -24,6 +24,12 @@ use core::{
 };
 
 
+use core::constants::*; // your pub fn schema functions are here
+use core::machine::*;
+use core::agents::*;
+use core::utils::env::load_env;
+use serde_json::{json, Value};
+
 /// function wrapper of the `Engine`
 async fn run() {
   // trying getting existing env vars
@@ -112,6 +118,7 @@ async fn run() {
 //   	}
 //   }
 
+  /*
     let a = SchemaFieldDetails::create_schema_field_type_as_map(&SchemaFieldType::String);
     println!("a: {:#?}", a);
     let b = HashMap::from(
@@ -188,6 +195,80 @@ async fn run() {
   )?:
 
  println("Api Call: {}", api_call);
+ */
+
+  // 1. Load env variables like API keys and endpoints
+  load_env().expect("Failed to load .env file");
+
+  // 2. Prepare model and endpoint settings
+  let endpoint = std::env::var("LLM_API_URL").expect("Missing LLM_API_URL");
+  let model = std::env::var("LLM_MODEL_NAME").unwrap_or("cerebras/mixtral-8x7b".to_string());
+
+  // 3. Prepare agent
+  let mut agent = Agent::new(AgentRole::RequestAnalyzer);
+
+  // 4. Set the structured output (schema) for the agent
+  let schema = request_analyzer_agent_schema();
+  agent.schema = Some(schema);
+
+  // 5. Set tools (only your read_file_tool for now)
+  let tools = Some(vec![
+    json!({
+      "type": "function",
+      "function": {
+        "name": "read_file_tool",
+        "description": "Reads a file at the given file path and returns content.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "file_path": { "type": "string", "description": "Path of the file to read" }
+          },
+          "required": ["file_path"]
+        }
+      }
+    })
+  ]);
+
+  // 6. Prepare initial user message (request to analyze a specific file)
+  let new_message = MessageToAppend::new(
+    "user",
+    "Please analyze the Kubernetes manifest at /project_git_repos/agents_side/creditizens_sre1_repo/prometheus_deployment.yaml",
+    ""
+  );
+
+  // 7. Prepare payload using helper
+  let mut history = core::messages::MessageHistory::default();
+  let tool_choice = Some(ChoiceTool::Auto);
+  let response_format = None;
+
+  // Prepare first payload
+  let mut payload = core::machine::machine_create_payload_with_or_without_tools_structout(
+    &model,
+    &[],
+    tool_choice.clone(),
+    tools.as_ref().map(|v| v.as_slice()),
+    response_format.as_ref(),
+  )?;
+
+  // 8. Call the loop function engine
+  let final_answer = tool_or_not_loop_api_call_engine(
+    &endpoint,
+    &mut history,
+    &new_message,
+    &mut payload,
+    &model,
+    tool_choice,
+    tools.as_ref().map(|v| v.as_slice()),
+    response_format.as_ref(),
+    Some(&mut agent),
+    3 // max loop
+  ).await?;
+
+  // 9. Display final output
+  println!("Final Answer from Request Analyzer Agent: {}", final_answer);
+
+  Ok(())
+
 }
 
 

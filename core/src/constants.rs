@@ -7,8 +7,10 @@
 use crate::agents;
 use crate::agents::SchemaFieldType;
 use crate::machine;
+use crate::file_reader;
+use crate::prompts;
 use crate::errors::AppError;
-use serde_json::Value;
+use serde_json::{Result, Value};
 use std::collections::HashMap;
 
 
@@ -83,7 +85,8 @@ pub fn sre2_own_task_commit_schema() -> HashMap<String, &'static SchemaFieldType
 
 /// this static full structout will be updated in the right `agent nodes` with the agent right schema
 /// as some agent can have from 1 to 5 different schemas for different jobs
-pub fn all_schemas_structout_constant() -> Result<agents::StructOut, AppError> {
+type CreateSchemaEngineResult<T> = std::result::Result<T, AppError>;
+pub fn all_schemas_structout_constant() -> CreateSchemaEngineResult<agents::StructOut> {
   match machine::create_schemas_engine(
     human_schema(),
     main_to_sre_schema(),
@@ -97,30 +100,33 @@ pub fn all_schemas_structout_constant() -> Result<agents::StructOut, AppError> {
 }
 
 // agent specific schema using agent role
-pub fn request_analyzer_agent_schema() -> Result<agents::Schema, AppError> {
-  let full_schema = all_schemas_structout_constant()?;
+type GetSchemaEngineResult<T> = std::result::Result<T, AppError>;
+pub fn request_analyzer_agent_schema() -> GetSchemaEngineResult<agents::Schema> {
+  let unwrapped_all_schemas_structout_constant = all_schemas_structout_constant()?;
   match machine::get_specific_agent_schema_engine(
-    &full_schema,
-    &AgentRole::RequestAnalyzer
+    &unwrapped_all_schemas_structout_constant,
+    &agents::AgentRole::RequestAnalyzer
   ) {
-    Ok(schema) => schema,
+    Ok(schema) => Ok(schema),
     Err(e) => Err(AppError::GetSchemaEngine(format!("Constant get specific schema error: {}", e))), //here same we proagate the custom error engine	
-  }; // Result<Schema> -> Schema
+  } // Result<Schema> -> Schema
 }
 
 // different `response_format`
-/// use `Schema` name
-const response_format_name: &str = "human_request_analyzer_schema";
 // here we create the response format part of the api call payload sent. This result unwrapped returns a `HashMap<String, serde_json::Value>`
-const request_analyzer_response_format_part: HashMap<String, serde_json::Value> = match machine::response_format_part_of_payload_engine(
-    response_format_name.to_string(),
-    param_strict,
-    request_analyzer_agent_schema.clone(),
+type ResponseFormatPartOfPayloadResult<T> = std::result::Result<T, AppError>;
+pub fn request_analyzer_response_format_part() -> ResponseFormatPartOfPayloadResult<HashMap<String, serde_json::Value>> {
+  let unwrapped_request_analyzer_agent_schema = request_analyzer_agent_schema()?;
+  match machine::response_format_part_of_payload_engine(
+    "human_request_analyzer_schema".to_string(),
+    true, // param_strict
+    unwrapped_request_analyzer_agent_schema,
     agents::json_schema(), // or json_object()
   ) {
-    Ok(response_format_object) => response_format_object,
+    Ok(payload_response_format_part) => Ok(payload_response_format_part),
     Err(e) => Err(AppError::ResponseFormatPart(format!("Constant response format built error: {}", e))), // to be propagating error of engine  	
-};
+  } // Result<HashMap<String, serde_json::Value>> -> HashMap<String, serde_json::Value>
+}
 
 
 
@@ -141,45 +147,49 @@ const request_analyzer_response_format_part: HashMap<String, serde_json::Value> 
 /// let read_infrastructure_yaml_file = read_file_tool("/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_deployment.yaml");
 /// ```
 pub fn read_file_tool(file_path: &str) -> String {
-  let file_content = file_reader::read_file(file_path)?;
+  let file_content = match file_reader::read_file(file_path) {
+  	Ok(text) => text,
+  	Err(e) => format!("An error Occured while trying to read file located at path {}: {}", file_path, e),
+  };
   file_content
 }
 
-const read_file_tool_description: &str = r#"This tool reads files by providing the full content of the file to be analyzed
-Arguments `file_path`: The path of where is the file located to be able to read its content
-Returns `String`: The content of the file."#;
 /* tools engine */
-/// to be repeated for same `agent_tools` to add some more
-/// this is the container and will be filled with our new tool
-static mut new_agent_tool: agents::Tools  = agents::Tools::new();
-/// we need to just create an `HashMap` of the `param_settings` `name/type/description`
-/// this is the example for just one parameter settings. the function `create_tool_engine` takes a list if more just create more `param_settings`
-static param_settings: HashMap<String, String> = HashMap::from(
-  [
-    ("name".to_string(), "file_path".to_string()),
-    ("type".to_string(), "string".to_string()),
-    (
-      "description".to_string(),
-      r#"This tool reads files by providing the full content of the file to be analyzed
-      Arguments `file_path`: The path of where is the file located to be able to read its content
-      Returns `String`: The content of the file."#.to_string()
-    ),
-  ]
-);
 /// after ca then create tools by adding to the same `new_agent_tool` with other tool function parameters
 /// this will create the initial tool and if the same is used add more tools to that `Tools.tools` `Vec<HashMap<String, serde_json::Value>>`
-const tools: agents::Tools = match machine::create_tool_engine(
-    new_agent_tool, // Tools
+type CreateToolEngineResult<T> = std::result::Result<T, AppError>;
+pub fn tools() -> CreateToolEngineResult<agents::Tools> {
+  let tool_description = r#"
+    This tool reads files by providing the full content of the file to be analyzed
+    Arguments `file_path`: The path of where is the file located to be able to read its content
+    Returns `String`: The content of the file.
+  "#;
+  let mut new_agent_tool = agents::Tools::new();
+  match machine::create_tool_engine(
+    &mut new_agent_tool, // Tools
     "read_file_tool",
     true,
-    read_file_tool_description,
+    tool_description,
     // here we put in a `&[HashMap<String, String>]` all different parameters of the function. so each has settings `name/type/description`
-    &param_settings // &[HashMap<String, String>],
+    &[
+      HashMap::from(
+        [
+          ("name".to_string(), "file_path".to_string()),
+          ("type".to_string(), "string".to_string()),
+          (
+            "description".to_string(),
+            r#"This tool reads files by providing the full content of the file to be analyzed
+            Arguments `file_path`: The path of where is the file located to be able to read its content
+            Returns `String`: The content of the file."#.to_string()
+          ),
+        ]
+      )
+    ], // &[HashMap<String, String>],
   ) {
-    Ok(tool_object) => tool_object,
+    Ok(tool_object) => Ok(tool_object),
     Err(e) => Err(AppError::CreateToolEngine(format!("Constant create tool error: {}", e))), // to be propagating error of engine   
-}; // maybe need to have a result istead of retun type: Tools when unwrapped
-
+  } // Result<Tools> -> tools (but just one tool here)
+}
 
 
 
@@ -188,39 +198,52 @@ const tools: agents::Tools = match machine::create_tool_engine(
 
 // `human request agent`
 /// not returning result but `MessageSent` struct. save the agent specific prompts like that and use in agent creation by getting the specific prompt first
-const user_type_and_content: Tuple = match machine::get_prompt_user_and_content_engine(
+type GetPromptUserAndContentEngineResult<T> = std::result::Result<T, AppError>;
+fn user_type_and_content() -> GetPromptUserAndContentEngineResult<(agents::UserType, String)> {
+  match machine::get_prompt_user_and_content_engine(
     &prompts::human_request_agent_prompt
   ) {
-    Ok((type_user, content)) => (type_user, content),
+    Ok((type_user, content)) => Ok((type_user, content)),
     Err(e) => Err(AppError::GetPromptUserContentEngine(format!("Constant get user type and prompt fetching error: {}", e))), // to be propagating error of engine 	
-};
-const user_type: UserType = user_type_and_content.0;
-const request_analyzer_content: String = user_type_and_content.1;
+  }
+}
 
 /// type `MessagesSent` that can be stored in `Agent.prompt` so that we can create prompts from that field`
-const request_analyzer_agent_prompt: agents::MessageSent =  match machine::machine_prompt(
+type PromptMachineResult<T> = std::result::Result<T, AppError>;
+pub fn request_analyzer_agent_prompt() -> PromptMachineResult<agents::MessagesSent> {
+  let user_type_and_content = user_type_and_content()?;
+  let user_type = user_type_and_content.0;
+  let request_analyzer_content = user_type_and_content.1;
+  match machine::machine_prompt(
     &user_type,
     &request_analyzer_content
   ) {
-    Ok(prompt) => prompt,
+    Ok(prompt) => Ok(prompt),
     Err(e) => Err(AppError::PromptMachine(format!("Constant agent prompt creation error: {}", e))), // to be propagating error of engine
-};
-const request_analyzer_agent: agents::Agent = match machine::create_agent_engine(
+  }
+}
+type CreateAgentEngineResult<T> = std::result::Result<T, AppError>;
+pub fn request_analyzer_agent() -> CreateAgentEngineResult<agents::Agent> {
+    let request_analyzer_agent_prompt = request_analyzer_agent_prompt()?;
+    let request_analyzer_agent_schema = request_analyzer_agent_schema()?;
+    let request_analyzer_model_settings = request_analyzer_agent_schema()?;
+  match machine::create_agent_engine(
     // `AgentRole::RequestAnalyzer`
-    AgentRole::RequestAnalyzer,
+    agents::AgentRole::RequestAnalyzer,
     "",
     // defined here by `request_analyzer_prompt` variable
     &request_analyzer_agent_prompt,
     // agent specific `Schema` created by defined here `request_analyzer_agent_schema` variable
     &request_analyzer_agent_schema,
     // `Done` or  `Processing` or `Error` or `Idle` and will be `Idle` by defualt
-    TaskCompletion::Idle,
+    agents::TaskCompletion::Idle,
     // ModelSettings created here will be selected here: `request_analyzer_model_settings`
     &request_analyzer_model_settings,
   ) {
-    Ok(new_agent) => new_agent,
+    Ok(new_agent) => Ok(new_agent),
     Err(e) => Err(AppError::AgentEngine(format!("Constant agent creation error: {}", e))), // to be propagating error of engine   	
-};
+  }
+}
 
 
 // `main_agent`
@@ -243,16 +266,23 @@ const request_analyzer_agent: agents::Agent = match machine::create_agent_engine
 
 // different `modelsettings` (special this project all are Cerebras Only)
 /// create several `model_messages` and put in the list that will be used by `ModelSettings` field `model_message`
-const model_message_formatted_hashmap_prompt: HashMap<String, String> = match machine::messages_format_engine(
+type MessagesFormatEngineResult<T> = std::result::Result<T, AppError>;
+pub fn model_message_formatted_hashmap_prompt() -> MessagesFormatEngineResult<HashMap<String, String>> {
+  let request_analyzer_agent = request_analyzer_agent()?;
+  match machine::messages_format_engine(
     // `user_type` and `content` are field from the struct `MessagesSent` of `request_analyzer_agent.prompt`
     &request_analyzer_agent.prompt.user_type,
     &request_analyzer_agent.prompt.content,
   ) {
-    Ok(prompt) => prompt,
+    Ok(prompt) => Ok(prompt),
     Err(e) => Err(AppError::MessagesFormatEngine(format!("Constant message formatted prompt to hashmap error: {}", e))), // to be propagating error of engine    
-}; // can create more of those.
-
-const request_analyzer_model_settings: agents::ModelSettings = match machine::create_model_settings_engine(
+  } // can create more of those.
+}
+type CreateModelSettingsEngineResult<T> = std::result::Result<T, AppError>;
+pub fn request_analyzer_model_settings() -> CreateModelSettingsEngineResult<agents::ModelSettings>  {
+  let model_message_formatted_hashmap_prompt = model_message_formatted_hashmap_prompt()?;
+  let tools = tools()?;
+  match machine::create_model_settings_engine(
     "", // to be defines (need tocheck cerebras llama4 17b or llama 70b)
     8196,
     0,
@@ -261,20 +291,27 @@ const request_analyzer_model_settings: agents::ModelSettings = match machine::cr
     // other field are created with default directly inside fn implementation
     &tools.tools, // &[HashMap<String, serde_json::Value>]
   ) {
-    Ok(prompt) => prompt,
+    Ok(prompt) => Ok(prompt),
     Err(e) => Err(AppError::CreateModelSettingsEngine(format!("Constant modelsettings creation error: {}", e))), // to be propagating error of engine 
-};
+  }
+}
 
 
 // different paylaods
 // request_analyzer paylaod
-const request_analyzer_payload: Value = match machine::create_payload_engine(
+type CreatePayloadEngineResult<T> = std::result::Result<T, AppError>;
+pub fn request_analyzer_payload() -> CreatePayloadEngineResult<Value> {
+  let model_message_formatted_hashmap_prompt = model_message_formatted_hashmap_prompt()?;
+  let tools = tools()?;
+  let request_analyzer_response_format_part = request_analyzer_response_format_part()?;
+  match machine::create_payload_engine(
     "", // // to be defines (need tocheck cerebras llama4 17b or llama 70b). probably `env vars`
-    &model_message_formatted_hashmap_prompt, // &[HashMap<String, String>],
-    Some(ChoiceTool::Required), // ChoiceTool::Required as we want to make sure it read the files using the tool
+    &[model_message_formatted_hashmap_prompt], // &[HashMap<String, String>],
+    Some(agents::ChoiceTool::Required), // ChoiceTool::Required as we want to make sure it read the files using the tool
     Some(&tools.tools), // Option<&[HashMap<String, Value>]>,
     Some(&request_analyzer_response_format_part),
   ) {
-    Ok(prompt) => prompt,
+    Ok(prompt) => Ok(prompt),
     Err(e) => Err(AppError::PayloadEngine(format!("Constant payload creation error: {}", e))), // to be propagating error of engine 
-};
+  }
+}

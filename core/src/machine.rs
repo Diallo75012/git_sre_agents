@@ -23,8 +23,9 @@ use std::collections::HashMap;
 // -------------------- MACHINE CONSTRUCTORS --------------------
 
 /// this will make prompts {role:...., content:....}
-pub fn machine_prompt(role: &UserType, content: &str) -> MessagesSent { // done!
-  MessagesSent::create_new_message_struct_to_send(role, content)
+type PromptMachineResult<T> = std::result::Result<T, AppError>;
+pub fn machine_prompt(role: &UserType, content: &str) -> PromptMachineResult<MessagesSent> { // done!
+  Ok(MessagesSent::create_new_message_struct_to_send(role, content))
 }
 
 /// we will here create the agent machine
@@ -174,7 +175,7 @@ pub fn execute_tools_machine(tool_name: &str, arguments: &Value) -> Result<Value
 type PromptEngineResult<T> = std::result::Result<T, AppError>;
 pub fn engine_prompt(role: &UserType, content: &str) -> PromptEngineResult<HashMap<String, String>> {
   // which create the struct
-  let agent_struct_prompt = machine_prompt(role, content);
+  let agent_struct_prompt = machine_prompt(role, content)?;
   // which return as `[{"role": ..., "content": ...}]`
   let agent_prompt = agent_struct_prompt.format_new_message_to_send();
   Ok(agent_prompt)
@@ -269,7 +270,7 @@ pub fn create_tool_engine(
 /* ** PROMPT GETTING ENGINE ** */
 /// we need to get the prompts created returned as tuple so that we can inject `user_type` and `content` to the messages machine or other message engine
 type GetPromptUserAndContentEngineResult<T> = std::result::Result<T, AppError>;
-fn get_prompt_user_and_content_engine(prompt: &HashMap<UserType, &str>) -> GetPromptUserAndContentEngineResult<(UserType, String)> { 
+pub fn get_prompt_user_and_content_engine(prompt: &HashMap<UserType, &str>) -> GetPromptUserAndContentEngineResult<(UserType, String)> { 
   let mut type_user = UserType::Assistant;
   let mut content = "".to_string();
   for elem in prompt.iter() {
@@ -370,7 +371,7 @@ pub fn create_agent_engine(
 /// used as imput argument in the big function loop calling the api : `API CALL ENGINE`
 /* payload engine */
 type CreatePayloadEngineResult<T> = std::result::Result<T, AppError>;
-fn create_payload_engine(
+pub fn create_payload_engine(
   model: &str,
   messages: &[HashMap<String, String>],
   tool_choice: Option<ChoiceTool>,
@@ -570,7 +571,7 @@ pub async fn tool_or_not_loop_api_call_engine( // done!
 /* ** RESPONSE FORMAT PART OF API CALL PAYLOAD PART ENGINE  ** */
 // need to do the response format engine
 type ResponseFormatPartOfPayloadResult<T> = std::result::Result<T, AppError>;
-pub async fn response_format_part_of_payload_engine(
+pub fn response_format_part_of_payload_engine(
     new_name: String, // use `Schema` name
     new_strict: bool,
     new_schema: Schema,
