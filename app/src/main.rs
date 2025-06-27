@@ -205,7 +205,14 @@ async fn run() {
   let model = std::env::var("LLM_MODEL_NAME").unwrap_or("cerebras/mixtral-8x7b".to_string());
 
   // 3. Prepare agent
-  let mut agent = Agent::new(AgentRole::RequestAnalyzer);
+  let mut agent = Agent::new(
+    /* &core::agents::AgentRole */,
+    /* &Value */,
+    /* &MessagesSent */,
+    /* &Schema */,
+    /* &TaskCompletion */,
+    /* &ModelSettings */,
+  );
 
   // 4. Set the structured output (schema) for the agent
   let schema = request_analyzer_agent_schema();

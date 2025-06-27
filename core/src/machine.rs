@@ -155,8 +155,8 @@ pub fn execute_tools_machine(tool_name: &str, arguments: &Value) -> Result<Value
         .and_then(|v| v.as_str())
         .ok_or_else(|| AppError::ExecuteToolEngine("Missing `file_path` argument for `read_file_tool`".into()))?;
 
-      let file_content = constants::read_file_tool(file_path)
-        .map_err(|e| AppError::ExecuteToolEngine(format!("Error executing `read_file_tool`: {}", e)))?;
+      let file_content = constants::read_file_tool(file_path); // it is returning a `String`
+       // .map_err(|e| AppError::ExecuteToolEngine(format!("Error executing `read_file_tool`: {}", e)))?;
 
       Ok(json!({ "output": file_content }))
     }

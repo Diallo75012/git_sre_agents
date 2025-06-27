@@ -10,7 +10,7 @@ use crate::machine;
 use crate::file_reader;
 use crate::prompts;
 use crate::errors::AppError;
-use serde_json::{Result, Value};
+use serde_json::{json, Value};
 use std::collections::HashMap;
 
 
@@ -201,7 +201,7 @@ pub fn tools() -> CreateToolEngineResult<agents::Tools> {
 type GetPromptUserAndContentEngineResult<T> = std::result::Result<T, AppError>;
 fn user_type_and_content() -> GetPromptUserAndContentEngineResult<(agents::UserType, String)> {
   match machine::get_prompt_user_and_content_engine(
-    &prompts::human_request_agent_prompt
+    &prompts::human_request_agent_prompt()
   ) {
     Ok((type_user, content)) => Ok((type_user, content)),
     Err(e) => Err(AppError::GetPromptUserContentEngine(format!("Constant get user type and prompt fetching error: {}", e))), // to be propagating error of engine 	
@@ -226,11 +226,11 @@ type CreateAgentEngineResult<T> = std::result::Result<T, AppError>;
 pub fn request_analyzer_agent() -> CreateAgentEngineResult<agents::Agent> {
     let request_analyzer_agent_prompt = request_analyzer_agent_prompt()?;
     let request_analyzer_agent_schema = request_analyzer_agent_schema()?;
-    let request_analyzer_model_settings = request_analyzer_agent_schema()?;
+    let request_analyzer_model_settings = request_analyzer_model_settings()?;
   match machine::create_agent_engine(
     // `AgentRole::RequestAnalyzer`
     agents::AgentRole::RequestAnalyzer,
-    "",
+    &json!(HashMap::<String, Value>::new()), // here compiler needed to know the types infered in hashmap used <String, Value> default for json!(HashMap)
     // defined here by `request_analyzer_prompt` variable
     &request_analyzer_agent_prompt,
     // agent specific `Schema` created by defined here `request_analyzer_agent_schema` variable
@@ -271,7 +271,7 @@ pub fn model_message_formatted_hashmap_prompt() -> MessagesFormatEngineResult<Ha
   let request_analyzer_agent = request_analyzer_agent()?;
   match machine::messages_format_engine(
     // `user_type` and `content` are field from the struct `MessagesSent` of `request_analyzer_agent.prompt`
-    &request_analyzer_agent.prompt.user_type,
+    &agents::UserType::User,
     &request_analyzer_agent.prompt.content,
   ) {
     Ok(prompt) => Ok(prompt),
