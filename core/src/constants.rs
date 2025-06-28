@@ -9,9 +9,41 @@ use crate::agents::SchemaFieldType;
 use crate::machine;
 use crate::file_reader;
 use crate::prompts;
+use crate::envs_manage;
 use crate::errors::AppError;
 use serde_json::{json, Value};
 use std::collections::HashMap;
+
+
+// Models
+pub fn model_llama4_scout_17b() -> String {
+  match envs_manage::get_env("MODEL_LLAMA4_SCOUT_17B") {
+    Ok(url) => url,
+    Err(e) => {
+      AppError::Env(format!("MODEL_LLAMA4_SCOUT_17B env var issue: {}", e));
+      "".to_string()
+    },
+  } 
+}
+pub fn model_qwen3_32b() -> String {
+  match envs_manage::get_env("MODEL_QWEN3_32B") {
+    Ok(url) => url,
+    Err(e) => {
+      AppError::Env(format!("MODEL_QWEN3_32B env var issue: {}", e));
+      "".to_string()
+    },
+  }
+} 
+pub fn model_llama3_3_70b() -> String {
+  match envs_manage::get_env("MODEL_LLAMA3_3_70B") {
+    Ok(url) => url,
+    Err(e) => {
+      AppError::Env(format!("MODEL_LLAMA3_3_70B env var issue: {}", e));
+      "".to_string()
+    },
+  }
+}
+
 
 
 // all schemas state

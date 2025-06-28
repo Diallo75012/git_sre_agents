@@ -27,11 +27,11 @@ use core::{
 use core::constants::*; // your pub fn schema functions are here
 use core::machine::*;
 use core::agents::*;
-use core::utils::env::load_env;
+// use core::utils::env::load_env;
 use serde_json::{json, Value};
 
 /// function wrapper of the `Engine`
-async fn run() {
+async fn run() -> Result<(), AppError> {
   // trying getting existing env vars
 //   match envs_manage::get_env("city") {
 //   	Ok(value) => {
@@ -197,23 +197,38 @@ async fn run() {
  println("Api Call: {}", api_call);
  */
 
-  // 1. Load env variables like API keys and endpoints
-  load_env().expect("Failed to load .env file");
+  // 2. Prepare model and endpoint settings and check if not null or empty string
+  let endpoint = match envs_manage::get_env("LLM_API_URL") {
+    // ok but the url we have is empty
+    Ok(url) if url.trim().is_empty() => {
+      return Err(AppError::Env("LLM_API_URL is set but empty".to_string()))
+    },
+    // ok we have the good url
+    Ok(url) => url,
+    // we got an error
+    Err(e) => {
+      return Err(AppError::Env("LLM_API_URL is set but empty".to_string()))
+    },
+  };
+  // coming from `constants.rs` and need to check if not equal to `""`
+  // can be: `model_llama4_scout_17b`, `model_qwen3_32b()`, `model_llama3_3_70b()`
+  let model = model_llama4_scout_17b();
+  if model.trim().is_empty() {
+    return Err(AppError::Env("Model env var is null error, make sure to select a model to make any API call.".to_string()))
+  }
+  println!("endpoint: {}, model: {}", endpoint, model);
 
-  // 2. Prepare model and endpoint settings
-  let endpoint = std::env::var("LLM_API_URL").expect("Missing LLM_API_URL");
-  let model = std::env::var("LLM_MODEL_NAME").unwrap_or("cerebras/mixtral-8x7b".to_string());
+  // // 3. Prepare agent
+  // let mut agent = Agent::new(
+  //   /* &core::agents::AgentRole */,
+  //   /* &Value */,
+  //   /* &MessagesSent */,
+  //   /* &Schema */,
+  //   /* &TaskCompletion */,
+  //   /* &ModelSettings */,
+  // );
 
-  // 3. Prepare agent
-  let mut agent = Agent::new(
-    /* &core::agents::AgentRole */,
-    /* &Value */,
-    /* &MessagesSent */,
-    /* &Schema */,
-    /* &TaskCompletion */,
-    /* &ModelSettings */,
-  );
-
+  /*
   // 4. Set the structured output (schema) for the agent
   let schema = request_analyzer_agent_schema();
   agent.schema = Some(schema);
@@ -273,13 +288,17 @@ async fn run() {
 
   // 9. Display final output
   println!("Final Answer from Request Analyzer Agent: {}", final_answer);
-
+  */  
   Ok(())
+ 
 
 }
 
 
 #[tokio::main]
 async fn main() {
-  run().await
+  match run().await {
+  	Ok(()) => println!("\n\nTest done!"),
+  	Err(e) => println!("Error {}", e), 
+  }
 }

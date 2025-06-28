@@ -1993,7 +1993,12 @@ whatever is calling that `async` function to get the nested `result`.
 use `async` only if the function is calling another `http/https` stuff like a `api endpoint` or `waiting a service response` or a `database`
 **otherwise** just keep it `normal function`.
 
+- `const` & `static` vs `fn`
+I have learned that it is better and more flexible to have `pub fn` created to instantiate variables which would take the role of constant variables
+instead of using `const` or `static` to get rid of some headackes. 
+With `pub fn` all returning a result we can sue `?` and the last one can be unwrapped using `match patterns`.
 
+So: **`pub fn my_variable() -> Result<...>`** instead of `const my_variable: <...> = ...` or `static my_variable: <...> = ...`
 
 _________________________________________________________________________________________________
 # Tools creation
@@ -2503,13 +2508,13 @@ I will have to choose models so I gave the link to the `github` repository and a
 ```markdown
 Summary of Model Choices: All recommended Cerebras models (17B, 32B, 70B) support the required tool-calling and schema features
                           the Cerebras inference API exposes these uniformly. The differences are in context length and intelligence:
-- Llama 70B Instruct: best accuracy for understanding complex issues and strict output adherence;
+- **llama-3.3-70b** Llama 70B Instruct: best accuracy for understanding complex issues and strict output adherence;
                       8K context (expandable to 128K);
                       higher cost. 
                       Use for the most critical reasoning-intensive agents (e.g. the main planner, complex diagnosis).
-- Llama-4-Scout 17B (16k): good general capability, much faster, with extended context window out-of-box (16k) which is great for log-heavy tasks.
+- **llama-4-scout-17b-16e-instruct** Llama-4-Scout 17B (16k): good general capability, much faster, with extended context window out-of-box (16k) which is great for log-heavy tasks.
                            Use for straightforward tasks or where speed matters and the risk of minor errors is acceptable.
-- Qwen 32B: strong at following instructions and possibly better with coding or knowledge tasks than 17B, at moderate cost.
+- **qwen-3-32b** (Qwen 32B): strong at following instructions and possibly better with coding or knowledge tasks than 17B, at moderate cost.
             A middle-ground option if 70B is too slow but 17B struggles with a particular domain challenge.
 ```
 
