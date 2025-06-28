@@ -207,7 +207,7 @@ async fn run() -> Result<(), AppError> {
     Ok(url) => url,
     // we got an error
     Err(e) => {
-      return Err(AppError::Env("LLM_API_URL is set but empty".to_string()))
+      return Err(AppError::Env(format!("LLM_API_URL is set but empty: {}", e)))
     },
   };
   // coming from `constants.rs` and need to check if not equal to `""`
@@ -216,59 +216,33 @@ async fn run() -> Result<(), AppError> {
   if model.trim().is_empty() {
     return Err(AppError::Env("Model env var is null error, make sure to select a model to make any API call.".to_string()))
   }
-  println!("endpoint: {}, model: {}", endpoint, model);
 
-  // // 3. Prepare agent
-  // let mut agent = Agent::new(
-  //   /* &core::agents::AgentRole */,
-  //   /* &Value */,
-  //   /* &MessagesSent */,
-  //   /* &Schema */,
-  //   /* &TaskCompletion */,
-  //   /* &ModelSettings */,
-  // );
+  // 3. Prepare agent
+  let mut request_analyzer_agent = request_analyzer_agent()?;
+  //let pretty_json = serde_json::to_string_pretty(&json!(request_analyzer_agent))?;
+  //println!("{}", pretty_json);
 
-  /*
-  // 4. Set the structured output (schema) for the agent
-  let schema = request_analyzer_agent_schema();
-  agent.schema = Some(schema);
+  // 3. Create tools & model settings
+  let model_settings = request_analyzer_model_settings()?;
 
-  // 5. Set tools (only your read_file_tool for now)
-  let tools = Some(vec![
-    json!({
-      "type": "function",
-      "function": {
-        "name": "read_file_tool",
-        "description": "Reads a file at the given file path and returns content.",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "file_path": { "type": "string", "description": "Path of the file to read" }
-          },
-          "required": ["file_path"]
-        }
-      }
-    })
-  ]);
-
-  // 6. Prepare initial user message (request to analyze a specific file)
+  // 6. Prepare initial user message (task to analyze the file)
   let new_message = MessageToAppend::new(
     "user",
     "Please analyze the Kubernetes manifest at /project_git_repos/agents_side/creditizens_sre1_repo/prometheus_deployment.yaml",
     ""
   );
 
-  // 7. Prepare payload using helper
-  let mut history = core::messages::MessageHistory::default();
-  let tool_choice = Some(ChoiceTool::Auto);
+  // 7. Prepare payload using agent.llm
+  let mut history = MessageHistory::default();
+  let tool_choice = Some(request_analyzer_agent.llm.tool_choice.clone());
+  let tools = request_analyzer_agent.llm.tools.as_ref().map(|v| v.as_slice());
   let response_format = None;
 
-  // Prepare first payload
-  let mut payload = core::machine::machine_create_payload_with_or_without_tools_structout(
+  let mut payload = machine_create_payload_with_or_without_tools_structout(
     &model,
     &[],
     tool_choice.clone(),
-    tools.as_ref().map(|v| v.as_slice()),
+    tools,
     response_format.as_ref(),
   )?;
 
@@ -280,15 +254,14 @@ async fn run() -> Result<(), AppError> {
     &mut payload,
     &model,
     tool_choice,
-    tools.as_ref().map(|v| v.as_slice()),
-    response_format.as_ref(),
-    Some(&mut agent),
-    3 // max loop
+    tools,
+    None,
+    Some(&mut request_analyzer_agent.clone()),
+    3
   ).await?;
 
   // 9. Display final output
   println!("Final Answer from Request Analyzer Agent: {}", final_answer);
-  */  
   Ok(())
  
 

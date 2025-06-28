@@ -312,14 +312,11 @@ pub fn model_message_formatted_hashmap_prompt() -> MessagesFormatEngineResult<Ha
 }
 type CreateModelSettingsEngineResult<T> = std::result::Result<T, AppError>;
 pub fn request_analyzer_model_settings() -> CreateModelSettingsEngineResult<agents::ModelSettings>  {
-  let model_message_formatted_hashmap_prompt = model_message_formatted_hashmap_prompt()?;
   let tools = tools()?;
   match machine::create_model_settings_engine(
     "", // to be defines (need tocheck cerebras llama4 17b or llama 70b)
     8196,
     0,
-    // can be later pulled to add more messages in the list if needed. type is &[HashMap<String, String]
-    &[model_message_formatted_hashmap_prompt],
     // other field are created with default directly inside fn implementation
     &tools.tools, // &[HashMap<String, serde_json::Value>]
   ) {

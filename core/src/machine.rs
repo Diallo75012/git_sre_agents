@@ -303,7 +303,6 @@ pub fn create_model_settings_engine(
   model_name: &str,
   model_max_completion: u64,
   model_temperature: u64,
-  model_message: &[HashMap<String, String>],
   // other field are created with default directly inside fn implementation
   list_tools: &[HashMap<String, serde_json::Value>]
   ) -> CreateModelSettingsEngineResult<ModelSettings> {
@@ -311,7 +310,6 @@ pub fn create_model_settings_engine(
     model_name,
     model_max_completion,
     model_temperature,
-    model_message,
     list_tools,
 
   );

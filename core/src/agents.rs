@@ -479,8 +479,6 @@ pub struct ModelSettings {
   pub name: String,
   pub max_completion: u64,
   pub temperature: u64,
-  /// Format of message sent to LLM: `[{"content": "Hello!", "role": "user"}]`
-  pub message: Vec<HashMap<String, String>>,
   pub tool_choice: ChoiceTool,
   /// To make field `None` if no tools we can just define that field as `None`
   /// or use `serde` decorator ` #[serde(skip_serializing_if = "Option::is_none")]` and omit the field entirely as decorator will manage it
@@ -501,7 +499,6 @@ impl ModelSettings {
     model_name: &str,
     model_max_completion: u64,
     model_temperature: u64,
-    model_message: &[HashMap<String, String>],
     // tool_choice: will be set by default to `ToolChoice::Auto`
     // r#type: will be set by default to `function`
     list_tools: &[HashMap<String, serde_json::Value>]
@@ -511,7 +508,6 @@ impl ModelSettings {
       name: model_name.to_string(),
       max_completion: model_max_completion,
       temperature: model_temperature,
-      message: model_message.into(), // vec of hashmaps role..., content...
       tool_choice: ChoiceTool::Auto,
       // use `into()` to get an `into vec`
       tools: Some(list_tools.into()),
@@ -528,7 +524,6 @@ impl ModelSettings {
     model_name: Option<&str>,
     model_max_completion: Option<u64>,
     model_temperature: Option<u64>,
-    model_messages: Option<&[HashMap<String, String>]>,
     model_tool_choice: Option<&ChoiceTool>,
     model_tools: Option<&Option<Vec<HashMap<String, serde_json::Value>>>>,
     model_type: Option<&str>,
@@ -550,19 +545,12 @@ impl ModelSettings {
     } else {
       println!("Nothing to change for max_compeltion field");
     }
-
     // temperature
     if let Some(value) = model_temperature {
       // no need to `.clone()` as `u64` implements `Copy` trait
       self.temperature = value;
     } else {
       println!("Nothing to change for Temperature field");
-    }
-    // messages
-    if let Some(value) = model_messages {
-      self.message = value.into();
-    } else {
-      println!("Nothing to change for Messages field");
     }
     // tool_chocie
     if let Some(value) = model_tool_choice {
@@ -1067,7 +1055,7 @@ impl Agent {
 
     Ok("Agent Field(s) Updated!".into())
   }
-  
+
 }
 
 

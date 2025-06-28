@@ -17,7 +17,7 @@ type HeadersResult<T> = std::result::Result<T, AppError>;
 pub fn get_auth_headers() -> HeadersResult<HeaderMap> {
   let api_key = match envs_manage::get_env("CEREBRAS_API_KEY") {
     Ok(value) => {
-      println!("{}", value)
+      println!("Api secret found but keeping it secret...! hahaha")
     },
    	Err(e) => {
       println!("{}", AppError::EnvSecret(format!("An error occurred while trying to access env var `city`: {}", e)));
