@@ -213,6 +213,9 @@ async fn run() -> Result<(), AppError> {
   // coming from `constants.rs` and need to check if not equal to `""`
   // can be: `model_llama4_scout_17b`, `model_qwen3_32b()`, `model_llama3_3_70b()`
   let model = model_llama4_scout_17b();
+  // debugging print for model
+  println!("model: {:?}", model);
+  
   if model.trim().is_empty() {
     return Err(AppError::Env("Model env var is null error, make sure to select a model to make any API call.".to_string()))
   }
@@ -236,15 +239,19 @@ async fn run() -> Result<(), AppError> {
   let mut history = MessageHistory::default();
   let tool_choice = Some(request_analyzer_agent.llm.tool_choice.clone());
   let tools = request_analyzer_agent.llm.tools.as_ref().map(|v| v.as_slice());
-  let response_format = None;
+  //let response_format = None;
 
-  let mut payload = machine_create_payload_with_or_without_tools_structout(
-    &model,
-    &[],
-    tool_choice.clone(),
-    tools,
-    response_format.as_ref(),
-  )?;
+  // let mut payload = machine_create_payload_with_or_without_tools_structout(
+  //   &model,
+  //   &[],
+  //   tool_choice.clone(),
+  //   tools,
+  //   response_format.as_ref(),
+  // )?;
+
+  // this payload is having it all with model defined as well,
+  // it is a constant for this agent will only bemodified in api call with history messages if loop engaged 
+  let mut payload = request_analyzer_payload()?;
 
   // 8. Call the loop function engine
   let final_answer = tool_or_not_loop_api_call_engine(
@@ -252,7 +259,7 @@ async fn run() -> Result<(), AppError> {
     &mut history,
     &new_message,
     &mut payload,
-    &model,
+    &model, // this model is for the loop call of function next new payload created from history message appended
     tool_choice,
     tools,
     None,

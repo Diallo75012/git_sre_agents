@@ -86,6 +86,12 @@ pub async fn machine_api_call( // done!
   // so that i have only one point calling the .env file having the credentials 
   let headers = get_auth_headers().map_err(|e| AppError::EnvSecret(format!("Failed to get headers: {}", e)))?;
 
+  // debugging print for endpoint and payload
+  println!(
+    "from `machine_api_call`:\nendpoint: {}\n\npaylaod: {}\n",
+    // we are not printing the header as there is the bearer token api key but i have checked and it looks ok
+    endpoint, payload,
+  );
   // we instantiate a client
   let response = client
     .post(endpoint)
@@ -94,6 +100,9 @@ pub async fn machine_api_call( // done!
     .send()
     .await
     .map_err(|e| AppError::Agent(format!("Failed to send request: {}", e)))?;
+
+  // debugging print of llm response
+  println!("Response: {:?}", response);
 
   // we check on the status code returned
   let status = response.status();
@@ -243,7 +252,7 @@ type CreateToolEngineResult<T> = std::result::Result<T, AppError>;
 pub fn create_tool_engine(
     agent_tools: &mut Tools,
     fn_name: &str,
-    param_strict: bool,
+    //param_strict: bool,
     fn_description: &str,
     // here we put in a `&[HashMap<String, String>]` all different parameters of the function. so each has settings `name/type/description`
     param_settings: &[HashMap<String, String>],
@@ -252,7 +261,7 @@ pub fn create_tool_engine(
   // create the function details and also provide the hashmap of name/type/decription 
   let function_details = FunctionDetails::new(
     fn_name,
-    param_strict,
+    //param_strict,
     fn_description,
     param_settings,
   )?;
@@ -288,7 +297,7 @@ pub fn get_prompt_user_and_content_engine(prompt: &HashMap<UserType, &str>) -> G
 type MessagesFormatEngineResult<T> = std::result::Result<T, AppError>;
 pub fn messages_format_engine(type_user: &UserType, content: &str) -> MessagesFormatEngineResult<HashMap<String, String>> {
   // initialize a new message
-  let agent_message = MessagesSent::create_new_message_struct_to_send(&type_user, &content);
+  let agent_message = MessagesSent::create_new_message_struct_to_send(type_user, content);
   // this will create the dictionary form of the message corresponding to that `struct` `MessagesSent` container.
   let agent_message_dict = agent_message.format_new_message_to_send();
   Ok(agent_message_dict)
@@ -433,6 +442,7 @@ pub fn create_payload_engine(
 /// ```
 /// so this function is for the api call in a loop way with or without tools 
 type ToolOrNotLoopApiCallEngineResult<T> = std::result::Result<T, AppError>;
+#[allow(clippy::too_many_arguments)]
 pub async fn tool_or_not_loop_api_call_engine( // done!
     endpoint: &str,
     history: &mut MessageHistory,
@@ -464,6 +474,7 @@ pub async fn tool_or_not_loop_api_call_engine( // done!
     }
 
     let llm_response = machine_api_call(endpoint, payload).await?;
+    // debugging print of llm_response
     println!("Llm Response: {}", json!(llm_response));
     
     if let Some(tool_calls) = machine_api_response(&llm_response) {
@@ -472,7 +483,7 @@ pub async fn tool_or_not_loop_api_call_engine( // done!
         final_response = Some(llm_response);
         break;
       }
-      // we instantiate the name and the arguments
+      // we instantiate the name and the arguments and debugging prints
       let tool_call = &tool_calls[0];
       println!("Tool Call: {}", json!(tool_call));
       let tool_name = &tool_call.function.name;
@@ -481,7 +492,7 @@ pub async fn tool_or_not_loop_api_call_engine( // done!
       println!("Tool Arguments: {}", json!(arguments));
       // we will then pass the tool name and arguments to our machine that execute tools
       println!("final_response: {:?}", final_response);
-      let tool_output = execute_tools_machine(&tool_name, arguments)?;
+      let tool_output = execute_tools_machine(tool_name, arguments)?;
 
       // we create a new `MessageToAppend` instance and add it to the history
       let tool_response = MessageToAppend::new(
@@ -490,6 +501,9 @@ pub async fn tool_or_not_loop_api_call_engine( // done!
         &tool_call.id,
       );
       history.append_message_to_history(&tool_response)?;
+      // debugging print of mew_messages
+      println!("tool_response formatted from inside 'ToolOrNotLoopApiCallEngineResult' {:?}", tool_response);
+      println!("history from inside 'ToolOrNotLoopApiCallEngineResult' {:?}", history);
 
       let new_messages: Vec<HashMap<String, String>> = history
         .messages
@@ -505,6 +519,9 @@ pub async fn tool_or_not_loop_api_call_engine( // done!
         })
         .collect();
 
+      // debugging print of mew_messages
+      println!("new_messages formatted from inside 'ToolOrNotLoopApiCallEngineResult' {:?}", new_messages);
+
       // here we just change in place so for that we use `*` to mutate it
       // and then it still be coerced by Rust as `&mut`
       // so when it comes back in the above: `let llm_response = machine_api_call(endpoint, payload).await?;`
@@ -516,9 +533,13 @@ pub async fn tool_or_not_loop_api_call_engine( // done!
         tools,
         response_format,
       )?;
+      // debugging print of updated paylaod
+      println!("payload updated after tool call from inside 'ToolOrNotLoopApiCallEngineResult' {:?}", payload);
     } else {
       // No `tool_calls` field present — save the response
       final_response = Some(llm_response);
+      // debugging print of final_response
+      println!("final_response from inside 'ToolOrNotLoopApiCallEngineResult' {:?}", final_response);
       break;
     }
   }

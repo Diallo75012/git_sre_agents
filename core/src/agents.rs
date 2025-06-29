@@ -8,7 +8,7 @@
 //! `derive` `Default` to initialize `struct` with initial values so no need implementation of `.new()` for the `struct`
 use std::fmt;
 use serde::{Deserialize, Serialize};
-use serde_json::{Result, json};
+use serde_json::{Result, json, Map};
 use std::collections::{
   HashMap,
   VecDeque,
@@ -265,7 +265,7 @@ impl FunctionParametersContainer {
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct FunctionDetails {
   pub name: String,
-  pub strict: bool,
+  //pub strict: bool,
   pub description: String,
   pub parameters: HashMap<String, HashMap<String, String>>,
 }
@@ -285,15 +285,15 @@ impl FunctionDetails {
   /// ``` 
   pub fn new(
     fn_name: &str,
-    param_strict: bool,
+    //param_strict: bool,
     fn_description: &str,
     param_settings: &[HashMap<String, String>],
     ) -> FunctionDetailsResult<Self> {
     let parameters_settings = FunctionParametersContainer::create_function_parameters_object(param_settings)?;
-    
+
   	Ok(Self {
       name: fn_name.to_string(),
-      strict: param_strict,
+      //strict: param_strict,
       description: fn_description.to_string(),
       parameters: parameters_settings,
   	})
@@ -308,27 +308,31 @@ impl FunctionDetails {
   	// here we will unwrap the result and save what is in to save the `properties` field object
   	let mut required = Vec::new();
   	let properties = self.parameters.clone();
-  	for (_idx, elem) in properties.iter().enumerate() {
-  	  required.push(elem.0.to_string())
+  	for elem in properties.keys() {
+  	  required.push(elem.clone().to_string())
   	}
   	let paramters_full_object = HashMap::from(
       [
         // this never change so we can hard write it
         ("type".to_string(), json!(object())),
         ("properties".to_string(), json!(properties.clone())),
+        ("required".into(), json!(required)),
       ]  
   	);
 
     // we make sure that the `strict` parameter is a `String` and with capital letter as first letter for APi consumption
-  	let strict: String = if self.strict {
-  	  "True".into()
-  	} else {
-      "False".into()
-  	};
+  	//let strict: bool = self.strict;
+
+    // let mut required_params = Vec::new();
+    // for elem in param_settings.iter() {
+    // 	for k in elem.keys() {
+    // 		required_params.push(k.to_string())
+    // 	}
+    // }
 
   	// we build the full object returned using those different parts
   	function_details.insert("name".into(), json!(self.name));
-  	function_details.insert("strict".into(), json!(strict));
+  	//function_details.insert("strict".into(), json!(strict));
   	function_details.insert("description".into(), json!(self.description));
   	function_details.insert("parameters".into(), json!(paramters_full_object));
   	Ok(function_details)
@@ -341,7 +345,7 @@ impl FunctionDetails {
 pub struct Function {
   r#type: String,
   // we build this field by unwrapping the result returned by `FunctionDetails::create_function_with_parameters_object()`
-  func: HashMap<String, serde_json::Value>,
+  function: HashMap<String, serde_json::Value>,
 }
 
 type FunctionResult<T> = std::result::Result<T, AppError>;
@@ -352,7 +356,7 @@ impl Function {
     //fn_parameter_container: &HashMap<String, HashMap<String, String>>,
   ) -> FunctionResult<HashMap<String, serde_json::Value>> {
     // we initialize the final `HashMap` rendered
-    let mut function_part = HashMap::new();
+    //let mut function_part = HashMap::new();
 
     // returns a fully owned object that we can `jsonify`
     let func_details = function_details.clone();
@@ -363,12 +367,20 @@ impl Function {
     };
     let function_full = Function {
        r#type: "function".into(),
-      func: func_final_object,    	
+      function: func_final_object,    	
     };
 
-    function_part.insert("type".to_string(), json!("function"));
-    function_part.insert("function".to_string(), json!(function_full));
-    Ok(function_part)
+    //function_part.insert("type".to_string(), json!("function"));
+    //function_part.insert("function".to_string(), json!(function_full.function.clone()));
+    let function_map = Map::from_iter(function_full.function.iter().map(|(k, v)| (k.clone(), v.clone())));
+    let function_wrapper = HashMap::from(
+      [
+        ("type".to_string(), json!("function")),
+        ("function".to_string(), serde_json::Value::Object(function_map)),
+      ]
+    );
+
+  Ok(function_wrapper)
   }
 }
 /*
@@ -641,7 +653,7 @@ impl Schema {
   ) -> Schema {
     // here we just `unwrap` using match pattern to get the vector list which is encapsulated inside an `Option`
     let required_params = match schema_field_requirement {
-      Some(vec_content) => vec_content.clone(),
+      Some(vec_content) => vec_content.to_vec(),
       // empty `Vec` that will be setting the field to `[]`
       None => Vec::new(),  
     };
@@ -723,6 +735,7 @@ impl Payload {
       "model": model,
       "provider": { "only": ["Cerebras"] },
       "messages": messages,
+      "stream": false,
     });
 
     if let Some(tool_list) = tools {

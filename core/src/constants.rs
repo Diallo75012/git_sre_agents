@@ -191,16 +191,12 @@ pub fn read_file_tool(file_path: &str) -> String {
 /// this will create the initial tool and if the same is used add more tools to that `Tools.tools` `Vec<HashMap<String, serde_json::Value>>`
 type CreateToolEngineResult<T> = std::result::Result<T, AppError>;
 pub fn tools() -> CreateToolEngineResult<agents::Tools> {
-  let tool_description = r#"
-    This tool reads files by providing the full content of the file to be analyzed
-    Arguments `file_path`: The path of where is the file located to be able to read its content
-    Returns `String`: The content of the file.
-  "#;
+  let tool_description = r#"This tool reads files by providing the full content of the file to be analyzed. Arguments `file_path`: The path of where is the file located to be able to read its content. Returns `String`: The content of the file."#;
   let mut new_agent_tool = agents::Tools::new();
   match machine::create_tool_engine(
     &mut new_agent_tool, // Tools
     "read_file_tool",
-    true,
+    //true,
     tool_description,
     // here we put in a `&[HashMap<String, String>]` all different parameters of the function. so each has settings `name/type/description`
     &[
@@ -210,9 +206,7 @@ pub fn tools() -> CreateToolEngineResult<agents::Tools> {
           ("type".to_string(), "string".to_string()),
           (
             "description".to_string(),
-            r#"This tool reads files by providing the full content of the file to be analyzed
-            Arguments `file_path`: The path of where is the file located to be able to read its content
-            Returns `String`: The content of the file."#.to_string()
+            r#"This tool reads files by providing the full content of the file to be analyzed. Arguments `file_path`: The path of where is the file located to be able to read its content. Returns `String`: The content of the file."#.to_string()
           ),
         ]
       )
@@ -334,7 +328,7 @@ pub fn request_analyzer_payload() -> CreatePayloadEngineResult<Value> {
   let tools = tools()?;
   let request_analyzer_response_format_part = request_analyzer_response_format_part()?;
   match machine::create_payload_engine(
-    "", // // to be defines (need tocheck cerebras llama4 17b or llama 70b). probably `env vars`
+    &model_llama4_scout_17b(), // // to be defines (need tocheck cerebras llama4 17b or llama 70b). probably `env vars`
     &[model_message_formatted_hashmap_prompt], // &[HashMap<String, String>],
     Some(agents::ChoiceTool::Required), // ChoiceTool::Required as we want to make sure it read the files using the tool
     Some(&tools.tools), // Option<&[HashMap<String, Value>]>,

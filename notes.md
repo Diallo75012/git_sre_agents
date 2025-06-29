@@ -2627,3 +2627,10 @@ so we can then test the api call using what is in main.rs and fixing bugs
 
 const done for all variables in constants.rs and used mtach pattern and need to propagate each custom errors, that leg part is not done yet
 also we will need to instantiate all scenario const there or find a way to make the full schema structout more dynamic.. need to check all `impl`
+
+need to keep advancing on main.rs and print each object and see what's wrong until we get it running fine
+for our first api call with structured output and tool use
+
+neeed to improve the format of our paylaod in order to get rid of this error: `Error Agent Error: HTTP Error: 422 Unprocessable Entity` 
+and make our first successfull node api call with tool and `REACT in Rust`
+need ot check rules for lenght mack of fucntion description  as something is wrong or overkill for the api as our paylaod structure is good (`checked with ChatGPT`)

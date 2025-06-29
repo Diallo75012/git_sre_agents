@@ -31,14 +31,8 @@ pub fn human_request_agent_prompt() -> HashMap<UserType, &'static str> {
     [
       (
         UserType::System,
-        r#"You are a specialist in instructions analysis.\n
-        You will identify which agent need to do which tasks.
-        For that you will need to read the user request from a file located at path /home/creditizens/dev-git-agent-team/project_git_repos/human_side/human_request.md using available tools.
-        Agents are two different ones are sre1_agent reponsible of Kubernetes infrastructure and sre2_agent responsible of application deployed to Kubernetes.
-        Important:
-        - Strictly adhere to the following any given schema for your response.
-        - Only return a JSON object based on the schema. Do not include any extra text, comments, or fields beyond the schema.
-        - Do not alter the schema structure."#
+        r#"You are a specialist in instructions analysis.\nYou will identify which agent need to do which tasks.For that you will need to read the user request from a file located at path /home/creditizens/dev-git-agent-team/project_git_repos/human_side/human_request.md using available tools. Agents are two different ones are sre1_agent reponsible of Kubernetes infrastructure and sre2_agent responsible of application deployed to Kubernetes.
+        Important: - Strictly adhere to the following any given schema for your response. - Only return a JSON object based on the schema. Do not include any extra text, comments, or fields beyond the schema. - Do not alter the schema structure."#
       )
     ]
   )
