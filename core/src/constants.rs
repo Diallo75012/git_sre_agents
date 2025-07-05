@@ -153,7 +153,7 @@ pub fn request_analyzer_response_format_part() -> ResponseFormatPartOfPayloadRes
     "human_request_analyzer_schema".to_string(),
     true, // param_strict
     unwrapped_request_analyzer_agent_schema,
-    agents::json_schema(), // or json_object()
+    agents::json_object(), // or json_schema()
   ) {
     Ok(payload_response_format_part) => Ok(payload_response_format_part),
     Err(e) => Err(AppError::ResponseFormatPart(format!("Constant response format built error: {}", e))), // to be propagating error of engine  	
@@ -229,7 +229,10 @@ fn user_type_and_content() -> GetPromptUserAndContentEngineResult<(agents::UserT
   match machine::get_prompt_user_and_content_engine(
     &prompts::human_request_agent_prompt()
   ) {
-    Ok((type_user, content)) => Ok((type_user, content)),
+    Ok((type_user, content)) => {
+      println!("prompt type of user: {:?}", type_user);
+      Ok((type_user, content))
+    },
     Err(e) => Err(AppError::GetPromptUserContentEngine(format!("Constant get user type and prompt fetching error: {}", e))), // to be propagating error of engine 	
   }
 }
@@ -297,7 +300,7 @@ pub fn model_message_formatted_hashmap_prompt() -> MessagesFormatEngineResult<Ha
   let request_analyzer_agent = request_analyzer_agent()?;
   match machine::messages_format_engine(
     // `user_type` and `content` are field from the struct `MessagesSent` of `request_analyzer_agent.prompt`
-    &agents::UserType::User,
+    &agents::UserType::System,
     &request_analyzer_agent.prompt.content,
   ) {
     Ok(prompt) => Ok(prompt),
@@ -328,10 +331,12 @@ pub fn request_analyzer_payload() -> CreatePayloadEngineResult<Value> {
   let tools = tools()?;
   let request_analyzer_response_format_part = request_analyzer_response_format_part()?;
   match machine::create_payload_engine(
-    &model_llama4_scout_17b(), // // to be defines (need tocheck cerebras llama4 17b or llama 70b). probably `env vars`
+    //&model_llama4_scout_17b(), // // to be defines (need tocheck cerebras llama4 17b or llama 70b). probably `env vars`
+    //&model_llama3_3_70b(),
+    &model_qwen3_32b(),
     &[model_message_formatted_hashmap_prompt], // &[HashMap<String, String>],
     Some(agents::ChoiceTool::Required), // ChoiceTool::Required as we want to make sure it read the files using the tool
-    Some(&tools.tools), // Option<&[HashMap<String, Value>]>,
+    None, //Some(&tools.tools), // Option<&[HashMap<String, Value>]>,
     Some(&request_analyzer_response_format_part),
   ) {
     Ok(prompt) => Ok(prompt),

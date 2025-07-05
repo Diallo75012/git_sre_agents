@@ -2634,3 +2634,7 @@ for our first api call with structured output and tool use
 neeed to improve the format of our paylaod in order to get rid of this error: `Error Agent Error: HTTP Error: 422 Unprocessable Entity` 
 and make our first successfull node api call with tool and `REACT in Rust`
 need ot check rules for lenght mack of fucntion description  as something is wrong or overkill for the api as our paylaod structure is good (`checked with ChatGPT`)
+
+
+need to create two different functions one for structured output call and another for api call with tools as we can't use both together,
+OR need to review the huge api call engine function to have it call the api with tructured output only after tool has been called..

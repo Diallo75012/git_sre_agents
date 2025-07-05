@@ -3,7 +3,7 @@
 //! creating some security issues and having the credential leak, or appear in traces...etc...
 use std::env;
 use serde_json::json;
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
+use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use crate::{
   errors::AppError,
   envs_manage,
@@ -21,17 +21,26 @@ pub fn get_auth_headers() -> HeadersResult<HeaderMap> {
       value
     },
     Err(e) => {
-      println!("{}", AppError::EnvSecret(format!("An error occurred while trying to access env var `city`: {}", e)));
-      // trick to have arms returning same type
-      "Error".to_string()
+      println!(
+        "{}",
+        AppError::EnvSecret(format!(
+          "An error occurred while trying to access env var `CEREBRAS_API_KEY`: {}",
+           e
+        ))
+      );
+      return Err(AppError::EnvSecret("Missing API key".to_string()));
     },
   };
 
   let mut headers = HeaderMap::new();
   headers.insert(
     AUTHORIZATION,
-    HeaderValue::from_str(&format!("Bearer {}", json!(api_key)))
+    HeaderValue::from_str(&format!("Bearer {}", api_key))
       .map_err(|e| AppError::EnvSecret(format!("Invalid API key format: {}", e)))?,
+  );
+  headers.insert(
+    CONTENT_TYPE,
+    HeaderValue::from_static("application/json"),
   );
 
   Ok(headers)

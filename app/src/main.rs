@@ -212,7 +212,8 @@ async fn run() -> Result<(), AppError> {
   };
   // coming from `constants.rs` and need to check if not equal to `""`
   // can be: `model_llama4_scout_17b`, `model_qwen3_32b()`, `model_llama3_3_70b()`
-  let model = model_llama4_scout_17b();
+  //let model = model_llama4_scout_17b();
+  let model = model_llama3_3_70b();
   // debugging print for model
   println!("model: {:?}", model);
   

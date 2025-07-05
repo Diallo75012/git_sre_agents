@@ -180,9 +180,9 @@ pub struct ToolCall {
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct ResponseMessage {
-  pub content: String,
+  pub content: Option<String>,
   pub role: String,
-  pub tool_calls: Vec<ToolCall>,
+  pub tool_calls: Option<Vec<ToolCall>>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
@@ -733,7 +733,9 @@ impl Payload {
     // we start here with a normal `payload` basic one with text and will add some more fields if we got some tools or structured output.
     let mut payload = json!({
       "model": model,
-      "provider": { "only": ["Cerebras"] },
+      // this field is correct in Python as it is installed dependencies but in rust we need to mimmic curl
+      // and this field is not in the documentation of Cerebras and would return to use a malformed api call error code 422. so we excluse it
+      //"provider": { "only": ["Cerebras"] },
       "messages": messages,
       "stream": false,
     });
