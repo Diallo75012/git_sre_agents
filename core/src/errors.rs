@@ -114,6 +114,11 @@ pub enum AppError {
   /// Response Fromat Part Creation error
   #[error("Response Format Part Creation Engine Error: {0}")]
   ResponseFormatPart(String),
+  /// tool call api call error
+  #[error("Tool Only Api Call Loop Engine Error: {0}")]
+  ToolLoopUntilFinalAnswer(String),
+  #[error("Structured Output Only Api Call Engine Error: {0}")]
+  StructureFinalOutputFromRaw(String),
   
   /* agent nodes errors  */
   /// huamn request analysis node error

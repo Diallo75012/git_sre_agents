@@ -16,7 +16,7 @@ use reqwest::{
     AUTHORIZATION,
   },
 };
-use serde_json::{json, Value};
+use serde_json::{json, Value, from_str};
 use std::collections::HashMap;
 
 
@@ -127,7 +127,6 @@ pub async fn machine_api_call(
 
     let headers = get_auth_headers()
         .map_err(|e| AppError::EnvSecret(format!("Failed to get headers: {}", e)))?;
-    println!("Headers: {:?}", headers);
     println!("from `machine_api_call`:\nendpoint: {}\n\npayload: {}\n", endpoint, payload);
 
     let response = client
@@ -202,23 +201,33 @@ pub fn machine_final_answer(llm_response: &LlmResponse) -> Option<String> { // d
 /// This function receives the name and arguments of the tool call and dispatches the appropriate logic.
 /// The return type is a JSON value that will be added to the message history.
 pub fn execute_tools_machine(tool_name: &str, arguments: &Value) -> Result<Value, AppError> {
+  let parsed_args: Value = match arguments {
+    Value::String(json_str) => {
+      from_str(json_str).map_err(|e| {
+        AppError::ExecuteToolEngine(format!("Failed to parse arguments JSON string: {}", e))
+      })?
+    }
+    other => other.clone(), // fallback in case it's already a JSON object
+  };
+
   match tool_name {
     "read_file_tool" => {
-      let file_path = arguments
+      let file_path = parsed_args
         .get("file_path")
         .and_then(|v| v.as_str())
         .ok_or_else(|| AppError::ExecuteToolEngine("Missing `file_path` argument for `read_file_tool`".into()))?;
 
       let file_content = constants::read_file_tool(file_path); // it is returning a `String`
-       // .map_err(|e| AppError::ExecuteToolEngine(format!("Error executing `read_file_tool`: {}", e)))?;
+      // .map_err(|e| AppError::ExecuteToolEngine(format!("Error executing `read_file_tool`: {}", e)))?;
 
       Ok(json!({ "output": file_content }))
     }
-    /* add other tools here to be detected as we create tool so that this function machine will be able to execute any of our tools */
 
+    /* can extend this match arm for more tools as we build them */
     _ => Err(AppError::ExecuteToolEngine(format!("Unknown tool name: {}", tool_name))),
   }
 }
+
 
 
 /*----------------------  ENGINES  ----------------------*/
@@ -488,133 +497,6 @@ pub fn create_payload_engine(
 /// so this function is for the api call in a loop way with or without tools 
 type ToolOrNotLoopApiCallEngineResult<T> = std::result::Result<T, AppError>;
 #[allow(clippy::too_many_arguments)]
-// pub async fn tool_or_not_loop_api_call_engine( // done!
-//     endpoint: &str,
-//     history: &mut MessageHistory,
-//     // this has to be instantiated using `MessagesToAppend::new(...)` or use `Agent.prompt` which is of type MessagesToAppend
-//     new_message: &MessageToAppend,
-//     payload: &mut Value,
-//     model: &str,
-//     tool_choice: Option<ChoiceTool>,
-//     tools: Option<&[HashMap<String, serde_json::Value>]>,
-//     response_format: Option<&HashMap<String, serde_json::Value>>,
-//     agent: Option<&mut Agent>, // Optional agent updates
-//     max_loop: usize,
-//   ) -> ToolOrNotLoopApiCallEngineResult<String> {
-// 
-//   history.append_message_to_history(new_message)?;
-//   let loop_counter = 0;
-// 
-//   // Hold the final response without re-calling the API again after loop
-//   let mut final_response: Option<LlmResponse> = None;
-// 
-//   loop {
-//     println!("Max Loop: {}", json!(max_loop));
-//     // we set a `max loop` and return error if it is looping to much as we might get some api call issues as well
-//     if loop_counter >= max_loop {
-//       return Err(AppError::Agent(format!(
-//         "Reached max tool loop iteration: {}",
-//         max_loop
-//       )));
-//     }
-// 
-//     let llm_response = machine_api_call(endpoint, payload).await?;
-//     // debugging print of llm_response
-//     println!("Llm Response: {}", json!(llm_response));
-//     
-//     if let Some(tool_calls) = machine_api_response(&llm_response) {
-//       if tool_calls.is_empty() {
-//         // No tool, store final response and exit
-//         final_response = Some(llm_response);
-//         break;
-//       }
-//       // we instantiate the name and the arguments and debugging prints
-//       let tool_call = &tool_calls[0];
-//       println!("Tool Call: {}", json!(tool_call));
-//       let tool_name = &tool_call.function.name;
-//       println!("Tool Name: {}", json!(tool_name));      
-//       let arguments = &tool_call.function.arguments;
-//       println!("Tool Arguments: {}", json!(arguments));
-//       // we will then pass the tool name and arguments to our machine that execute tools
-//       println!("final_response: {:?}", final_response);
-//       let tool_output = execute_tools_machine(tool_name, arguments)?;
-// 
-//       // we create a new `MessageToAppend` instance and add it to the history
-//       let tool_response = MessageToAppend::new(
-//         "tool",
-//         &tool_output.to_string(),  // safely stringified JSON
-//         &tool_call.id,
-//       );
-//       history.append_message_to_history(&tool_response)?;
-//       // debugging print of mew_messages
-//       println!("tool_response formatted from inside 'ToolOrNotLoopApiCallEngineResult' {:?}", tool_response);
-//       println!("history from inside 'ToolOrNotLoopApiCallEngineResult' {:?}", history);
-// 
-//       let new_messages: Vec<HashMap<String, String>> = history
-//         .messages
-//         .iter()
-//         .map(|m| {
-//           let mut map = HashMap::new();
-//           map.insert("role".to_string(), m.role.clone());
-//           map.insert("content".to_string(), m.content.clone());
-//           if !m.tool_call_id.is_empty() {
-//             map.insert("tool_call_id".to_string(), m.tool_call_id.clone());
-//           }
-//           map
-//         })
-//         .collect();
-// 
-//       // debugging print of mew_messages
-//       println!("new_messages formatted from inside 'ToolOrNotLoopApiCallEngineResult' {:?}", new_messages);
-// 
-//       // here we just change in place so for that we use `*` to mutate it
-//       // and then it still be coerced by Rust as `&mut`
-//       // so when it comes back in the above: `let llm_response = machine_api_call(endpoint, payload).await?;`
-//       // the type of `payload` is still `&mut`
-//       *payload = machine_create_payload_with_or_without_tools_structout(
-//         model,
-//         &new_messages,
-//         tool_choice.clone(),
-//         tools,
-//         response_format,
-//       )?;
-//       // debugging print of updated paylaod
-//       println!("payload updated after tool call from inside 'ToolOrNotLoopApiCallEngineResult' {:?}", payload);
-//     } else {
-//       // No `tool_calls` field present — save the response
-//       final_response = Some(llm_response);
-//       // debugging print of final_response
-//       println!("final_response from inside 'ToolOrNotLoopApiCallEngineResult' {:?}", final_response);
-//       break;
-//     }
-//   }
-// 
-//   // Reuse the last loop response
-//   if let Some(resp) = final_response {
-//     let format_final_response = machine_final_answer(&resp); // returns Option<String>
-//     match format_final_response {
-//       Some(answers) => {
-//       	// we update by the agent `communication_message` field by adding the response
-//         if let Some(agent_ref) = agent {
-//           if let Some(obj) = agent_ref.communication_message.as_object_mut() {
-//             obj.insert(
-//              "communicate".to_string(),
-//              json!(answers.clone()),
-//             );
-//           // printing to check if message has been properly updated in place or not..
-//           println!("After: {}", agent_ref.communication_message);
-//           }
-//         }
-//       	Ok(answers)
-//       },
-//       None => Err(AppError::Agent("No final answer found in response".into())),
-//     }
-//     // we update the field for agent communication with final answer
-//   } else {
-//     Err(AppError::Agent("Unexpected: final response not set".into()))
-//   }
-// }
-#[allow(clippy::too_many_arguments)]
 pub async fn tool_or_not_loop_api_call_engine(
     endpoint: &str,
     history: &mut MessageHistory,
@@ -707,19 +589,106 @@ pub async fn tool_or_not_loop_api_call_engine(
     }
 }
 
-// cal it like that
-// let answer = machine_tool_loop(
-//   &endpoint,
-//   &mut history,
-//   &new_message,
-//   &mut payload,
-//   model,
-//   Some(ChoiceTool::Auto),
-//   Some(&tools_vec),
-//   Some(&response_format_map),
-//   Some(&mut agent),
-//   3, // <-- max 3 tool loops
-// ).await?;
+/// this engine would be specialized in tool calling and execution in a loop way until it get no tool call and then return answer
+type ToolLoopUntilFinalAnswerEngineResult<T> = std::result::Result<T, AppError>;
+pub async fn tool_loop_until_final_answer_engine(
+    endpoint: &str,
+    history: &mut MessageHistory,
+    first_message: &MessageToAppend,
+    payload: &mut Value,
+    model: &str,
+    tools: Option<&[HashMap<String, Value>]>,
+    max_loop: usize,
+) -> ToolLoopUntilFinalAnswerEngineResult<LlmResponse> {
+  history.append_message_to_history(first_message)?;
+
+  let mut loop_counter = 0;
+
+  loop {
+    if loop_counter >= max_loop {
+        return Err(AppError::Agent(format!("Max tool loop reached: {}", max_loop)));
+    }
+
+    let llm_response = machine_api_call(endpoint, payload).await?;
+    println!("LLM Response (tool loop): {}", json!(llm_response));
+
+    if let Some(tool_calls) = machine_api_response(&llm_response) {
+      if tool_calls.is_empty() {
+        return Ok(llm_response); // Final answer
+      }
+
+      let tool_call = &tool_calls[0]; // Only handling 1 tool call now
+      println!("Tool Call: {}", json!(tool_call));
+
+      let tool_output = execute_tools_machine(
+        &tool_call.function.name,
+        &tool_call.function.arguments,
+      )?;
+
+      let tool_response = MessageToAppend::new("tool", &tool_output.to_string(), &tool_call.id);
+      history.append_message_to_history(&tool_response)?;
+
+      // Recreate message list and update payload (no tool_choice here — next loop may still trigger tools)
+      let new_messages = history
+        .messages
+        .iter()
+        .map(|m| {
+          let mut map = HashMap::new();
+          map.insert("role".to_string(), m.role.clone());
+          map.insert("content".to_string(), m.content.clone());
+          if !m.tool_call_id.is_empty() {
+            map.insert("tool_call_id".to_string(), m.tool_call_id.clone());
+          }
+          map
+        })
+        .collect::<Vec<_>>();
+
+      *payload = machine_create_payload_with_or_without_tools_structout(
+        model,
+        &new_messages,
+        None,  // tool_choice disabled
+        tools, // keep same tools
+        None,  // no response_format here
+      )?;
+
+    } else {
+      return Ok(llm_response); // Final answer with no tools
+    }
+
+    loop_counter += 1;
+  }
+}
+
+
+/// engine that would be specilized in returning structured output only, using result from tool call node
+type StructureFinalOutputFromRawEngineResult<T> = std::result::Result<T, AppError>;
+pub async fn structure_final_output_from_raw_engine(
+    endpoint: &str,
+    model: &str,
+    structured_prompt: &str, // i.e. “Format the result below in JSON...”
+    result_from_node1: &str,
+    response_format: &HashMap<String, Value>,
+) -> StructureFinalOutputFromRawEngineResult<LlmResponse> {
+  let combined_prompt = format!("{}\n\nResult:\n{}", structured_prompt, result_from_node1);
+
+  let message = HashMap::from([
+    ("role".to_string(), "user".to_string()),
+    ("content".to_string(), combined_prompt),
+  ]);
+
+  let payload = machine_create_payload_with_or_without_tools_structout(
+    model,
+    &[message],
+    None,   // no tool_choice
+    None,   // no tools
+    Some(response_format),
+  )?;
+
+  let response = machine_api_call(endpoint, &payload).await?;
+  println!("Structured Output Final Response: {}", json!(response));
+  Ok(response)
+}
+
 
 // we can clear history if need as i have create an implementation returning a `result<()>` `.clear_hsitory(&self)`
 // need probably machine to manage checklist update and add a field to agent

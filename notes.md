@@ -2621,20 +2621,11 @@ Outputs:
     }
 }
 ```
-need to ytpe the `const`
-have to create the full StructOut with all schemas from the ones we have created so that this structout is full
-so we can then test the api call using what is in main.rs and fixing bugs
-
-const done for all variables in constants.rs and used mtach pattern and need to propagate each custom errors, that leg part is not done yet
-also we will need to instantiate all scenario const there or find a way to make the full schema structout more dynamic.. need to check all `impl`
-
-need to keep advancing on main.rs and print each object and see what's wrong until we get it running fine
-for our first api call with structured output and tool use
-
-neeed to improve the format of our paylaod in order to get rid of this error: `Error Agent Error: HTTP Error: 422 Unprocessable Entity` 
-and make our first successfull node api call with tool and `REACT in Rust`
-need ot check rules for lenght mack of fucntion description  as something is wrong or overkill for the api as our paylaod structure is good (`checked with ChatGPT`)
 
 
-need to create two different functions one for structured output call and another for api call with tools as we can't use both together,
-OR need to review the huge api call engine function to have it call the api with tructured output only after tool has been called..
+now we have separated concerns having one function which will become a node to execute tools in loop and another for structured output.
+need to improve prompts and logic of messages passing as we want only one structure output not a list of those
+and also we want if only one agent is concerned not the task to be repeated to the other agent which doesn't have access to same files and type of work
+as of now it sends back two structured output one for each agent in each when the job should be only for one of the agents.
+maybe need context of which agent does what and when to leave the other empty.
+after that we will need to work with those structured output and send to the respective agent.

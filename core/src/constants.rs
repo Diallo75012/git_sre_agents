@@ -328,7 +328,6 @@ pub fn request_analyzer_model_settings() -> CreateModelSettingsEngineResult<agen
 type CreatePayloadEngineResult<T> = std::result::Result<T, AppError>;
 pub fn request_analyzer_payload() -> CreatePayloadEngineResult<Value> {
   let model_message_formatted_hashmap_prompt = model_message_formatted_hashmap_prompt()?;
-  let tools = tools()?;
   let request_analyzer_response_format_part = request_analyzer_response_format_part()?;
   match machine::create_payload_engine(
     //&model_llama4_scout_17b(), // // to be defines (need tocheck cerebras llama4 17b or llama 70b). probably `env vars`
@@ -336,8 +335,24 @@ pub fn request_analyzer_payload() -> CreatePayloadEngineResult<Value> {
     &model_qwen3_32b(),
     &[model_message_formatted_hashmap_prompt], // &[HashMap<String, String>],
     Some(agents::ChoiceTool::Required), // ChoiceTool::Required as we want to make sure it read the files using the tool
-    None, //Some(&tools.tools), // Option<&[HashMap<String, Value>]>,
+    None,
     Some(&request_analyzer_response_format_part),
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::PayloadEngine(format!("Constant payload creation error: {}", e))), // to be propagating error of engine 
+  }
+}
+pub fn request_analyzer_payload_tool() -> CreatePayloadEngineResult<Value> {
+  let model_message_formatted_hashmap_prompt = model_message_formatted_hashmap_prompt()?;
+  let tools = tools()?;
+  match machine::create_payload_engine(
+    //&model_llama4_scout_17b(), // // to be defines (need tocheck cerebras llama4 17b or llama 70b). probably `env vars`
+    //&model_llama3_3_70b(),
+    &model_qwen3_32b(),
+    &[model_message_formatted_hashmap_prompt], // &[HashMap<String, String>],
+    Some(agents::ChoiceTool::Auto), // ChoiceTool::Required as we want to make sure it read the files using the tool
+    Some(&tools.tools), // Option<&[HashMap<String, Value>]>,
+    None,
   ) {
     Ok(prompt) => Ok(prompt),
     Err(e) => Err(AppError::PayloadEngine(format!("Constant payload creation error: {}", e))), // to be propagating error of engine 
