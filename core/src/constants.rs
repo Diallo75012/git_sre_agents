@@ -153,7 +153,7 @@ pub fn request_analyzer_response_format_part() -> ResponseFormatPartOfPayloadRes
     "human_request_analyzer_schema".to_string(),
     true, // param_strict
     unwrapped_request_analyzer_agent_schema,
-    agents::json_object(), // or json_schema()
+    agents::json_schema(), // or json_object()
   ) {
     Ok(payload_response_format_part) => Ok(payload_response_format_part),
     Err(e) => Err(AppError::ResponseFormatPart(format!("Constant response format built error: {}", e))), // to be propagating error of engine  	
@@ -331,8 +331,8 @@ pub fn request_analyzer_payload() -> CreatePayloadEngineResult<Value> {
   let request_analyzer_response_format_part = request_analyzer_response_format_part()?;
   match machine::create_payload_engine(
     //&model_llama4_scout_17b(), // // to be defines (need tocheck cerebras llama4 17b or llama 70b). probably `env vars`
-    //&model_llama3_3_70b(),
-    &model_qwen3_32b(),
+    &model_llama3_3_70b(),
+    //&model_qwen3_32b(),
     &[model_message_formatted_hashmap_prompt], // &[HashMap<String, String>],
     Some(agents::ChoiceTool::Required), // ChoiceTool::Required as we want to make sure it read the files using the tool
     None,

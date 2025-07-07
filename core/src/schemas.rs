@@ -9,8 +9,8 @@ use std::collections::HashMap;
 pub fn human_request_agent_schema() -> HashMap<&'static str, &'static str> {
   HashMap::from(
     [
-      ("sre1_agent", "answer details of what are the instructions concerning the agent sre1_agent otherwise leave it empty string. make sure it is valid JSON str."),
-      ("sre2_agent", "answer details of instructions concerning the agent sre2_agent otherwise leave it empty string. make sure it is valid JSON str."),
+      ("sre1_agent", "a unique list of instructions [...,...] for sre1_agent, otherwise leave it empty [] if it concerning sre2_agent. make sure it is valid JSON str."),
+      ("sre2_agent", "a unique list of instructions [...,...] for sre2_agent, otherwise leave it empty [] if it concerning sre1_agent. make sure it is valid JSON str."),
     ]
   )
 }

@@ -214,6 +214,7 @@ async fn run() -> Result<(), AppError> {
   // can be: `model_llama4_scout_17b`, `model_qwen3_32b()`, `model_llama3_3_70b()`
   //let model = model_llama4_scout_17b();
   let model = model_llama3_3_70b();
+  //let model = model_qwen3_32b();
   // debugging print for model
   println!("model: {:?}", model);
   
@@ -230,11 +231,11 @@ async fn run() -> Result<(), AppError> {
   let model_settings = request_analyzer_model_settings()?;
 
   // 6. Prepare initial user message (task to analyze the file)
-  let new_message = MessageToAppend::new(
-    "user",
-    "Please analyze the Kubernetes manifest at /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_deployment.yaml",
-    ""
-  );
+  // let new_message = MessageToAppend::new(
+  //   "user",
+  //   "Please analyze the Kubernetes manifest at /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_deployment.yaml",
+  //   ""
+  // );
 
   // 7. Prepare payload using agent.llm
   let mut history = MessageHistory::default();
@@ -274,7 +275,7 @@ async fn run() -> Result<(), AppError> {
   let final_answer = tool_loop_until_final_answer_engine(
     &endpoint,
     &mut history,
-    &new_message,
+    //&new_message,
     &mut payload,
     &model,
     tools,

@@ -594,13 +594,13 @@ type ToolLoopUntilFinalAnswerEngineResult<T> = std::result::Result<T, AppError>;
 pub async fn tool_loop_until_final_answer_engine(
     endpoint: &str,
     history: &mut MessageHistory,
-    first_message: &MessageToAppend,
+    //first_message: &MessageToAppend,
     payload: &mut Value,
     model: &str,
     tools: Option<&[HashMap<String, Value>]>,
     max_loop: usize,
 ) -> ToolLoopUntilFinalAnswerEngineResult<LlmResponse> {
-  history.append_message_to_history(first_message)?;
+  //history.append_message_to_history(first_message)?;
 
   let mut loop_counter = 0;
 
