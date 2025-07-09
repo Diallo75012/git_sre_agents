@@ -29,6 +29,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "core",
+ "human-request-agent",
  "main-agent",
  "pr-agent",
  "serde",
@@ -361,6 +362,7 @@ name = "human-request-agent"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "core",
  "dotenvy",
  "reqwest",
  "serde",

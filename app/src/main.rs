@@ -29,6 +29,7 @@ use core::machine::*;
 use core::agents::*;
 // use core::utils::env::load_env;
 use serde_json::{json, Value, from_str};
+use human_request_agent::human_request_node;
 
 /// function wrapper of the `Engine`
 async fn run() -> Result<(), AppError> {
@@ -197,103 +198,113 @@ async fn run() -> Result<(), AppError> {
  println("Api Call: {}", api_call);
  */
 
-  // 2. Prepare model and endpoint settings and check if not null or empty string
-  let endpoint = match envs_manage::get_env("LLM_API_URL") {
-    // ok but the url we have is empty
-    Ok(url) if url.trim().is_empty() => {
-      return Err(AppError::Env("LLM_API_URL is set but empty".to_string()))
-    },
-    // ok we have the good url
-    Ok(url) => url,
-    // we got an error
-    Err(e) => {
-      return Err(AppError::Env(format!("LLM_API_URL is set but empty: {}", e)))
-    },
-  };
-  // coming from `constants.rs` and need to check if not equal to `""`
-  // can be: `model_llama4_scout_17b`, `model_qwen3_32b()`, `model_llama3_3_70b()`
-  //let model = model_llama4_scout_17b();
-  let model = model_llama3_3_70b();
-  //let model = model_qwen3_32b();
-  // debugging print for model
-  println!("model: {:?}", model);
-  
-  if model.trim().is_empty() {
-    return Err(AppError::Env("Model env var is null error, make sure to select a model to make any API call.".to_string()))
-  }
+//   // 2. Prepare model and endpoint settings and check if not null or empty string
+//   let endpoint = match envs_manage::get_env("LLM_API_URL") {
+//     // ok but the url we have is empty
+//     Ok(url) if url.trim().is_empty() => {
+//       return Err(AppError::Env("LLM_API_URL is set but empty".to_string()))
+//     },
+//     // ok we have the good url
+//     Ok(url) => url,
+//     // we got an error
+//     Err(e) => {
+//       return Err(AppError::Env(format!("LLM_API_URL is set but empty: {}", e)))
+//     },
+//   };
+//   // coming from `constants.rs` and need to check if not equal to `""`
+//   // can be: `model_llama4_scout_17b`, `model_qwen3_32b()`, `model_llama3_3_70b()`
+//   //let model = model_llama4_scout_17b();
+//   let model = model_llama3_3_70b();
+//   //let model = model_qwen3_32b();
+//   // debugging print for model
+//   println!("model: {:?}", model);
+//   
+//   if model.trim().is_empty() {
+//     return Err(AppError::Env("Model env var is null error, make sure to select a model to make any API call.".to_string()))
+//   }
+// 
+//   // 3. Prepare agent
+//   let mut request_analyzer_agent = request_analyzer_agent()?;
+//   //let pretty_json = serde_json::to_string_pretty(&json!(request_analyzer_agent))?;
+//   //println!("{}", pretty_json);
+// 
+//   // 3. Create tools & model settings
+//   let model_settings = request_analyzer_model_settings()?;
+// 
+//   // 6. Prepare initial user message (task to analyze the file)
+//   // let new_message = MessageToAppend::new(
+//   //   "user",
+//   //   "Please analyze the Kubernetes manifest at /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_deployment.yaml",
+//   //   ""
+//   // );
+// 
+//   // 7. Prepare payload using agent.llm
+//   let mut history = MessageHistory::default();
+//   let tool_choice = Some(request_analyzer_agent.llm.tool_choice.clone());
+//   let tools = request_analyzer_agent.llm.tools.as_ref().map(|v| v.as_slice());
+//   //let response_format = None;
+// 
+//   // let mut payload = machine_create_payload_with_or_without_tools_structout(
+//   //   &model,
+//   //   &[],
+//   //   tool_choice.clone(),
+//   //   tools,
+//   //   response_format.as_ref(),
+//   // )?;
+// 
+//   // this payload is having it all with model defined as well,
+//   // it is a constant for this agent will only bemodified in api call with history messages if loop engaged 
+//   //let mut payload = request_analyzer_payload()?;
+//   let mut payload = request_analyzer_payload_tool()?;
+// 
+//   // 8. Call the loop function engine
+//   // let final_answer = tool_or_not_loop_api_call_engine(
+//   //   &endpoint,
+//   //   &mut history,
+//   //   &new_message,
+//   //   &mut payload,
+//   //   // this model is for the loop call of function next new payload created from history message appended
+//   //   // the model for the first llm call is in the `payload` input parameter
+//   //   &model, 
+//   //   tool_choice,
+//   //   tools,
+//   //   None,
+//   //   Some(&mut request_analyzer_agent.clone()),
+//   //   3
+//   // ).await?;
+// 
+//   let final_answer = tool_loop_until_final_answer_engine(
+//     &endpoint,
+//     &mut history,
+//     //&new_message,
+//     &mut payload,
+//     &model,
+//     tools,
+//     5,
+//   ).await?;
+//   // 9. Display final output
+//   println!("Final Answer from Request Analyzer Agent: {}", final_answer);
+// 
+//   
+//   //let model_message_formatted_hashmap_prompt = model_message_formatted_hashmap_prompt()?;
+//   let final_answer_structured = structure_final_output_from_raw_engine(
+//     &endpoint,
+//     &model,
+//     &request_analyzer_agent.prompt.content, // maybe here use instead of picking the prompt directly get the constant created `model_message_formatted_hashmap_prompt()?;`
+//     &final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer".to_string()))?, // result form tool call
+//     &request_analyzer_response_format_part()?,
+//   ).await?;
+//   println!("Final Answer from Request Analyzer Agent (Structured): {}", final_answer_structured);
 
-  // 3. Prepare agent
-  let mut request_analyzer_agent = request_analyzer_agent()?;
-  //let pretty_json = serde_json::to_string_pretty(&json!(request_analyzer_agent))?;
-  //println!("{}", pretty_json);
 
-  // 3. Create tools & model settings
-  let model_settings = request_analyzer_model_settings()?;
-
-  // 6. Prepare initial user message (task to analyze the file)
-  // let new_message = MessageToAppend::new(
-  //   "user",
-  //   "Please analyze the Kubernetes manifest at /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_deployment.yaml",
-  //   ""
-  // );
-
-  // 7. Prepare payload using agent.llm
-  let mut history = MessageHistory::default();
-  let tool_choice = Some(request_analyzer_agent.llm.tool_choice.clone());
-  let tools = request_analyzer_agent.llm.tools.as_ref().map(|v| v.as_slice());
-  //let response_format = None;
-
-  // let mut payload = machine_create_payload_with_or_without_tools_structout(
-  //   &model,
-  //   &[],
-  //   tool_choice.clone(),
-  //   tools,
-  //   response_format.as_ref(),
-  // )?;
-
-  // this payload is having it all with model defined as well,
-  // it is a constant for this agent will only bemodified in api call with history messages if loop engaged 
-  //let mut payload = request_analyzer_payload()?;
-  let mut payload = request_analyzer_payload_tool()?;
-
-  // 8. Call the loop function engine
-  // let final_answer = tool_or_not_loop_api_call_engine(
-  //   &endpoint,
-  //   &mut history,
-  //   &new_message,
-  //   &mut payload,
-  //   // this model is for the loop call of function next new payload created from history message appended
-  //   // the model for the first llm call is in the `payload` input parameter
-  //   &model, 
-  //   tool_choice,
-  //   tools,
-  //   None,
-  //   Some(&mut request_analyzer_agent.clone()),
-  //   3
-  // ).await?;
-
-  let final_answer = tool_loop_until_final_answer_engine(
-    &endpoint,
-    &mut history,
-    //&new_message,
-    &mut payload,
-    &model,
-    tools,
-    5,
-  ).await?;
-  // 9. Display final output
-  println!("Final Answer from Request Analyzer Agent: {}", final_answer);
-
-  
-  //let model_message_formatted_hashmap_prompt = model_message_formatted_hashmap_prompt()?;
-  let final_answer_structured = structure_final_output_from_raw_engine(
-    &endpoint,
-    &model,
-    &request_analyzer_agent.prompt.content, // maybe here use instead of picking the prompt directly get the constant created `model_message_formatted_hashmap_prompt()?;`
-    &final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer".to_string()))?, // result form tool call
-    &request_analyzer_response_format_part()?,
-  ).await?;
-  println!("Final Answer from Request Analyzer Agent (Structured): {}", final_answer_structured);
+  let human_request_node_response = human_request_node::run().await?; // return Llmresponse
+  let sre1_agent_potential = human_request_node_response.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse llm response".to_string()))?;
+  let sre1_agent_access_field: Value = serde_json::from_str(&sre1_agent_potential)?;
+  println!("human request node response: {}", human_request_node_response);
+  println!(
+    "human request node response (sre1_agent): {}",
+    sre1_agent_access_field["sre1_agent"],
+  );
   Ok(())
  
 

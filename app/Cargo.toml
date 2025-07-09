@@ -8,11 +8,12 @@ name = "app"
 path = "src/main.rs"
 
 [dependencies]
-core              = { path = "../core" }
-main-agent        = { path = "../agents/main_agent" }
-pr-agent          = { path = "../agents/pr_agent" }
-sre1-worker-agent = { path = "../agents/sre1_worker_agent" }
-sre2-worker-agent = { path = "../agents/sre2_worker_agent" }
+core                 = { path = "../core" }
+human-request-agent  = { path = "../agents/human_request_agent" }
+main-agent           = { path = "../agents/main_agent" }
+pr-agent             = { path = "../agents/pr_agent" }
+sre1-worker-agent    = { path = "../agents/sre1_worker_agent" }
+sre2-worker-agent    = { path = "../agents/sre2_worker_agent" }
 tokio        = { workspace = true }
 serde        = { workspace = true }
 serde_json   = { workspace = true }

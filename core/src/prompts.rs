@@ -31,11 +31,44 @@ pub fn human_request_agent_prompt() -> HashMap<UserType, &'static str> {
     [
       (
         UserType::System,
-        r#"You are a specialist in instructions analysis.\nYou will identify which agent need to do which tasks.For that you will need to read the user request from a file located at path /home/creditizens/dev-git-agent-team/project_git_repos/human_side/human_request.md using available tools. Agents are two different ones are sre1_agent reponsible only of Kubernetes infrastructure and sre2_agent responsible only of application deployed to Kubernetes. Analyze tasks requirements from the file containing user request and affect task instructions in concise way to the right agent. Your job is to decide which agent is responsible for each instruction based on the request content and the above rules. Can't be same task for both one is application only related the other infrastructure only related.
+        r#"You are a specialist in instructions reading and transmitting those as they are.
+        You will identify which agent need to do which tasks.
+        For that you will need to read the user request from a file located at path /home/creditizens/dev-git-agent-team/project_git_repos/human_side/human_request.md using available tools.
+        Agents are two different ones are sre1_agent reponsible only of Kubernetes infrastructure like monitoring and Kubernetes itself and sre2_agent responsible only of application deployed to Kubernetes that are not monitoring and Kubernetes itself but user facing applciations.
+        Same Task can't be split between agents, you HAVE TO CHOOSE one or the other.
+        Analyze tasks requirements from the file containing user request and affect task instructions in concise way to the right agent. Your job is to decide which agent is responsible for each instruction based on the request content and the above rules.
+        Do not change the instructions, just relay those in a concise way.
+        It is a git environment for the agent so it needs only to modify manifest files and commit work when verified using available tools and satisfactorily done.
+        So no need to restart some services or other, just work on manifest files.
         Important: - Strictly adhere to the following any given schema for your response. - Only return a JSON object based on the schema. Do not include any extra text, comments, or fields beyond the schema. - Do not alter the schema structure."#
       )
     ]
   )
+}
+pub fn human_request_agent_prompt_for_structured_output() -> String {
+	String::from(
+      r#"You are a specialist in instructions analysis to be affected to the right agent.
+      	You will identify which agent need to do the task.
+      	Agents are two different ones are sre1_agent reponsible only of Kubernetes infrastructure like monitoring and Kubernetes itself and sre2_agent responsible only of application deployed to Kubernetes that are not monitoring and Kubernetes itself but user facing applciations.
+      	Same Task can't be split between agents, you HAVE TO CHOOSE one or the other.
+      	You have to affect task to only one agent and leave the other one empty.
+      	Analyze tasks requirements from the file containing user request and affect task instructions in concise way to the right agent. Your job is to decide which agent is responsible for each instruction based on the request content and the above rules.
+      	Do not change the instructions, just relay those in a concise way.
+      	It is a git environment for the agent so it needs only to modify manifest files and commit work when verified using available tools and satisfactorily done.
+      	So no need to restart some services or other, just work on manifest files.
+      	- sre1_agent have access to those files:
+      	/home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_configmap.yaml
+      	/home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_deployment.yaml
+      	/home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_service.yaml
+      	/home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/sre1_notes.md
+      	- sre2_agent have access to those files:
+      	/home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre2_repo/nginx_configmap.yaml
+      	/home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre2_repo/nginx_deployment.yaml
+      	/home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre2_repo/nginx_service.yaml
+      	/home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre2_repo/sre2_notes.md
+      	Your job is to decide which agent is responsible and affect the task to the agent in an imperative way.
+      	Important: - Strictly adhere to the following any given schema for your response. - Only return a JSON object based on the schema. Do not include any extra text, comments, or fields beyond the schema. - Do not alter the schema structure."#
+	)
 }
 /// `main_agent`
 /// discord tool to communicate with human,  

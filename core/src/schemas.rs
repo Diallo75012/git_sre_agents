@@ -1,3 +1,4 @@
+
 //! here will be all the different schemas like we do in `Python`
 //! we will use the `create_schemas_engine()` and inject the different agents `HashMap<String, &SchemaFieldType::String>`
 use std::collections::HashMap;
@@ -9,8 +10,8 @@ use std::collections::HashMap;
 pub fn human_request_agent_schema() -> HashMap<&'static str, &'static str> {
   HashMap::from(
     [
-      ("sre1_agent", "a unique list of instructions [...,...] for sre1_agent, otherwise leave it empty [] if it concerning sre2_agent. make sure it is valid JSON str."),
-      ("sre2_agent", "a unique list of instructions [...,...] for sre2_agent, otherwise leave it empty [] if it concerning sre1_agent. make sure it is valid JSON str."),
+      ("sre1_agent", "a unique list of instructions [...,...] for sre1_agent, otherwise leave it empty [] if it concerning sre2_agent. if sre2_agent task leave this empty. make sure it is valid JSON str."),
+      ("sre2_agent", "a unique list of instructions [...,...] for sre2_agent, otherwise leave it empty [] if it concerning sre1_agent. if sre1_agent task leave this empty. make sure it is valid JSON str."),
     ]
   )
 }

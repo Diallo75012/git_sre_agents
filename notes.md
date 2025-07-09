@@ -352,21 +352,21 @@ kubectl port-forward pod/nginx-585f69b946-qw57t 8080:80
 - [x] improve custom error enum and do some implementations to teach rust that our field can be mapped to standard library error types.
 - [x] create a file reader to be able to get the `Human` prompt at the beginning of the app.
 - [x] clone the `main repo` in the `human side` same as if the human had cloned that repo and want to check the changes from agents.
-- [ ] make all agents prompt files and a function for prompt formatting that would use the `format!()` macro to create prompts/text needed
+- [x] make all agents prompt files and a function for prompt formatting that would use the `format!()` macro to create prompts/text needed
 - [ ] consider using channels and threads so that the communication can be parallelized if multi tool call
 - [x] use loop for tool call until getting the answer fully done (so maybe create this until it work and then integrate in project)
-- [ ] study the api returned messages/tool use/error to be able to `deserialize` what we want properly
-- [ ] prepare a RUST workspace in the model of previous project and here modularize the flow of actions having each agentif flow on its own
+- [x] study the api returned messages/tool use/error to be able to `deserialize` what we want properly
+- [x] prepare a RUST workspace in the model of previous project and here modularize the flow of actions having each agentic flow on its own
      and one core unit and bunble the applicaiton with only one app binary.
-- [ ] start creating agentic flow in RUST starting with the external agent that will be link between human request and the start of agents 
+- [x] start creating agentic flow in RUST starting with the external agent that will be link between human request and the start of agents 
 - [ ] do the agents that will be the sre workers who read instruction from communication brought by the main agent or pr agent.
 - [ ] do the the pr agent
 - [ ] do the main agent
 - [ ] make sure tools are used as intended so have a list and agent can choose which tool is best depending on request1 
 - [ ] build http client layer...
 - [ ] implement proper JSON handling (`serde` san)
-- [ ] create kind of conversation management (`state`, `files` OR `env vars`)
-- [ ] mimmic tool execution logic in RUST in the model of what we have done with `langgraph`
+- [x] create kind of conversation management (`state`, `files` OR `env vars`)
+- [x] mimmic tool execution logic in RUST in the model of what we have done with `langgraph`. (REACT type of tool use has been implemented)
 
 
 ## `Cerebras` Compeltion API study
@@ -2629,3 +2629,45 @@ and also we want if only one agent is concerned not the task to be repeated to t
 as of now it sends back two structured output one for each agent in each when the job should be only for one of the agents.
 maybe need context of which agent does what and when to leave the other empty.
 after that we will need to work with those structured output and send to the respective agent.
+
+
+# Agent Rules For Prompting
+- always tell agents what are the speciality of other agents they are interacting with.
+- tell the agent to focus on what is correlated with the task and not what is not included (as responses thend to put more steps than required by instructions)
+- tell the agent to use available tools until task is satisfactorily done
+- tell to the agent that it is a git environment and only the manifests need to be updated according to the instructions. someone else will restart services and apply manifest to kubernetes cluster.
+- some agent will need to know where are the git repos and the files present:
+```bash
+# sre1_agent
+/home/creditizens//dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_configmap.yaml
+/home/creditizens//dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_deployment.yaml
+/home/creditizens//dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_service.yaml
+/home/creditizens//dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/sre1_notes.md
+# sre2_agent
+/home/creditizens//dev-git-agent-team/project_git_repos/agents_side/creditizens_sre2_repo/nginx_configmap.yaml
+/home/creditizens//dev-git-agent-team/project_git_repos/agents_side/creditizens_sre2_repo/nginx_deployment.yaml
+/home/creditizens//dev-git-agent-team/project_git_repos/agents_side/creditizens_sre2_repo/nginx_service.yaml
+/home/creditizens//dev-git-agent-team/project_git_repos/agents_side/creditizens_sre2_repo/sre2_notes.md
+```
+
+______________________________________________________________________________________________________________________
+
+# tranform a valid dict string to a serde_json to access fields: `from_str`
+I have my schema coming back as `String` in `chocies[0].message.content`
+I can maybe change the struct type for that field so that `serde` would deserialize it to the right type.
+but I choose to use `from_str` to access the fields.
+```rust
+let content: String = llm_response.choices[0].message.content?; // content field is an `Option<String>` so we use `?`
+# Parse the string into serde_json::Value
+let parsed: serde_json::Value = serde_json::from_str(&content)?;
+# access fields in two different way
+if let Some(sre1_task) = parsed.get("sre1_agent") {
+  println!("sre1_agent: {}", sre1_task);
+}
+# Or as a `String`:
+let sre1 = parsed.get("sre1_agent")
+  .and_then(|v| v.as_str())
+  .unwrap_or("");
+println!("sre1_agent: {}", sre1);
+
+```
