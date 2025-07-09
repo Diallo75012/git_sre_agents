@@ -124,6 +124,9 @@ pub enum AppError {
   /// huamn request analysis node error
   #[error("Human Request Analysis Node Error: {0}")]
   RequestAnalysisNode(String),
+  /// agent node error
+  #[error("Agent Node Error: {0}")]
+  AgentNode(String),
 
 }
 

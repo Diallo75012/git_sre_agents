@@ -359,7 +359,9 @@ kubectl port-forward pod/nginx-585f69b946-qw57t 8080:80
 - [x] prepare a RUST workspace in the model of previous project and here modularize the flow of actions having each agentic flow on its own
      and one core unit and bunble the applicaiton with only one app binary.
 - [x] start creating agentic flow in RUST starting with the external agent that will be link between human request and the start of agents 
-- [ ] do the agents that will be the sre workers who read instruction from communication brought by the main agent or pr agent.
+- [ ] do the sre agent ndoes first that receive the task and create all tools needed for agent read file (YAML) and write (JSON) manifest
+      folllowing instructions, tool then to verify work complied true/false with instructions, tool then to commit work
+- [ ] do standardize the wayt commits functions are done and have the streaming threding Sync Send going on taking from previous project experience.
 - [ ] do the the pr agent
 - [ ] do the main agent
 - [ ] make sure tools are used as intended so have a list and agent can choose which tool is best depending on request1 
@@ -2665,9 +2667,81 @@ if let Some(sre1_task) = parsed.get("sre1_agent") {
   println!("sre1_agent: {}", sre1_task);
 }
 # Or as a `String`:
-let sre1 = parsed.get("sre1_agent")
-  .and_then(|v| v.as_str())
-  .unwrap_or("");
+let sre1 = match parsed.get("sre1_agent").and_then(|v| v.as_str()) {
+  Some(val) => val,
+  None => "",
+};
 println!("sre1_agent: {}", sre1);
-
 ```
+_______________________________________________________________________________________________________________________
+
+# sre agent nodes creation checklist
+- tools:
+  - to read file (YAML)
+  - to write manifest (JSON) manifest folllowing instructions
+  - to verify work complies true/false with instructions => this gonna be just a read file tool that we are going to use to check again with different model
+  - to commit work
+
+- prompt:
+  - provide all manifest for the right agent in the prompt
+  - ask to read the right manifest
+  - ask to use available tools to first read the manifest, then write new manifest and provvide path with name of file,
+    then to read again to check if complies answering why it complies or why it doesn't
+
+  - then after having received the structure output true/false for the compliance of the new manifest
+    - if true commit work
+    - if false go back to the previous creation manifest stage (have a way to track max_loop of this retry different from the one of api call with tools)
+
+  - then have structured output with the agent name so that next pr_agent can pull his work
+
+can convert `json` to `yaml` or `yaml` to `json` using a plugin added to `kubectl` or using `yq` but will just be using yaml:
+```bash
+# Using `kubectl convert`: Install krew to be able to add plugins
+(
+  set -x; cd "$(mktemp -d)" &&
+  OS="$(uname | tr '[:upper:]' '[:lower:]')" &&
+  ARCH="$(uname -m | sed 's/x86_64/amd64/' | sed 's/arm.*$/arm/')" &&
+  KREW="krew-${OS}_${ARCH}" &&
+  curl -fsSLO "https://github.com/kubernetes-sigs/krew/releases/latest/download/${KREW}.tar.gz" &&
+  tar zxvf "${KREW}.tar.gz" &&
+  ./"${KREW}" install krew
+)
+export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
+kubectl krew install convert
+kubectl convert -f old_manifest.yaml --output-version apps/v1
+
+# `yq`
+yq -o=json deployment.yaml > deployment.json
+yq -P deployment.json > deployment.yaml
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      

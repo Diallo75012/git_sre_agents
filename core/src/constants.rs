@@ -8,6 +8,8 @@ use crate::agents;
 use crate::agents::SchemaFieldType;
 use crate::machine;
 use crate::file_reader;
+use crate::write_file;
+use crate::commits;
 use crate::prompts;
 use crate::envs_manage;
 use crate::errors::AppError;
@@ -163,7 +165,7 @@ pub fn request_analyzer_response_format_part() -> ResponseFormatPartOfPayloadRes
 
 
 // different `tools` with they `Rust` `docstring` like for `Python` tools
-/// `read file_tool` 
+/// `read_file_tool` 
 /// This tool reads files by providing the full content of the file to be analyzed
 /// 
 /// # Arguments
@@ -176,7 +178,7 @@ pub fn request_analyzer_response_format_part() -> ResponseFormatPartOfPayloadRes
 ///
 /// # Example
 /// ```
-/// let read_infrastructure_yaml_file = read_file_tool("/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_deployment.yaml");
+/// let read_yaml_file = read_file_tool("/project_git_repos/agents_side/creditizens_sre1_repo/manifest.yaml");
 /// ```
 pub fn read_file_tool(file_path: &str) -> String {
   let file_content = match file_reader::read_file(file_path) {
@@ -185,6 +187,166 @@ pub fn read_file_tool(file_path: &str) -> String {
   };
   file_content
 }
+/// `write_file_tool` 
+/// This tool writes files by providing the full content to be written in the manifest
+/// 
+/// # Arguments
+///
+/// * `file_path` - The path of where is the file located to be able to write its content
+/// * `yaml_manifest_content` - The content of the manifest in YAML format with good indentation and line returns, well formatted
+///
+/// # Returns
+///
+/// * `String` - The content of the file.
+///
+/// # Example
+/// ```
+/// let write_yaml_file = write_file_tool("/project_git_repos/agents_side/creditizens_sre1_repo/manifest.yaml");
+/// ```
+pub fn write_file_tool(file_path: &str, yaml_manifest_content: &str) -> String {
+  let file_content = match write_file::file_write(file_path, yaml_manifest_content) {
+  	Ok(text) => text,
+  	Err(e) => format!("An error Occured while trying to write in file this: {}\n At path {}: {}", yaml_manifest_content, file_path, e),
+  };
+  file_content
+}
+
+/// `sre_agent_git_tool` 
+/// This tool writes files by providing the full content to be written in the manifest
+/// 
+/// # Arguments
+///
+/// * `file_path` - The path of where is the manifest file that has been updated according to instructions
+/// * `commit_message` - The content of the commit message about the ork that has been done
+///
+/// # Returns
+///
+/// * `String` - confirmation of successfull commit of ork or an error.
+///
+/// # Example
+/// ```
+/// let sre_agent_commit = sre_agent_git_tool("/project_git_repos/agents_side/creditizens_sre1_repo/manifest.yaml", "the service has been updated according to instructions");
+/// ```
+pub fn sre_agent_git_tool(file_path: &str, commit_message: &str) -> String {
+  // we need to here use the streaming functions in order to run command, it can be inside the commit_work function that would handle the threads
+  // or it could be done from here.. but better have one function doing the job so that alll agents can use it
+  // `git add ., git commit -m "<commit message>"`
+  let commit_outcome = match commits::commit_work(file_path, commit_message) {
+  	Ok(text) => text,
+  	Err(e) => format!("An error Occured while trying to commit work for the file path {}: {}", file_path, e),
+  };
+  commit_outcome
+}
+
+// use async_trait::async_trait; // not wure that in this project we would need this as we have tokio and can use just pub async probably...
+use tokio::process::Command;
+use tokio::sync::mpsc::Sender;
+pub async fn run(
+  output_tx: &Sender<String>,
+  commit_message: &str,
+  file_path: &str,
+  ) -> Result<()> {
+
+  let cmd = &format!(r#"git add {} &&  git commit -m "{}""#, file_path, commit_message);
+
+  let child = Command::new("bash")
+    .arg("-c")
+    .arg(cmd)
+    .stdout(std::process::Stdio::piped())
+    .stderr(std::process::Stdio::piped())
+    .spawn()?;
+  // Stream output + handle timeout via helper
+  let _ = stream_child("node_name", child, output_tx.clone()).await
+    .map_err(|e| AppError::AgentNode(e.to_string()));	
+  Ok(())
+}
+
+use anyhow::{Context, Result};
+use tokio::io::{AsyncBufReadExt,BufReader};
+use tokio::sync::mpsc::Sender;
+use std::time::Duration;
+use tokio::time::timeout;
+pub async fn stream_child(
+    node_name: &'static str,
+    mut child: tokio::process::Child,
+    tx: Sender<String>,
+  ) -> anyhow::Result<()> {
+  // Take the child's stdout and stderr handles
+  let stdout = child.stdout.take().context("Missing stdout")?;
+  let stderr = child.stderr.take().context("Missing stderr")?;
+
+  // Set up buffered line readers. type is `Result<Option<String>>`
+  // `.lines()` extension need the import `AsyncBufReadExt` from `tokio::io`
+  let mut rdr_out = BufReader::new(stdout).lines();
+  let mut rdr_err = BufReader::new(stderr).lines();
+  let tx_clone = tx.clone();
+
+  // Spawn a task that reads stdout/stderr in background and sends to channel
+  let log_task = tokio::spawn(async move {
+    loop {
+      // `tokio::select!` handles the `await` so no need `line = rdr_out.next_line().await` but just `line = rdr_out.next_line()`
+      tokio::select! {
+        // `.next_lines()` extension need the import `AsyncBufReadExt` from `tokio::io`
+        line = rdr_out.next_line() => {
+          match line {
+            Ok(Some(l)) => {
+              // so here even if inside `tokio:;select!` globally, it is not consider as so but inside `match`
+              // so `.send()` returns a `Future` therefore need an `await` (tricky). inner nested scope will have their own rules
+              let _ = tx_clone.send(format!("[{}][OUT] {}\n", node_name, l)).await;
+              //write_step_cmd_debug(&format!("[{}][OUT] {}", node_name, l));
+            },
+            Ok(None) => break, // end of stream
+            Err(e) => {
+              let _ = tx_clone.send(format!("[{}][ERR][on line matching(rdr_out)] error reading stdout: {}", node_name, e)).await;
+              //write_step_cmd_debug(&format!("[{}][ERR][on line matching(rdr_out)] {}", node_name, e));
+              break;
+            }
+          }
+        }
+        line = rdr_err.next_line() => {
+          match line {
+            Ok(Some(l)) => {
+              let _ = tx_clone.send(format!("[{}][ERR][on line matching(rdr_err(some))] {}", node_name, l)).await;
+              //write_step_cmd_debug(&format!("[{}][ERR][on line matching(rdr_err(some))] {}", node_name, l));
+            }
+            Ok(None) => break,
+            Err(e) => {
+              let _ = tx_clone.send(format!("[{}][ERR] error reading stderr: {}", node_name, e)).await;
+              //write_step_cmd_debug(&format!("[{}][ERR][on line matching(rdr_err(none))] {}", node_name, e));
+              break;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  if node_name == "request_analyzer_node" {
+    let status = timeout(Duration::from_secs(30), child.wait())
+      .await
+      .context(format!("Timeout waiting for node_name `{}`", node_name))??;
+    if !status.success() {
+      return Err(anyhow::anyhow!("Command exited with status: {}", status));
+    }	
+  } // add anoter if statement for other node_names... and so on
+
+  // Wait for the log task to complete
+  log_task.await?;
+
+  Ok(())
+}
+
+//use async_trait::async_trait; // this is a depency to dd to `Cargo.toml`: `async-trait  = "0.1"`
+//use std::io;
+//#[async_trait]
+pub trait Step: Send + Sync {
+  async fn run(
+    &mut self,
+    output_tx: &tokio::sync::mpsc::Sender<String>,
+    state: &mut state,
+  ) -> Result<(), AppError>;
+}
+
 
 /* tools engine */
 /// after ca then create tools by adding to the same `new_agent_tool` with other tool function parameters

@@ -222,7 +222,21 @@ pub fn execute_tools_machine(tool_name: &str, arguments: &Value) -> Result<Value
 
       Ok(json!({ "output": file_content }))
     }
+    "write_file_tool" => {
+      let file_path = parsed_args
+        .get("file_path")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| AppError::ExecuteToolEngine("Missing `file_path` argument for `write_file_tool`".into()))?;
+      let yaml_manifest_content = parsed_args
+        .get("yaml_manifest_content")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| AppError::ExecuteToolEngine("Missing `yaml_manifest_content` argument for `write_file_tool`".into()))?;
 
+      let file_content = constants::write_file_tool(file_path, yaml_manifest_content); // it is returning a `String`
+      // .map_err(|e| AppError::ExecuteToolEngine(format!("Error executing `write_file_tool`: {}", e)))?;
+
+      Ok(json!({ "output": file_content }))
+    }
     /* can extend this match arm for more tools as we build them */
     _ => Err(AppError::ExecuteToolEngine(format!("Unknown tool name: {}", tool_name))),
   }

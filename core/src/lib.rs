@@ -2,6 +2,7 @@
 pub mod envs_manage;
 pub mod errors;
 pub mod file_reader;
+pub mod write_file;
 pub mod discord_notifier;
 pub mod agents;
 pub mod constants;
@@ -9,3 +10,4 @@ pub mod headers;
 pub mod machine;
 pub mod prompts;
 pub mod schemas;
+pub mod commits;
