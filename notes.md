@@ -2715,9 +2715,92 @@ yq -o=json deployment.yaml > deployment.json
 yq -P deployment.json > deployment.yaml
 ```
 
+# Channels to manage internode message trnsmission
+source: [rust channels](https://doc.rust-lang.org/std/sync/mpsc/)
+```rust
+use std::thread;
+use std::sync::mpsc::channel;
 
+// Create a simple streaming channel
+let (tx, rx) = channel();
+thread::spawn(move || {
+    tx.send(10).unwrap();
+});
+assert_eq!(rx.recv().unwrap(), 10);
+```
 
+previous projects use of `rust channels` limiting the size as it is unlimitted when using `Sender` unless we use `SyncSender`:
+```rust
+# create a trait implementing `Send` and `Sync` that will be used later on
+#[async_trait]
+pub trait Step: Send + Sync {
+    /// Human-readable name of the step (for logging/UI).
+    fn name(&self) -> &'static str;
+    /// Execute the step. Takes a transmitter for log output and returns Ok on success or an error.
+    async fn run(
+      &mut self,
+      output_tx: &tokio::sync::mpsc::Sender<String>,
+      state: &mut State,
+    ) -> Result<(), StepError>;
+}
+# create a struct specific to that `node` that implements the trait and put the specific logic in the function
+pub struct CommitWork;
 
+#[async_trait]
+impl Step for CommitWork {
+    fn name(&self) -> &'static str {
+        "Commit Work"
+    }
+
+    async fn run(
+      &mut self,
+      output_tx: &Sender<String>,
+      state: &mut State,
+      ) -> Result<(), StepError> {
+# here put the specific logic of that `node`      	
+}
+# after we have built our `steps` but we could use this for our different `nodes`
+let steps: Vec<Box<dyn Step + Send + Sync>> = vec![
+  Box::new(DiscoverNodes),
+  Box::new(PullRepoKey),
+  Box::new(MadisonVersion),
+  Box::new(Cordon),
+  Box::new(Drain),
+  Box::new(UpgradePlan),
+  Box::new(UpgradeApplyCtl),
+  Box::new(UpgradeNode),
+  Box::new(Uncordon),
+  Box::new(RestartServices),
+  Box::new(VerifyCoreDnsProxy),
+];
+# limiting to 1024 bits
+let (tx_log, mut rx_log) = mpsc::channel::<String>(1024);
+# we use a for loop on the `steps` or `nodes stages`
+for (idx, mut step) in steps.into_iter().enumerate() {
+# and we run the function that would run that step `node`
+  match step.run(&tx_log, desired_versions, pipeline_state, node_update_tracker_state).await {
+    ...if needed to do anything in the meantime before receiving the answer like a state update for example..
+  }
+}
+while let Ok(message) = rx_log.try_recv() {
+  ... then here manage the `message` 
+}
+```
+
+so we need to have at the end of each node what is the `outcome message` and `where it should go`:
+- channel input arguments:
+  - `name of node`
+  - `message`
+- inside channel function we have a list of node names or dictionary that would if `name of node` matches start that node with the `message`
+after that next node logic would start with that message 
+and use the same functionality so use our channels to send to next node... 
+and so on until the end.
+
+like that each nodes will have a special processing specific to it.
+But all would start from a message and finish with where to go next and the message outcome of its own processing results.
+Then they all pass through this channels senders to different nodes, so that one could probably in the future send to several nodes it oucome
+and have parallelism of action done. Like notification of human while keep working on task for example.
+So we would need to pass a `serde_json::Value` or a `HashMap` so that it can be used by the `channel processor` to know where to go next.
 
 
 

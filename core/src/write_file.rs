@@ -1,4 +1,4 @@
-use anyhow:: Result;   // <- anyhow::Result = Result<_, anyhow::Error>
+use anyhow::Result;   // <- anyhow::Result = Result<_, anyhow::Error>
 use std::io::Write;
 
 pub fn file_write(file_path: &str, yaml_manifest_content: &str) -> Result<String> {
