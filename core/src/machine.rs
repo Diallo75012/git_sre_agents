@@ -731,3 +731,255 @@ pub fn response_format_part_of_payload_engine(
   let api_comsummable_response_format = response_format_new.response_format_desired_as_map()?;
   Ok(api_comsummable_response_format)
 }
+
+
+/* ** CONNECTOR DISPATCHER FROM NODE TO NODE  **  */
+/// this function will be the one receiving output of nodes and will direct to next node based on conditions
+/// it will act like `langgraph`conditional edge and will be the center of all interactions routing
+type NodeConnectorDispatcherRouterResult<T> = std::result::Result<T, AppError>;
+pub fn node_connector_dispatcher_router_engine(
+    ... arguments
+  ) -> NodeConnectorDispatcherRouterResult<HashMap<String, serde_json::Value>> {
+
+}
+
+
+// trait implementing `Send` and `Sync` that will be used for nodes intercommunication
+#[async_trait]
+pub trait InterconnectorRouter: Send + Sync {
+  /// Human-readable name of the step (for logging/UI).
+  fn name(&self) -> &'static str;
+  /// Execute the step. Takes a transmitter for log output and returns Ok on success or an error.
+  async fn run(
+    &mut self,
+    output_tx: &tokio::sync::mpsc::Sender<String>,
+    node_name: &str,
+    message: &str,
+  ) -> Result<(), StepError>;
+}
+// create a struct specific to that `node` that implements the trait and put the specific logic in the function
+pub struct CommitWork;
+
+#[async_trait]
+impl InterconnectorRouter for CommitWork {
+  fn name(&self) -> &'static str {
+      "Commit Work"
+  }
+
+  async fn run(
+    &mut self,
+    output_tx: &tokio::sync::mpsc::Sender<String>,
+    node_name: &str,
+    message: &str,
+  ) -> Result<(), StepError> {
+// here put the specific logic of that `node`      	
+}
+
+
+// after we have built our `steps` but we could use this for our different `nodes`
+let stages: Vec<Box<dyn InterconnectorRouter + Send + Sync>> = vec![
+  Box::new(CommitWork),
+  Box::new(..some other struct node),
+];
+// limiting the number of message (here `String`) present inthe channel at the same time (does not restrict the size of each `String`)
+let (tx, mut rx) = mpsc::channel::<String>(1024);
+// we use a for loop on the `steps` or `nodes stages`
+for (idx, mut stage) in stages.into_iter().enumerate() {
+// and we run the function that would run that step `node`
+  match stage.run(output_tx, node_name, message).await {
+    ...if needed to do anything in the meantime before receiving the answer like a state update for example..
+  }
+}
+while let Ok(message) = rx_log.try_recv() {
+  ... then here manage the `message` 
+}
+
+
+
+// CHANNEL BASED
+
+/// chatgpt talk and iteration code suggestion
+//! Interconnector system inspired by LangGraph conditional routing
+
+use async_trait::async_trait;
+use serde_json::{json, Value};
+use std::collections::HashMap;
+use tokio::sync::mpsc;
+
+#[derive(Debug)]
+pub enum StepError {
+    Processing(String),
+    Routing(String),
+}
+
+pub type AppResult<T> = Result<T, StepError>;
+
+/// Shared trait that all nodes implement.
+#[async_trait]
+pub trait InterconnectorRouter: Send + Sync {
+    /// Identifier for logging or UI display.
+    fn name(&self) -> &'static str;
+
+    /// Main execution method.
+    async fn run(
+        &mut self,
+        input: &Value,
+    ) -> AppResult<(String, Value)>; // (next_node_name, message)
+}
+
+// Example node: CommitWork
+pub struct CommitWork;
+
+#[async_trait]
+impl InterconnectorRouter for CommitWork {
+    fn name(&self) -> &'static str {
+        "CommitWork"
+    }
+
+    async fn run(&mut self, input: &Value) -> AppResult<(String, Value)> {
+        println!("[{}] Received input: {}", self.name(), input);
+
+        // Process logic here...
+        let next_node = "NotifyHuman".to_string();
+        let new_message = json!({
+            "status": "committed",
+            "note": "All changes have been committed successfully."
+        });
+
+        Ok((next_node, new_message))
+    }
+}
+
+// Another example node
+pub struct NotifyHuman;
+
+#[async_trait]
+impl InterconnectorRouter for NotifyHuman {
+    fn name(&self) -> &'static str {
+        "NotifyHuman"
+    }
+
+    async fn run(&mut self, input: &Value) -> AppResult<(String, Value)> {
+        println!("[{}] Notifying human with message: {}", self.name(), input);
+
+        // Final stage, no next node
+        Ok(("End".to_string(), json!({"status": "notified"})))
+    }
+}
+
+/// Central dispatcher/router
+pub async fn node_connector_dispatcher_router_engine(
+    mut nodes: HashMap<String, Box<dyn InterconnectorRouter>>,
+    entry_point: String,
+    initial_message: Value,
+) -> AppResult<Value> {
+    let mut current_node = entry_point;
+    let mut message = initial_message;
+
+    loop {
+        if current_node == "End" {
+            break;
+        }
+
+        let node = nodes
+            .get_mut(&current_node)
+            .ok_or(StepError::Routing(format!("Node '{}' not found", current_node)))?;
+
+        println!("Running node: {}", current_node);
+        let (next_node, new_message) = node.run(&message).await?;
+
+        current_node = next_node;
+        message = new_message;
+    }
+
+    Ok(message)
+}
+
+#[tokio::main]
+async fn main() -> AppResult<()> {
+    let mut nodes: HashMap<String, Box<dyn InterconnectorRouter>> = HashMap::new();
+    nodes.insert("CommitWork".to_string(), Box::new(CommitWork));
+    nodes.insert("NotifyHuman".to_string(), Box::new(NotifyHuman));
+
+    let starting_message = json!({"task": "commit changes"});
+
+    let result = node_connector_dispatcher_router_engine(
+        nodes,
+        "CommitWork".to_string(),
+        starting_message,
+    )
+    .await?;
+
+    println!("\nFinal output: {}", result);
+    Ok(())
+}
+
+
+
+// FUNCTION BASED
+#[derive(Debug, Clone)]
+pub struct NodeOutput {
+    pub next_node: String,
+    pub message: serde_json::Value,
+}
+
+#[async_trait]
+pub trait NodeLogic {
+    async fn run(&self, input: serde_json::Value) -> Result<NodeOutput, String>;
+    fn name(&self) -> &'static str;
+}
+
+// === Nodes ===
+pub struct RequestAnalyzer;
+#[async_trait]
+impl NodeLogic for RequestAnalyzer {
+    async fn run(&self, input: serde_json::Value) -> Result<NodeOutput, String> {
+        println!("RequestAnalyzer received: {}", input);
+        Ok(NodeOutput {
+            next_node: "StructuredOutput".into(),
+            message: json!({"sre1_agent": "task 1", "sre2_agent": ""}),
+        })
+    }
+    fn name(&self) -> &'static str {
+        "RequestAnalyzer"
+    }
+}
+
+pub struct StructuredOutput;
+#[async_trait]
+impl NodeLogic for StructuredOutput {
+    async fn run(&self, input: serde_json::Value) -> Result<NodeOutput, String> {
+        println!("StructuredOutput processing: {}", input);
+        Ok(NodeOutput {
+            next_node: "End".into(),
+            message: json!({"done": true}),
+        })
+    }
+    fn name(&self) -> &'static str {
+        "StructuredOutput"
+    }
+}
+
+pub async fn node_dispatcher(entry_node: &str, input: serde_json::Value) -> Result<serde_json::Value, String> {
+    let mut current_node = entry_node.to_string();
+    let mut message = input;
+
+    let node_map: HashMap<&str, Box<dyn NodeLogic + Send + Sync>> = HashMap::from([
+        ("RequestAnalyzer", Box::new(RequestAnalyzer)),
+        ("StructuredOutput", Box::new(StructuredOutput)),
+    ]);
+
+    while current_node != "End" {
+        let node = node_map.get(&*current_node)
+            .ok_or_else(|| format!("Node not found: {}", current_node))?;
+
+        let output = node.run(message).await?;
+        current_node = output.next_node.clone();
+        message = output.message.clone();
+    }
+
+    Ok(message)
+}
+
+       end or not
+node > disptcher > other node

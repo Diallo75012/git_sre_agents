@@ -2802,9 +2802,96 @@ Then they all pass through this channels senders to different nodes, so that one
 and have parallelism of action done. Like notification of human while keep working on task for example.
 So we would need to pass a `serde_json::Value` or a `HashMap` so that it can be used by the `channel processor` to know where to go next.
 
+Have talked with chatgpt and I am thinking to ditch the channel way of doing it for just function based way. 
+So i will not code yet until i have decided hwo i am going to handle that.... I want to use channels to keep going from last project
+learnings. but I see that function based can be just straight forward and easier to implement...
 
+1. Simple Function-Based Dispatcher (No Channels)
+Design: At the end of each node, you call dispatcher("NextNode", message); dispatcher is just a match or HashMap of function names
+```rust
+use serde_json::json;
+use serde_json::Value;
 
+fn dispatcher(next_node: &str, message: Value) {
+    match next_node {
+        "RequestAnalyzer" => request_analyzer(message),
+        "StructuredOutput" => structured_output(message),
+        _ => println!("Unknown node: {}", next_node),
+    }
+}
 
+fn request_analyzer(message: Value) {
+    println!("RequestAnalyzer got: {}", message);
+    let output = json!({"next_node": "StructuredOutput", "data": "parsed request"});
+    dispatcher("StructuredOutput", output);
+}
+
+fn structured_output(message: Value) {
+    println!("StructuredOutput got: {}", message);
+    println!("Done.");
+}
+
+fn main() {
+    let initial_message = json!({"input": "analyze this"});
+    dispatcher("RequestAnalyzer", initial_message);
+}
+```
+
+2. Channel-Based Dispatcher (Single Sender to Dispatcher)
+Design: One producer (node calls tx.send(...)); Dispatcher loop listens and routes to correct function
+```rust
+use serde_json::json;
+use serde_json::Value;
+use tokio::sync::mpsc;
+
+#[derive(Debug)]
+struct RoutedMessage {
+    next_node: String,
+    message: Value,
+}
+
+async fn dispatcher(mut rx: mpsc::Receiver<RoutedMessage>) {
+    while let Some(rm) = rx.recv().await {
+        match rm.next_node.as_str() {
+            "RequestAnalyzer" => request_analyzer(rm.message).await,
+            "StructuredOutput" => structured_output(rm.message).await,
+            _ => println!("Unknown node: {}", rm.next_node),
+        }
+    }
+}
+
+async fn request_analyzer(message: Value) {
+    println!("RequestAnalyzer got: {}", message);
+    // simulate output
+    let output = RoutedMessage {
+        next_node: "StructuredOutput".into(),
+        message: json!({"result": "parsed"}),
+    };
+    println!("Dispatching to StructuredOutput...");
+    // would be passed via channel in real usage
+}
+
+async fn structured_output(message: Value) {
+    println!("StructuredOutput got: {}", message);
+    println!("Done.");
+}
+
+#[tokio::main]
+async fn main() {
+    let (tx, rx) = mpsc::channel::<RoutedMessage>(32);
+    let dispatcher_handle = tokio::spawn(dispatcher(rx));
+
+    let initial_message = RoutedMessage {
+        next_node: "RequestAnalyzer".into(),
+        message: json!({"input": "check manifest"}),
+    };
+
+    tx.send(initial_message).await.unwrap();
+
+    // wait for dispatcher to complete (if necessary)
+    dispatcher_handle.await.unwrap();
+}
+```
 
 
 
