@@ -42,7 +42,7 @@ fn function() -> String {
 
 
 /// this one enum is for the formating or match on messages `roles`
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MessageRole {
   System,
   Assistant,

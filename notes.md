@@ -2911,8 +2911,13 @@ as each process is separate and doesn't block the application.
 now will have to build the logic of next nodes and edge cases to a flow in the app until work is done.
 We have the core architecture just need now to plug it in our different nodes and steps. bravo! Brava! Omedetou!
 
-
-
+Have done new diagram to explain how I am going to work with sre agents.
+I will have divided tasks with api call and tool and structured output and then this will be passed to the next internal step of the sre job.
+read > write > commit > report
+have done some code refactoring and prompts changes and have done the full constants simplified (even if can be more simplified, I stick to plan).
+also the read part of the sre1 agent node is done. will need to do other steps.
+still checking how i am going to test has this might drift the infrastructure if agent mess up so will have some talk with ChatGPT about strategy.
+thinking now of providing a file that is not infractucture sensitive or just creating a back up and letting agent fix errors from its own... maybe...
 
 
 

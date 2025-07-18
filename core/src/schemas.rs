@@ -93,21 +93,13 @@ pub fn sre1_agent_to_pr_agent_schema() -> HashMap<&'static str, &'static str> {
     ]
   )
 }
-/* ** sre1 agent own task: identified files  ** */
-pub fn sre1_agent_own_task_identify_files_schema() -> HashMap<&'static str, &'static str> {
-  HashMap::from(
-    [
-      ("manifest", "array of manifest file names you have identified as potentially having the content to perform task. make sure it is valid JSON str."),	
-    ]
-  )
-}
 /* ** sre1 agent own task: identified read file  ** */
 pub fn sre1_agent_own_task_read_files_schema() -> HashMap<&'static str, &'static str> {
   HashMap::from(
     [
-      ("read", "answer 'true' if you have red that manifest that needs to be modified otherwise 'false'. make sure it is valid JSON str."),
+      ("instructions", "string of the instructions and what have to change in the manifest that you are aware of in order to meet requirements. make sure it is valid JSON str."),
       ("manifest", "array of the Yaml Kubernetes manifests you have red and identified has necessary to modify to perform task requirements converted to Json Kubernetes manifest. make sure it is valid JSON str."),
-      ("name", "array of names of the manifest you have identified has corresponding to the targetted task. make sure it is valid JSON str."),  	
+      ("file", "string path of the manifest you have identified has corresponding to the targetted task. make sure it is valid JSON str."),  	
     ]
   )
 }
@@ -135,14 +127,6 @@ pub fn sre2_agent_to_pr_agent_schema() -> HashMap<&'static str, &'static str> {
   HashMap::from(
     [
       ("report", "answer in report way when job is done detailing what you have done and why you believe that the task has been successfully done. make sure it is valid JSON str."),
-    ]
-  )
-}
-/* ** sre2 agent own task: identified files  ** */
-pub fn sre2_agent_own_task_identify_files_schema() -> HashMap<&'static str, &'static str> {
-  HashMap::from(
-    [
-      ("manifest", "array of manifest file names you have identified as potentially having the content to perform task. make sure it is valid JSON str."),	
     ]
   )
 }
