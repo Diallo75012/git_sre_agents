@@ -8,9 +8,13 @@ use crate::errors::*;
 async fn dispatcher(mut rx: mpsc::Receiver<RoutedMessage>) -> Result<String, AppError> {
   while let Some(rm) = rx.recv().await {
     match rm.next_node.as_str() {
-      "RequestAnalyzer" => {
-        //request_analyzer(rm.message).await;
-        println!("Going to RequestAnalyzer node step")
+      "sre1_agent" => {
+        //sre1_agent(rm.message).await;
+        println!("Going to sre1_agent node step")
+      }
+      "sre2_agent" => {
+        //sre2_agent(rm.message).await;
+        println!("Going to sre2_agent node step")
       }
       "some_other_agent" => {
         //some_other_agent(rm.message).await;
