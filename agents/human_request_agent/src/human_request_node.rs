@@ -16,12 +16,15 @@ use core::{
   	SchemaFieldType,
   	Schema,
   	StructOut,
+  	MessageHistory,
+  	LlmResponse,
   },
   machine::*,
-  constants::*,
-  agents::*,
   prompts::*,
+  constants::*,
+  dispatcher::*,
 };
+
 // use tokio::time::{
 //   sleep,
 //   Duration,
@@ -103,3 +106,59 @@ pub async fn run() -> HumanRequestAnalysisNodeResult<LlmResponse> {
 
 }
 
+/// this is the function that is specific to this node which will transmit to next node/step
+pub async fn start_request_analysis_and_agentic_work() -> HumanRequestAnalysisNodeResult<String> {
+  let human_request_node_response = run().await?; // return Llmresponse
+  // we potentially will get affectation of work to one of the sre agents...
+  let sre_agent_potential = human_request_node_response.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse llm response".to_string()))?;
+  let sre_agent_access_field: Value = serde_json::from_str(&sre_agent_potential)?;
+  println!("human request node response: {}", human_request_node_response);
+  // println!(
+  //   "human request node response (sre1_agent): {}",
+  //   sre_agent_access_field["sre1_agent"],
+  // );
+
+  // if no sre agent has work affected we exit with error as it is not normal
+  let sre1_empty = match sre_agent_access_field.get("sre1_agent").and_then(|v| v.as_str()) {
+    Some(s) => s.trim().is_empty(),
+    None => true,
+  };
+  
+  let sre2_empty = match sre_agent_access_field.get("sre2_agent").and_then(|v| v.as_str()) {
+    Some(s) => s.trim().is_empty(),
+    None => true,
+  };
+  if sre1_empty && sre2_empty {
+    return Err(AppError::RequestAnalysisNode("both keys (sre1_agent/sre2_agent) of schema returned are empty.".to_string()))
+  }
+
+  // we process and statrt full agentic work if one of those has a task to be affected to the agent
+  let sre1_instructions = match sre_agent_access_field.get("sre1_agent").and_then(|v| v.as_str()) {
+    Some(s) => s.trim(),
+    None => "",
+  };
+  
+  let sre2_instructions = match sre_agent_access_field.get("sre2_agent").and_then(|v| v.as_str()) {
+    Some(s) => s.trim(),
+    None => "",
+  };
+  if !sre1_instructions.is_empty() {
+    // we format the message to a `serde_json::Value`
+    let message_input = json!({"instructions": sre_agent_access_field["sre1_agent"]});
+    // we will send to transmitter which under the hood will use dispatcher to start the right agent
+    match transmitter("sre1_agent", &message_input).await {
+      Ok(outcome) => outcome, // result<String>
+      Err(e) => {println!("Error: {:?}", e); e.to_string()}
+    }
+  } else if !sre2_instructions.is_empty() {
+    let message_input = json!({"instructions": sre_agent_access_field["sre2_agent"]});
+    // we will send to transmitter which under the hood will use dispatcher to start the right agent
+    match transmitter("sre2_agent", &message_input).await {
+      Ok(outcome) => outcome, // result<String>
+      Err(e) => {println!("Error: {:?}", e); e.to_string()}
+    }
+  } else {
+    "An Error Occured Both sre1_agent and sre2_agent are empty".to_string()
+  };
+  Ok("Agentic Work Done Successfully".to_string())
+}

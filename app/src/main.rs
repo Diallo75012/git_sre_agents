@@ -297,14 +297,8 @@ async fn run() -> Result<(), AppError> {
 //   println!("Final Answer from Request Analyzer Agent (Structured): {}", final_answer_structured);
 
 
-  let human_request_node_response = human_request_node::run().await?; // return Llmresponse
-  let sre1_agent_potential = human_request_node_response.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse llm response".to_string()))?;
-  let sre1_agent_access_field: Value = serde_json::from_str(&sre1_agent_potential)?;
-  println!("human request node response: {}", human_request_node_response);
-  println!(
-    "human request node response (sre1_agent): {}",
-    sre1_agent_access_field["sre1_agent"],
-  );
+  let human_request_node_response = human_request_node::start_request_analysis_and_agentic_work().await?;
+
   Ok(())
  
 

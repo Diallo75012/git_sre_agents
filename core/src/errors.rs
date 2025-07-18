@@ -128,6 +128,17 @@ pub enum AppError {
   #[error("Agent Node Error: {0}")]
   AgentNode(String),
 
+  /* Channel transmission errors */
+  /// channel send error
+  #[error("Channel Send Error: {0}")]
+  ChannelSendError(String),
+  /// channel Join error
+  #[error("Channel Join Error: {0}")]
+  JoinError(String),
+  /// channel unknown node error
+  #[error("Channel Unknown Node Error: {0}")]
+  UnknownNode(String),
+
 }
 
 /// this is to teach `Rust` about our custom error by implementing `std` errors

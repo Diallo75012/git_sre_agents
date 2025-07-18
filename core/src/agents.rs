@@ -1117,3 +1117,11 @@ impl TasksIdentified {
     Ok(self.clone())
   }
 }
+
+
+/// thisis the message transmitter sent through the channels
+#[derive(Serialize, Debug, Clone)]
+pub struct RoutedMessage {
+  pub next_node: String,
+  pub message: serde_json::Value,
+}

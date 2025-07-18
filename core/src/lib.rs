@@ -11,3 +11,4 @@ pub mod machine;
 pub mod prompts;
 pub mod schemas;
 pub mod commits;
+pub mod dispatcher;

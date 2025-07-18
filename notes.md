@@ -2893,6 +2893,24 @@ async fn main() {
 }
 ```
 
+# `Async/Await` and `Channels` understanding of Flow And Behaviour
+`Async` is **Cooperative**, **Not Stacking**
+Rust's async model (via `tokio`) works like a `cooperative multitasker`: when we `.await`, we're not blocking.
+We're just **yielding control** to the runtime until the awaited task completes.
+So:
+`start_request_analysis_and_agentic_work()` calls `transmitter().await`.
+`transmitter()` calls `tokio::spawn(dispatcher(...))`.
+That dispatcher receives a message, finds the right node (e.g., sre1_agent), and awaits that node’s logic.
+**This chain of await does not stack deep** like `recursive calls`.
+It’s **just a flat chain of Future polling**; `memory-safe` and `stack-light`.
+
+
+Have done the the dispatcher and the transmitter and it works fine. have added notes about the safety of my thread and channel. it should be fine
+thanks to rust safe behaviour specially how tokio handles it not recursion but just waiting and all being independent thanks to my code architecture
+as each process is separate and doesn't block the application.
+now will have to build the logic of next nodes and edge cases to a flow in the app until work is done.
+We have the core architecture just need now to plug it in our different nodes and steps. bravo! Brava! Omedetou!
+
 
 
 
