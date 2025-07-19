@@ -1125,3 +1125,7 @@ pub struct RoutedMessage {
   pub next_node: String,
   pub message: serde_json::Value,
 }
+
+// this struct will be used to create state for report creation
+#[derive(Serialize, Debug, Clone)]
+pub struct StateReport {}

@@ -1,3 +1,4 @@
+//! this is to commit work it will `git add1 and `git commit` with a explanatory message
 use crate::errors::AppError;
 
 

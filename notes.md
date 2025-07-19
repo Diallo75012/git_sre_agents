@@ -2919,7 +2919,10 @@ also the read part of the sre1 agent node is done. will need to do other steps.
 still checking how i am going to test has this might drift the infrastructure if agent mess up so will have some talk with ChatGPT about strategy.
 thinking now of providing a file that is not infractucture sensitive or just creating a back up and letting agent fix errors from its own... maybe...
 
-
+have created all step functions for the sre1_agent now need to create the orchestrator and then use that in the transmitter/dispatcher
+which will go to pr_agent no mater what. 
+Need to check on the dispatcher transmitting the message instructions to the sre1_agent. need to check on the sre1_agent tranmitting message to pr_agent
+hope that contet won't be too long for API models
 
 
 

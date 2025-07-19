@@ -60,7 +60,7 @@ pub fn pr_agent_own_task_pull_schema() -> HashMap<&'static str, &'static str> {
   HashMap::from(
     [
       ("pull", "answer 'true' if you have to git pulled agent work otherwise 'false'. make sure it is valid JSON str."),
-      ("agent", "who's agent work you need to git pull the work from: answer 'sre1_agent', 'sre2_agent'. make sure it is valid JSON str."),
+      ("agent", "who's agent work you have to git pull the work from: answer 'sre1_agent', 'sre2_agent'. make sure it is valid JSON str."),
     ]
   )
 }
@@ -98,8 +98,8 @@ pub fn sre1_agent_own_task_read_files_schema() -> HashMap<&'static str, &'static
   HashMap::from(
     [
       ("instructions", "string of the instructions and what have to change in the manifest that you are aware of in order to meet requirements. make sure it is valid JSON str."),
-      ("manifest", "array of the Yaml Kubernetes manifests you have red and identified has necessary to modify to perform task requirements converted to Json Kubernetes manifest. make sure it is valid JSON str."),
-      ("file", "string path of the manifest you have identified has corresponding to the targetted task. make sure it is valid JSON str."),  	
+      ("manifest", "content of Kubernetes manifests respecting Yaml indentation and line return that you have red and identified has necessary to modify to perform task requirements converted to Json Kubernetes manifest. make sure it is valid JSON str."),
+      ("file", "strictly only the string path of the manifest you have identified has corresponding to the targetted task and that you have red. make sure it is valid JSON str."),  	
     ]
   )
 }
@@ -107,8 +107,8 @@ pub fn sre1_agent_own_task_read_files_schema() -> HashMap<&'static str, &'static
 pub fn sre1_agent_own_task_write_files_schema() -> HashMap<&'static str, &'static str> {
   HashMap::from(
     [
-      ("manifest", "array of the final Json Kubernetes manifest modifed to in accordance to task requirements respectively in corresponding order of manifest name array rendered. make sure it is valid JSON str."),
-      ("name", "array of names of the manifest you have converted to Kubernetes Json manifests has to perform task requirement respectively in corresponding order of manifests array rendered. make sure it is valid JSON str."), 
+      ("manifest", "Yaml format Kubernetes manifest with applied modifications in accordance with task requirements respecting proper Yaml indentation and line return. make sure it is valid JSON str."),
+      ("file", "strictly only the string path of the new manifest content that you have written to. make sure it is valid JSON str."),
     ]
   )
 }
@@ -116,7 +116,7 @@ pub fn sre1_agent_own_task_write_files_schema() -> HashMap<&'static str, &'stati
 pub fn sre1_agent_own_task_commit_schema() -> HashMap<&'static str, &'static str> {
   HashMap::from(
     [
-      ("commit", "answer 'true' if commit has been performed succefully otherwise answer 'false'. make sure it is valid JSON str."),
+      ("commit", "strictly only answer 'true' if commit has been performed succefully otherwise answer 'false'. make sure it is valid JSON str."),
     ]
   )
 }
@@ -126,7 +126,8 @@ pub fn sre1_agent_own_task_commit_schema() -> HashMap<&'static str, &'static str
 pub fn sre2_agent_to_pr_agent_schema() -> HashMap<&'static str, &'static str> {
   HashMap::from(
     [
-      ("report", "answer in report way when job is done detailing what you have done and why you believe that the task has been successfully done. make sure it is valid JSON str."),
+      ("report", "answer in report way when job is done detailing what you have done and why you believe that the task has been successfully done and all other requirements for the complete report. make sure it is valid JSON str."),
+      ("instructions", "message asking to pull request of the work of sre1_agent. Eg:. pull the work of sre1_agent which has committed his work successfully. make sure it is valid JSON str."),
     ]
   )
 }

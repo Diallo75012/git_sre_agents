@@ -120,18 +120,11 @@ pub fn sre1_agent_read_prompt() -> HashMap<UserType, &'static str> {
           You are a specialist in Kubernetes infrastructure and Yaml manifests.
           When you receive instructions:
           - you will read the concerned manifest file using a tool to be aware of the state of the manifest content.
-          - 
-          - then you will write again that file with the modification required to complete task using the writing tool.
-          - then you will use the git tool to commit your work.
-          You will be using the tools one by one following the steps until work done.
-          The order is: read the target file first. then write it with the changes. then use git commit work done. (using the right tool everytime)
           - You have access to those files:
             /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_configmap.yaml
             /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_deployment.yaml
             /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_service.yaml
             /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/sre1_notes.md
-          agents are:
-          - pr_agent: agent responsible of pulling work and verifying if done properly and complies with task requirements.
           Important:\n
           - Strictly adhere to the following any given schema for your response.\n
           - Only return a JSON object based on the schema. Do not include any extra text, comments, or fields beyond the schema.\n
@@ -143,7 +136,7 @@ pub fn sre1_agent_read_prompt() -> HashMap<UserType, &'static str> {
   )
 }
 // Write
-pub fn sre1_agent_prompt() -> HashMap<UserType, &'static str> {
+pub fn sre1_agent_write_prompt() -> HashMap<UserType, &'static str> {
   HashMap::from(
     [
       (
@@ -151,9 +144,7 @@ pub fn sre1_agent_prompt() -> HashMap<UserType, &'static str> {
         r#"
           You are a specialist in Kubernetes infrastructure and Yaml manifests.
           When you receive instructions:
-          - you will read the concerned manifest file using a tool to be aware of the state of the manifest.
-          - then you will write again that file with the modification required to complete task using the writing tool.
-          - then you will use the git tool to commit your work.
+          - you will write again that file with the modification required to complete task using the writing tool.
           You will be using the tools one by one following the steps until work done.
           The order is: read the target file first. then write it with the changes. then use git commit work done. (using the right tool everytime)
           - You have access to those files:
@@ -161,8 +152,6 @@ pub fn sre1_agent_prompt() -> HashMap<UserType, &'static str> {
             /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_deployment.yaml
             /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_service.yaml
             /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/sre1_notes.md
-          agents are:
-          - pr_agent: agent responsible of pulling work and verifying if done properly and complies with task requirements.
           Important:\n
           - Strictly adhere to the following any given schema for your response.\n
           - Only return a JSON object based on the schema. Do not include any extra text, comments, or fields beyond the schema.\n
@@ -174,7 +163,7 @@ pub fn sre1_agent_prompt() -> HashMap<UserType, &'static str> {
   )
 }
 // Commit
-pub fn sre1_agent_prompt() -> HashMap<UserType, &'static str> {
+pub fn sre1_agent_commit_prompt() -> HashMap<UserType, &'static str> {
   HashMap::from(
     [
       (
@@ -182,18 +171,12 @@ pub fn sre1_agent_prompt() -> HashMap<UserType, &'static str> {
         r#"
           You are a specialist in Kubernetes infrastructure and Yaml manifests.
           When you receive instructions:
-          - you will read the concerned manifest file using a tool to be aware of the state of the manifest.
-          - then you will write again that file with the modification required to complete task using the writing tool.
-          - then you will use the git tool to commit your work.
-          You will be using the tools one by one following the steps until work done.
-          The order is: read the target file first. then write it with the changes. then use git commit work done. (using the right tool everytime)
-          - You have access to those files:
+          - you will use the git tool to commit work.
+          - You have to choose on of the corresponding file path matching the one instructed to be written to:
             /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_configmap.yaml
             /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_deployment.yaml
             /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_service.yaml
             /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/sre1_notes.md
-          agents are:
-          - pr_agent: agent responsible of pulling work and verifying if done properly and complies with task requirements.
           Important:\n
           - Strictly adhere to the following any given schema for your response.\n
           - Only return a JSON object based on the schema. Do not include any extra text, comments, or fields beyond the schema.\n
@@ -205,26 +188,17 @@ pub fn sre1_agent_prompt() -> HashMap<UserType, &'static str> {
   )
 }
 // Report
-pub fn sre1_agent_prompt() -> HashMap<UserType, &'static str> {
+pub fn sre1_agent_report_prompt() -> HashMap<UserType, &'static str> {
   HashMap::from(
     [
       (
         UserType::System,
         r#"
-          You are a specialist in Kubernetes infrastructure and Yaml manifests.
-          When you receive instructions:
-          - you will read the concerned manifest file using a tool to be aware of the state of the manifest.
-          - then you will write again that file with the modification required to complete task using the writing tool.
-          - then you will use the git tool to commit your work.
-          You will be using the tools one by one following the steps until work done.
-          The order is: read the target file first. then write it with the changes. then use git commit work done. (using the right tool everytime)
-          - You have access to those files:
-            /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_configmap.yaml
-            /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_deployment.yaml
-            /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_service.yaml
-            /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/sre1_notes.md
-          agents are:
-          - pr_agent: agent responsible of pulling work and verifying if done properly and complies with task requirements.
+          You are a specialist in Kubernetes infrastructure and Yaml manifests modification detailed report that contains:
+          - the requirements
+          - the file that has been updated/modified
+          - concise explanation of what has been done to meet requirements.
+          You will also create instruction to ask for a pull request to be performed on the work mentioning that it is the one of sre1_agent.
           Important:\n
           - Strictly adhere to the following any given schema for your response.\n
           - Only return a JSON object based on the schema. Do not include any extra text, comments, or fields beyond the schema.\n
