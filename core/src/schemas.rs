@@ -97,8 +97,8 @@ pub fn sre1_agent_to_pr_agent_schema() -> HashMap<&'static str, &'static str> {
 pub fn sre1_agent_own_task_read_files_schema() -> HashMap<&'static str, &'static str> {
   HashMap::from(
     [
-      ("instructions", "string of the instructions and what have to change in the manifest that you are aware of in order to meet requirements. make sure it is valid JSON str."),
-      ("manifest", "content of Kubernetes manifests respecting Yaml indentation and line return that you have red and identified has necessary to modify to perform task requirements converted to Json Kubernetes manifest. make sure it is valid JSON str."),
+      ("instructions", "string of the instructions and explanation of what have to change in the manifest that you are aware of in order to meet requirements. make sure it is valid JSON str."),
+      ("manifest", "content of Kubernetes manifests respecting Yaml indentation and line return that you have red and identified has necessary to modify to perform task requirements converted to Json Kubernetes manifest. Or text only if note file. make sure it is valid JSON str."),
       ("file", "strictly only the string path of the manifest you have identified has corresponding to the targetted task and that you have red. make sure it is valid JSON str."),  	
     ]
   )
@@ -117,6 +117,7 @@ pub fn sre1_agent_own_task_commit_schema() -> HashMap<&'static str, &'static str
   HashMap::from(
     [
       ("commit", "strictly only answer 'true' if commit has been performed succefully otherwise answer 'false'. make sure it is valid JSON str."),
+      ("message", r#"very concise commit message that you have used to validate work done if commit true otherwise and empty string "". make sure it is valid JSON str."#),
     ]
   )
 }

@@ -129,7 +129,7 @@ pub fn all_schemas_structout_constant() -> CreateSchemaEngineResult<agents::Stru
     human_schema(),
     main_to_sre_schema(),
     pr_to_sre_schema(),
-    sre1_to_pr_schema(),
+    sre1_report_to_pr_schema(),
     sre2_to_pr_schema(),
   ) {
     Ok(structout) => Ok(structout),
@@ -347,11 +347,11 @@ pub fn write_file_tool(file_path: &str, yaml_manifest_content: &str) -> String {
 /// ```
 /// let sre_agent_commit = sre_agent_git_tool("/project_git_repos/agents_side/creditizens_sre1_repo/manifest.yaml", "the service has been updated according to instructions");
 /// ```
-pub fn git_commit_work_tool(file_path: &str, commit_message: &str) -> String {
+pub async fn git_commit_work_tool(file_path: &str, commit_message: &str) -> String {
   // we need to here use the streaming functions in order to run command, it can be inside the commit_work function that would handle the threads
   // or it could be done from here.. but better have one function doing the job so that all agents can use it
   // `git add ., git commit -m "<commit message>"`
-  let commit_outcome = match commits::commit_work(file_path, commit_message) {
+  let commit_outcome = match commits::commit_work(file_path, commit_message).await {
   	Ok(text) => text,
   	Err(e) => format!("An error Occured while trying to commit work for the file path {}: {}", file_path, e),
   };
@@ -886,8 +886,8 @@ pub fn request_analyzer_payload_no_tool() -> CreatePayloadEngineResult<Value> {
   let request_analyzer_response_format_part = request_analyzer_response_format_part()?;
   match machine::create_payload_engine(
     //&model_llama4_scout_17b(), // // to be defines (need tocheck cerebras llama4 17b or llama 70b). probably `env vars`
-    //&model_llama3_3_70b(),
-    &model_qwen3_32b(),
+    &model_llama3_3_70b(),
+    //&model_qwen3_32b(),
     &[model_message_formatted_hashmap_prompt], // &[HashMap<String, String>],
     Some(agents::ChoiceTool::Required), // ChoiceTool::Required as we want to make sure it read the files using the tool
     None,
@@ -902,8 +902,8 @@ pub fn request_analyzer_payload_tool() -> CreatePayloadEngineResult<Value> {
   let tools = agent_read_file_tool()?;
   match machine::create_payload_engine(
     //&model_llama4_scout_17b(), // // to be defines (need tocheck cerebras llama4 17b or llama 70b). probably `env vars`
-    //&model_llama3_3_70b(),
-    &model_qwen3_32b(),
+    &model_llama3_3_70b(),
+    //&model_qwen3_32b(),
     &[model_message_formatted_hashmap_prompt], // &[HashMap<String, String>],
     Some(agents::ChoiceTool::Auto), // ChoiceTool::Required as we want to make sure it read the files using the tool
     Some(&tools.tools), // Option<&[HashMap<String, Value>]>,

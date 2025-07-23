@@ -124,6 +124,9 @@ pub enum AppError {
   /// huamn request analysis node error
   #[error("Human Request Analysis Node Error: {0}")]
   RequestAnalysisNode(String),
+  /// sre1 agent node error
+  #[error("Sre1 Agent Node Error: {0}")]
+  Sre1AgentNode(String),
   /// agent node error
   #[error("Agent Node Error: {0}")]
   AgentNode(String),
@@ -139,6 +142,10 @@ pub enum AppError {
   #[error("Channel Unknown Node Error: {0}")]
   UnknownNode(String),
 
+  /* Commands Errors */
+  /// commit command error
+  #[error("Commit Command Error: {0}")]
+  CommitCommandError(String),
 }
 
 /// this is to teach `Rust` about our custom error by implementing `std` errors

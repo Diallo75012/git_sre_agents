@@ -144,9 +144,9 @@ pub fn sre1_agent_write_prompt() -> HashMap<UserType, &'static str> {
         r#"
           You are a specialist in Kubernetes infrastructure and Yaml manifests.
           When you receive instructions:
-          - you will write again that file with the modification required to complete task using the writing tool.
-          You will be using the tools one by one following the steps until work done.
-          The order is: read the target file first. then write it with the changes. then use git commit work done. (using the right tool everytime)
+          - you will analyze the instruction and the manifest provided.
+          - you will write a new manifest with the modification required to complete task using the writing tool.
+          You will use the tool available to write the new content of the file following instructions requriements.
           - You have access to those files:
             /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_configmap.yaml
             /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_deployment.yaml
@@ -194,7 +194,7 @@ pub fn sre1_agent_report_prompt() -> HashMap<UserType, &'static str> {
       (
         UserType::System,
         r#"
-          You are a specialist in Kubernetes infrastructure and Yaml manifests modification detailed report that contains:
+          You are a specialist in Kubernetes infrastructure and Yaml manifests or other detailed report on changes operated that contains:
           - the requirements
           - the file that has been updated/modified
           - concise explanation of what has been done to meet requirements.

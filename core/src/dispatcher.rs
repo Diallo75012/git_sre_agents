@@ -9,6 +9,7 @@ async fn dispatcher(mut rx: mpsc::Receiver<RoutedMessage>) -> Result<String, App
   while let Some(rm) = rx.recv().await {
     match rm.next_node.as_str() {
       "sre1_agent" => {
+        // we send the message to the agent and there we will receive it and start working. Will receive something like `'{instruction:....}'`
         //sre1_agent(rm.message).await;
         println!("Going to sre1_agent node step")
       }
@@ -16,7 +17,7 @@ async fn dispatcher(mut rx: mpsc::Receiver<RoutedMessage>) -> Result<String, App
         //sre2_agent(rm.message).await;
         println!("Going to sre2_agent node step")
       }
-      "some_other_agent" => {
+      "pr_agent" => {
         //some_other_agent(rm.message).await;
         println!("Going to sone other agent node step")
       }

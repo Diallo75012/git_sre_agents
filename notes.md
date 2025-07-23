@@ -2922,7 +2922,7 @@ thinking now of providing a file that is not infractucture sensitive or just cre
 have created all step functions for the sre1_agent now need to create the orchestrator and then use that in the transmitter/dispatcher
 which will go to pr_agent no mater what. 
 Need to check on the dispatcher transmitting the message instructions to the sre1_agent. need to check on the sre1_agent tranmitting message to pr_agent
-hope that contet won't be too long for API models
+hope that context won't be too long for API models
 
 
 
