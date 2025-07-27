@@ -28,7 +28,8 @@ name = "app"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "core",
+ "async-trait",
+ "core-logic",
  "human-request-agent",
  "main-agent",
  "pr-agent",
@@ -38,6 +39,17 @@ dependencies = [
  "sre2-worker-agent",
  "thiserror",
  "tokio",
+]
+
+[[package]]
+name = "async-trait"
+version = "0.1.88"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e539d3fca749fcee5236ab05e93a52867dd549cc157c8cb7f99595f3cedffdb5"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -107,19 +119,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "core"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "dotenvy",
- "reqwest",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
-]
-
-[[package]]
 name = "core-foundation"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -134,6 +133,20 @@ name = "core-foundation-sys"
 version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
+
+[[package]]
+name = "core-logic"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "dotenvy",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+]
 
 [[package]]
 name = "displaydoc"
@@ -362,11 +375,14 @@ name = "human-request-agent"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "core",
+ "async-trait",
+ "core-logic",
  "dotenvy",
  "reqwest",
  "serde",
  "serde_json",
+ "sre1-worker-agent",
+ "sre2-worker-agent",
  "tokio",
 ]
 
@@ -636,6 +652,8 @@ name = "main-agent"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
+ "core-logic",
  "dotenvy",
  "reqwest",
  "serde",
@@ -812,6 +830,8 @@ name = "pr-agent"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
+ "core-logic",
  "dotenvy",
  "reqwest",
  "serde",
@@ -1101,6 +1121,8 @@ name = "sre1-worker-agent"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
+ "core-logic",
  "dotenvy",
  "reqwest",
  "serde",
@@ -1113,6 +1135,8 @@ name = "sre2-worker-agent"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
+ "core-logic",
  "dotenvy",
  "reqwest",
  "serde",

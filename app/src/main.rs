@@ -8,28 +8,23 @@ use serde_json;
 //   sleep,
 //   Duration,
 // };
-use core::{
+use core_logic::{
   envs_manage,
   errors::AppError,
   file_reader,
   discord_notifier,
-  agents::{
-  	SchemaFieldDetails,
-  	SchemaFieldType,
-  	Schema,
-  	StructOut,
-  },
+  agents::*,
   machine::*,
   constants::*,
+  dispatcher::*,
 };
-
-
-use core::constants::*; // your pub fn schema functions are here
-use core::machine::*;
-use core::agents::*;
 // use core::utils::env::load_env;
 use serde_json::{json, Value, from_str};
 use human_request_agent::human_request_node;
+use human_request_agent::human_request_node::HumanRequestAnalyzerHandler;
+use sre1_worker_agent::sre1_agent::Sre1AgentHandler;
+use sre2_worker_agent::sre2_agent::Sre2AgentHandler;
+
 
 /// function wrapper of the `Engine`
 async fn run() -> Result<(), AppError> {
@@ -297,7 +292,29 @@ async fn run() -> Result<(), AppError> {
 //   println!("Final Answer from Request Analyzer Agent (Structured): {}", final_answer_structured);
 
 
-  let human_request_node_response = human_request_node::start_request_analysis_and_agentic_work().await?;
+  // let human_request_node_response = human_request_node::start_request_analysis_and_agentic_work().await?;
+  // 1. Register all agent node handlers
+  let mut routes: HashMap<String, Box<dyn NodeHandler>> = HashMap::new();
+  routes.insert("sre1_agent".to_string(), Box::new(Sre1AgentHandler));
+  routes.insert("sre2_agent".to_string(), Box::new(Sre2AgentHandler));
+  routes.insert("human_request_agent".to_string(), Box::new(HumanRequestAnalyzerHandler));
+
+  // 2. Initialize the dispatcher
+  let (tx, dispatcher_handle) = transmitter(routes);
+
+  // 3. Send the first RoutedMessage to start with the request analyzer agent
+  let initial_msg = RoutedMessage {
+    next_node: "human_request_agent".to_string(),
+    message: json!({}), // empty input or your startup message
+  };
+  tx.send(initial_msg).await.expect("Failed to send initial message");
+
+  // 4. Wait for dispatcher to complete (normally it runs forever unless error)
+  match dispatcher_handle.await {
+    Ok(Ok(done)) => println!("Dispatcher finished: {}", done),
+    Ok(Err(e)) => eprintln!("Dispatcher error: {:?}", e),
+    Err(e) => eprintln!("Join error: {:?}", e),
+  }
 
   Ok(())
  

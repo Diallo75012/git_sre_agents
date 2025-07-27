@@ -8,7 +8,7 @@ name = "app"
 path = "src/main.rs"
 
 [dependencies]
-core                 = { path = "../core" }
+core-logic           = { path = "../core_logic" }
 human-request-agent  = { path = "../agents/human_request_agent" }
 main-agent           = { path = "../agents/main_agent" }
 pr-agent             = { path = "../agents/pr_agent" }
@@ -19,3 +19,4 @@ serde        = { workspace = true }
 serde_json   = { workspace = true }
 anyhow       = { workspace = true }
 thiserror    = { workspace = true }
+async-trait  = { workspace = true }

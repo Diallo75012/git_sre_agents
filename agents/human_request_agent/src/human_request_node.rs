@@ -3,10 +3,9 @@
 //! we have broken down the agents task into smaller ones easier to digest and compatible with local llm limitations
 //! so 'conditional edges' will be in the bigger function that coordinated the nodes
 #![allow(unused_doc_comments)]
-use std::collections::HashMap;
 // use core::utils::env::load_env;
-use serde_json::{json, Value, from_str};
-use core::{
+use serde_json::{json, Value};
+use core_logic::{
   envs_manage,
   errors::AppError,
   file_reader,
@@ -18,12 +17,17 @@ use core::{
   	StructOut,
   	MessageHistory,
   	LlmResponse,
+  	RoutedMessage,
   },
   machine::*,
   prompts::*,
   constants::*,
   dispatcher::*,
 };
+use tokio::sync::mpsc;
+use async_trait::async_trait;
+
+
 
 // use tokio::time::{
 //   sleep,
@@ -107,7 +111,7 @@ pub async fn run() -> HumanRequestAnalysisNodeResult<LlmResponse> {
 }
 
 /// this is the function that is specific to this node which will transmit to next node/step
-pub async fn start_request_analysis_and_agentic_work() -> HumanRequestAnalysisNodeResult<String> {
+pub async fn start_request_analysis_and_agentic_work(tx: mpsc::Sender<RoutedMessage>) -> HumanRequestAnalysisNodeResult<()> {
   let human_request_node_response = run().await?; // return Llmresponse
   // we potentially will get affectation of work to one of the sre agents...
   let sre_agent_potential = human_request_node_response.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse llm response".to_string()))?;
@@ -142,23 +146,51 @@ pub async fn start_request_analysis_and_agentic_work() -> HumanRequestAnalysisNo
     Some(s) => s.trim(),
     None => "",
   };
+
+
+  // We route to the right next agent node
+  // sre1_agent route
   if !sre1_instructions.is_empty() {
     // we format the message to a `serde_json::Value`
-    let message_input = json!({"instructions": sre_agent_access_field["sre1_agent"]});
+    // let message_input = json!({"instructions": sre_agent_access_field["sre1_agent"]});
     // we will send to transmitter which under the hood will use dispatcher to start the right agent
-    match transmitter("sre1_agent", &message_input).await {
-      Ok(outcome) => outcome, // result<String>
-      Err(e) => {println!("Error: {:?}", e); e.to_string()}
-    }
+    // match transmitter("sre1_agent", &message_input).await {
+    //   Ok(outcome) => outcome, // result<String>
+    //   Err(e) => {println!("Error: {:?}", e); e.to_string()}
+    // }
+    let next = RoutedMessage {
+      next_node: "sre1_agent".to_string(),
+      message: json!({ "instructions": sre_agent_access_field["sre1_agent"]}),
+    };
+    tx.send(next).await?;
+
+  // sre2_agent route
   } else if !sre2_instructions.is_empty() {
-    let message_input = json!({"instructions": sre_agent_access_field["sre2_agent"]});
+    // let message_input = json!({"instructions": sre_agent_access_field["sre2_agent"]});
     // we will send to transmitter which under the hood will use dispatcher to start the right agent
-    match transmitter("sre2_agent", &message_input).await {
-      Ok(outcome) => outcome, // result<String>
-      Err(e) => {println!("Error: {:?}", e); e.to_string()}
-    }
+    // match transmitter("sre2_agent", &message_input).await {
+    //   Ok(outcome) => outcome, // result<String>
+    //   Err(e) => {println!("Error: {:?}", e); e.to_string()}
+    // }
+    let next = RoutedMessage {
+      next_node: "sre2_agent".to_string(),
+      message: json!({ "instructions": sre_agent_access_field["sre2_agent"]}),
+    };
+    tx.send(next).await?;
   } else {
-    "An Error Occured Both sre1_agent and sre2_agent are empty".to_string()
+    "An Error Occured Both sre1_agent and sre2_agent are empty".to_string();
+    println!("An Error Occured Both sre1_agent and sre2_agent are empty")
   };
-  Ok("Agentic Work Done Successfully".to_string())
+  Ok(())
+}
+
+pub struct HumanRequestAnalyzerHandler;
+
+#[async_trait]
+impl NodeHandler for HumanRequestAnalyzerHandler {
+  async fn handle(&self, _message: Value, tx: mpsc::Sender<RoutedMessage>) -> Result<(), AppError> {
+  	// implement here the function logic for this node
+  	start_request_analysis_and_agentic_work(tx.clone()).await?;
+    Ok(())
+  }
 }

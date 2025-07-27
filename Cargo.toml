@@ -10,7 +10,7 @@ members = [
   "agents/sre1_worker_agent",
   "agents/sre2_worker_agent",
   # core shared between all
-  "core",
+  "core_logic",
   # main app entrypoint binary
   "app",
 ]
@@ -20,6 +20,7 @@ anyhow = "1.0"
 dotenvy = "0.15"
 thiserror = "1"
 serde_json = "1.0"
+async-trait = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.37.0", features = ["full"] }
 reqwest = { version = "0.12", features = ["json", "blocking"] }

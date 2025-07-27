@@ -2924,13 +2924,40 @@ which will go to pr_agent no mater what.
 Need to check on the dispatcher transmitting the message instructions to the sre1_agent. need to check on the sre1_agent tranmitting message to pr_agent
 hope that context won't be too long for API models
 
+____________________________________________________________________________________
+
+# creating routing instead with trait reused by all nodes to avoid circular imports
+```bash
+# logic
+(start)
+↓
+let (tx, dispatcher_handle) = init_router(routes);
+↓
+tx.send(RoutedMessage { next_node: "sre1_agent", ... })
+↓
+start_dispatcher() picks it up
+↓
+routes["sre1_agent"].handle(message, tx_clone).await
+↓
+inside `sre1_agent`, logic decides next_node: "pr_agent"
+↓
+tx.send(RoutedMessage { next_node: "pr_agent", ... })
+↓
+loop continues inside dispatcher...
+```
+So each handler (like sre1_agent) does this:
+```rust
+tx.send(RoutedMessage {
+    next_node: "pr_agent".to_string(),
+    message: next_message,
+}).await?;
+```
 
 
-
-
-
-
-
+so here dispatcher would be acting as a loop and we would be using same channel
+We create all routes and insert as `HashMap` with corresponding struct of node that is implementing the trait through its `handle()` function.
+with only the transmitter being passed from one node to another until the full flow is done.
+Each node at the end would jsut `tx.send()` a `RoutedMessage` which will pass through the dispatcher that would send to corresponding node.
 
 
 
