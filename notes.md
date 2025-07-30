@@ -62,8 +62,8 @@ git merge <local_counterpart_branch> --allow-unrelated-histories --no-edit # (OR
 ```bash
 # checkout to the branch
 git checkout PR_Feature_AgentX
-# pull new stuff fromt he upstream agent repo
-# has `--no-rebase` to not alter history bu default so no need to add
+# pull new stuff from the upstream agent repo
+# has `--no-rebase` to not alter history but default so no need to add
 git pull agentX agentX_feature --no-edit 
 
 # OR instead of `git pull` with `--no-edit` option, if you want custom message set use:
