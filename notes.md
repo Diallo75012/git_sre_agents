@@ -2959,7 +2959,11 @@ We create all routes and insert as `HashMap` with corresponding struct of node t
 with only the transmitter being passed from one node to another until the full flow is done.
 Each node at the end would jsut `tx.send()` a `RoutedMessage` which will pass through the dispatcher that would send to corresponding node.
 
-
+Now have organized the `constants.rs` and have also boiler plate for each agents with the dispatching channels working fine,
+meaning that at each agent node after the full work is done `next_node` is indicated and that node is implemeting `handle` which will transmit
+the message to the next node and so on until the end.
+So now we need to replicate the logic for constants and different nodes and our plan in how they perform some steps and use the `RoutedMessage`
+to indicate at the end of each node where is going next and what is the message with: `next_node` and `message`
 
 
 
