@@ -12,3 +12,5 @@ pub mod prompts;
 pub mod schemas;
 pub mod commits;
 pub mod dispatcher;
+pub mod pull;
+pub mod merge;

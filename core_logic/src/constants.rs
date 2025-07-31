@@ -16,6 +16,8 @@ use crate::write_file;
 use crate::commits;
 use crate::prompts;
 use crate::envs_manage;
+use crate::pull;
+use crate::merge;
 use crate::errors::AppError;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -577,7 +579,7 @@ pub async fn git_commit_work_tool(file_path: &str, commit_message: &str) -> Stri
   commit_outcome
 }
 
-/// `git_pull_work_tool` 
+/// `git_pull__work_tool` 
 /// This tool git pull the work of a specific agent
 /// 
 /// # Arguments
@@ -593,16 +595,35 @@ pub async fn git_commit_work_tool(file_path: &str, commit_message: &str) -> Stri
 /// let pr_agent_pull = pr_agent_git_tool("sre1_agent");
 /// ```
 pub async fn git_pull_work_tool(agent: &str,) -> String {
-  let pull_outcome = match pulls::pull_work(agent).await {
+  let pull_outcome = match pull::pull_work(agent).await {
   	Ok(text) => text,
   	Err(e) => format!("An error Occured while trying to pull work of agent {}: {}", agent, e),
   };
   pull_outcome
 }
-git checkout PR_Feature_AgentX
-# pull new stuff from the upstream agent repo
-# has `--no-rebase` to not alter history but default so no need to add
-git pull agentX agentX_feature --no-edit 
+
+/// `git_merge_work_tool` 
+/// This tool git merge the work of a specific agent
+/// 
+/// # Arguments
+///
+/// * `agent` - the name of the agent to merge the work from
+///
+/// # Returns
+///
+/// * `String` - confirmation of successfull commit of work or an error.
+///
+/// # Example
+/// ```
+/// let pr_agent_merge = pr_agent_git_tool("sre1_agent");
+/// ```
+pub async fn git_merge_work_tool(agent: &str,) -> String {
+  let merge_outcome = match merge::merge_work(agent).await {
+  	Ok(text) => text,
+  	Err(e) => format!("An error Occured while trying to merge work of agent {}: {}", agent, e),
+  };
+  merge_outcome
+}
 
 
 /* ** tools engine ** */
@@ -707,6 +728,62 @@ pub fn agent_git_commit_work_tool() -> CreateToolEngineResult<agents::Tools> {
           ),
         ]
       )
+    ],
+    
+  ) {
+    Ok(tool_object) => Ok(tool_object),
+    Err(e) => Err(AppError::CreateToolEngine(format!("Constant create tool error: {}", e))), // to be propagating error of engine   
+  } // Result<Tools> -> tools (but just one tool here)
+}
+// PULL
+pub fn agent_git_pull_work_tool() -> CreateToolEngineResult<agents::Tools> {
+  let tool_description = r#"This tool git pull the work of a specific agent"#;
+  let mut new_agent_tool = agents::Tools::new();
+  match machine::create_tool_engine(
+    &mut new_agent_tool, // Tools
+    "git_pull_work_tool",
+    //true,
+    tool_description,
+    // here we put in a `&[HashMap<String, String>]` all different parameters of the function. so each has settings `name/type/description`
+    &[
+      HashMap::from(  
+        [
+          ("name".to_string(), "agent".to_string()),
+          ("type".to_string(), "string".to_string()),
+          (
+            "description".to_string(),
+            r#"This tool git pull the work of a specific agent. Argument `agent` - the name of the agent to pull the work from. Returns `String` - confirmation of successfull commit of work or an error."#.to_string()
+          ),
+        ]
+      ),
+    ],
+    
+  ) {
+    Ok(tool_object) => Ok(tool_object),
+    Err(e) => Err(AppError::CreateToolEngine(format!("Constant create tool error: {}", e))), // to be propagating error of engine   
+  } // Result<Tools> -> tools (but just one tool here)
+}
+// MERGE
+pub fn agent_git_merge_work_tool() -> CreateToolEngineResult<agents::Tools> {
+  let tool_description = r#"This tool git merge the work of a specific agent"#;
+  let mut new_agent_tool = agents::Tools::new();
+  match machine::create_tool_engine(
+    &mut new_agent_tool, // Tools
+    "git_merge_work_tool",
+    //true,
+    tool_description,
+    // here we put in a `&[HashMap<String, String>]` all different parameters of the function. so each has settings `name/type/description`
+    &[
+      HashMap::from(  
+        [
+          ("name".to_string(), "agent".to_string()),
+          ("type".to_string(), "string".to_string()),
+          (
+            "description".to_string(),
+            r#"This tool git merge the work of a specific agent. Argument `agent` - the name of the agent to pull the work from. Returns `String` - confirmation of successfull commit of work or an error."#.to_string()
+          ),
+        ]
+      ),
     ],
     
   ) {
@@ -1140,6 +1217,133 @@ pub fn sre2_agent_report() -> CreateAgentEngineResult<agents::Agent> {
 }
 
 // * ** pr agent Agent
+// READ
+// GetPromptUserAndContentEngineResult already create for `request analyzer agent`
+fn pr_read_user_type_and_content() -> GetPromptUserAndContentEngineResult<(agents::UserType, String)> {
+  match machine::get_prompt_user_and_content_engine(
+    &prompts::pr_agent_read_and_select_agent_prompt()
+  ) {
+    Ok((type_user, content)) => {
+      println!("prompt type of user: {:?}", type_user);
+      Ok((type_user, content))
+    },
+    Err(e) => Err(AppError::GetPromptUserContentEngine(format!("Constant get user type and prompt fetching error: {}", e))), // to be propagating error of engine 	
+  }
+}
+// PromptMachineResult already created for `request analyzer agent`
+pub fn pr_read_agent_prompt() -> PromptMachineResult<agents::MessagesSent> {
+  let pr_read_user_type_and_content = pr_read_user_type_and_content()?;
+  let pr_read_user_type = pr_read_user_type_and_content.0;
+  let pr_read_content = pr_read_user_type_and_content.1;
+  match machine::machine_prompt(
+    &pr_read_user_type,
+    &pr_read_content
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::PromptMachine(format!("Constant agent prompt creation error: {}", e))), // to be propagating error of engine
+  }
+}
+// CreateAgentEngineResult already crated for `request analyzer agent
+pub fn pr_agent_read() -> CreateAgentEngineResult<agents::Agent> {
+  let pr_agent_read_prompt = pr_read_agent_prompt()?;
+  let pr_agent_read_schema = pr_read_agent_schema()?;
+  let pr_model_settings = pr_read_model_settings()?;
+
+  match machine::create_agent_engine(
+    agents::AgentRole::Pr,
+    &json!(HashMap::<String, Value>::new()),
+    &pr_agent_read_prompt,
+    &pr_agent_read_schema,
+    agents::TaskCompletion::Idle,
+    &pr_model_settings,
+  ) {
+    Ok(new_agent) => Ok(new_agent),
+    Err(e) => Err(AppError::AgentEngine(format!("Constant agent creation error: {}", e))), // to be propagating error of engine   	
+  }
+}
+// PULL
+fn pr_pull_user_type_and_content() -> GetPromptUserAndContentEngineResult<(agents::UserType, String)> {
+  match machine::get_prompt_user_and_content_engine(
+    &prompts::pr_agent_pull_prompt()
+  ) {
+    Ok((type_user, content)) => {
+      println!("prompt type of user: {:?}", type_user);
+      Ok((type_user, content))
+    },
+    Err(e) => Err(AppError::GetPromptUserContentEngine(format!("Constant get user type and prompt fetching error: {}", e))), // to be propagating error of engine 	
+  }
+}
+pub fn pr_pull_agent_prompt() -> PromptMachineResult<agents::MessagesSent> {
+  let pr_pull_user_type_and_content = pr_pull_user_type_and_content()?;
+  let pr_pull_user_type = pr_pull_user_type_and_content.0;
+  let pr_pull_content = pr_pull_user_type_and_content.1;
+  match machine::machine_prompt(
+    &pr_pull_user_type,
+    &pr_pull_content
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::PromptMachine(format!("Constant agent prompt creation error: {}", e))), // to be propagating error of engine
+  }
+}
+pub fn pr_agent_pull() -> CreateAgentEngineResult<agents::Agent> {
+  let pr_agent_pull_prompt = pr_pull_agent_prompt()?;
+  let pr_agent_pull_schema = pr_pull_agent_schema()?;
+  let pr_pull_model_settings = pr_pull_model_settings()?;
+
+  match machine::create_agent_engine(
+    agents::AgentRole::Pr,
+    &json!(HashMap::<String, Value>::new()),
+    &pr_agent_pull_prompt,
+    &pr_agent_pull_schema,
+    agents::TaskCompletion::Idle,
+    &pr_pull_model_settings,
+  ) {
+    Ok(new_agent) => Ok(new_agent),
+    Err(e) => Err(AppError::AgentEngine(format!("Constant agent creation error: {}", e))), // to be propagating error of engine   	
+  }
+}
+// REPORT
+fn pr_report_user_type_and_content() -> GetPromptUserAndContentEngineResult<(agents::UserType, String)> {
+  match machine::get_prompt_user_and_content_engine(
+    &prompts::pr_agent_report_prompt()
+  ) {
+    Ok((type_user, content)) => {
+      println!("prompt type of user: {:?}", type_user);
+      Ok((type_user, content))
+    },
+    Err(e) => Err(AppError::GetPromptUserContentEngine(format!("Constant get user type and prompt fetching error: {}", e))), // to be propagating error of engine 	
+  }
+}
+pub fn pr_report_agent_prompt() -> PromptMachineResult<agents::MessagesSent> {
+  let pr_report_user_type_and_content = pr_report_user_type_and_content()?;
+  let pr_report_user_type = pr_report_user_type_and_content.0;
+  let pr_report_content = pr_report_user_type_and_content.1;
+  match machine::machine_prompt(
+    &pr_report_user_type,
+    &pr_report_content
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::PromptMachine(format!("Constant agent prompt creation error: {}", e))), // to be propagating error of engine
+  }
+}
+pub fn pr_agent_report() -> CreateAgentEngineResult<agents::Agent> {
+  let pr_agent_report_prompt = pr_report_agent_prompt()?;
+  let pr_agent_report_schema = pr_report_agent_schema()?;
+  let pr_report_model_settings = pr_report_model_settings()?;
+
+  match machine::create_agent_engine(
+    agents::AgentRole::Pr,
+    &json!(HashMap::<String, Value>::new()),
+    &pr_agent_report_prompt,
+    &pr_agent_report_schema,
+    agents::TaskCompletion::Idle,
+    &pr_report_model_settings,
+  ) {
+    Ok(new_agent) => Ok(new_agent),
+    Err(e) => Err(AppError::AgentEngine(format!("Constant agent creation error: {}", e))), // to be propagating error of engine   	
+  }
+}
+
 
 // * ** main agent Agent
 
@@ -1394,6 +1598,87 @@ pub fn sre2_report_model_settings() -> CreateModelSettingsEngineResult<agents::M
 }
 
 // * ** pr agent modelsettings
+// READ
+pub fn pr_read_model_message_formatted_hashmap_prompt(message_tranmitted: String) -> MessagesFormatEngineResult<HashMap<String, String>> {
+  let pr_agent_read = pr_agent_read()?;
+  let pr_agent_prompt_with_message_transmitted = format!("{}\nHere are the instructions received: {}", &pr_agent_read.prompt.content, message_tranmitted);
+  match machine::messages_format_engine(
+    // `user_type` and `content` are field from the struct `MessagesSent` of `request_analyzer_agent.prompt`
+    &agents::UserType::System,
+    &pr_agent_prompt_with_message_transmitted,
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::MessagesFormatEngine(format!("Constant message formatted prompt to hashmap error: {}", e))), // to be propagating error of engine    
+  }
+}
+
+pub fn pr_read_model_settings() -> CreateModelSettingsEngineResult<agents::ModelSettings>  {
+  let tools = agent_read_file_tool()?;
+  match machine::create_model_settings_engine(
+    "", // to be defines (need tocheck cerebras llama4 17b or llama 70b)
+    8196,
+    0,
+    &tools.tools,
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::CreateModelSettingsEngine(format!("Constant modelsettings creation error: {}", e))), // to be propagating error of engine 
+  }
+}
+// PULL
+pub fn pr_pull_model_message_formatted_hashmap_prompt(message_tranmitted: String) -> MessagesFormatEngineResult<HashMap<String, String>> {
+  let pr_agent_pull = pr_agent_pull()?;
+  let pr_agent_prompt_with_message_transmitted = format!("{}\nHere are the instructions received: {}", &pr_agent_pull.prompt.content, message_tranmitted);
+  match machine::messages_format_engine(
+    // `user_type` and `content` are field from the struct `MessagesSent` of `request_analyzer_agent.prompt`
+    &agents::UserType::System,
+    &pr_agent_prompt_with_message_transmitted,
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::MessagesFormatEngine(format!("Constant message formatted prompt to hashmap error: {}", e))), // to be propagating error of engine    
+  }
+}
+
+pub fn pr_pull_model_settings() -> CreateModelSettingsEngineResult<agents::ModelSettings>  {
+  let tools = agent_git_pull_work_tool()?;
+  match machine::create_model_settings_engine(
+    "", // to be defines (need tocheck cerebras llama4 17b or llama 70b)
+    8196,
+    0,
+    &tools.tools,
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::CreateModelSettingsEngine(format!("Constant modelsettings creation error: {}", e))), // to be propagating error of engine 
+  }
+}
+// REPORT
+pub fn pr_report_model_message_formatted_hashmap_prompt(message_tranmitted: String) -> MessagesFormatEngineResult<HashMap<String, String>> {
+  let pr_agent_report = sre2_agent_report()?;
+  let pr_agent_prompt_with_message_transmitted = format!("{}\nHere are the instructions received: {}", &pr_agent_report.prompt.content, message_tranmitted);
+  match machine::messages_format_engine(
+    // `user_type` and `content` are field from the struct `MessagesSent` of `request_analyzer_agent.prompt`
+    &agents::UserType::System,
+    &pr_agent_prompt_with_message_transmitted,
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::MessagesFormatEngine(format!("Constant message formatted prompt to hashmap error: {}", e))), // to be propagating error of engine    
+  }
+}
+
+pub fn pr_report_model_settings() -> CreateModelSettingsEngineResult<agents::ModelSettings>  {
+  // no tools for this sub-agent model settings
+  let tools = agent_no_tool()?;
+  match machine::create_model_settings_engine(
+    "", // to be defines (need tocheck cerebras llama4 17b or llama 70b)
+    8196,
+    0,
+    &tools.tools,
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::CreateModelSettingsEngine(format!("Constant modelsettings creation error: {}", e))), // to be propagating error of engine 
+  }
+}
+
+
 
 // * ** main agent modelsettings
 
@@ -1580,7 +1865,59 @@ pub fn sre2_report_payload_no_tool(message_tranmitted: String) -> CreatePayloadE
   }
 }
 
-
 // * ** pr agent payloads
+// READ
+pub fn pr_read_payload_tool(message_tranmitted: String) -> CreatePayloadEngineResult<Value> {
+  let pr_read_model_message_formatted_hashmap_prompt = pr_read_model_message_formatted_hashmap_prompt(message_tranmitted)?;
+  let tools = agent_read_file_tool()?;
+  match machine::create_payload_engine(
+    //&model_llama4_scout_17b(), // // to be defines (need tocheck cerebras llama4 17b or llama 70b). probably `env vars`
+    //&model_llama3_3_70b(),
+    &model_qwen3_32b(),
+    &[pr_read_model_message_formatted_hashmap_prompt], // &[HashMap<String, String>],
+    Some(agents::ChoiceTool::Auto), // ChoiceTool::Required as we want to make sure it read the files using the tool
+    Some(&tools.tools), // Option<&[HashMap<String, Value>]>,
+    None,
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::PayloadEngine(format!("Constant payload creation error: {}", e))), // to be propagating error of engine 
+  }
+}
+// PULL
+pub fn pr_pull_payload_tool(message_tranmitted: String) -> CreatePayloadEngineResult<Value> {
+  let pr_pull_model_message_formatted_hashmap_prompt = pr_pull_model_message_formatted_hashmap_prompt(message_tranmitted)?;
+  let tools = agent_git_pull_work_tool()?;
+  match machine::create_payload_engine(
+    //&model_llama4_scout_17b(), // // to be defines (need tocheck cerebras llama4 17b or llama 70b). probably `env vars`
+    //&model_llama3_3_70b(),
+    &model_qwen3_32b(),
+    &[pr_pull_model_message_formatted_hashmap_prompt], // &[HashMap<String, String>],
+    Some(agents::ChoiceTool::Auto), // ChoiceTool::Required as we want to make sure it read the files using the tool
+    Some(&tools.tools), // Option<&[HashMap<String, Value>]>,
+    None,
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::PayloadEngine(format!("Constant payload creation error: {}", e))), // to be propagating error of engine 
+  }
+}
+// REPORT
+// different as no tools involved int his one
+pub fn pr_report_payload_no_tool(message_tranmitted: String) -> CreatePayloadEngineResult<Value> {
+  let model_message_formatted_hashmap_prompt = pr_report_model_message_formatted_hashmap_prompt(message_tranmitted)?;
+  let pr_agent_report_response_format_part = pr_agent_report_response_format_part()?;
+  match machine::create_payload_engine(
+    //&model_llama4_scout_17b(), // // to be defines (need tocheck cerebras llama4 17b or llama 70b). probably `env vars`
+    //&model_llama3_3_70b(),
+    &model_qwen3_32b(),
+    &[model_message_formatted_hashmap_prompt], // &[HashMap<String, String>],
+    Some(agents::ChoiceTool::Required), // ChoiceTool::Required as we want to make sure it read the files using the tool
+    None,
+    Some(&pr_agent_report_response_format_part),
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::PayloadEngine(format!("Constant payload creation error: {}", e))), // to be propagating error of engine 
+  }
+}
+
 
 // * ** main agent payloads

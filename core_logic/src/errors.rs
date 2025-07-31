@@ -151,6 +151,12 @@ pub enum AppError {
   /// commit command error
   #[error("Commit Command Error: {0}")]
   CommitCommandError(String),
+  /// pull command error
+  #[error("Pull Command Error: {0}")]
+  PullCommandError(String),
+  /// Merge command error
+  #[error("Merge Command Error: {0}")]
+  MergeCommandError(String),
 }
 
 /// this is to teach `Rust` about our custom error by implementing `std` errors

@@ -6,7 +6,7 @@ use tokio::process::Command;
 type CommitWorkResult<T> = std::result::Result<T, AppError>;
 pub async fn commit_work(file_path: &str, commit_message: &str) -> CommitWorkResult<String> {
   // Create command
-  let command = format!("git add {} && git commit -m '{}'", file_path, commit_message);
+  let command = format!(r#"git -C {f} add . && git -C {f} commit -m "{c}""#, f=file_path, c=commit_message);
 
   // Spawn the command as a child process
   let child_result = Command::new("bash")

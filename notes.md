@@ -2965,6 +2965,9 @@ the message to the next node and so on until the end.
 So now we need to replicate the logic for constants and different nodes and our plan in how they perform some steps and use the `RoutedMessage`
 to indicate at the end of each node where is going next and what is the message with: `next_node` and `message`
 
+have finish creating the pr agent and the tool to pull work and have added env vars for git repo path and agent branches and upstream repo names.
+have added tool also to merge for next agent which is main_agent
+next is to do main agent and its constants and prompts and schemas
 
 
 
