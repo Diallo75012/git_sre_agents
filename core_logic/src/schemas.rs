@@ -67,7 +67,7 @@ pub fn pr_agent_own_task_select_agent_schema() -> HashMap<&'static str, &'static
 pub fn pr_agent_own_task_pull_schema() -> HashMap<&'static str, &'static str> {
   HashMap::from(
     [
-      ("agent", r#"who's agent work you have to pull the work from: answer or "sre1_agent" or "sre2_agent". make sure it is valid JSON str."#),
+      ("agent", r#"who's agent work you did pull the work from: answer or "sre1_agent" or "sre2_agent". make sure it is valid JSON str."#),
     ]
   )
 }

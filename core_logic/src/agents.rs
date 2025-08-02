@@ -1126,11 +1126,18 @@ pub struct RoutedMessage {
   pub message: serde_json::Value,
 }
 
-// this struct will be used to create state for report creation
+// this struct will be used to create state for report creation sre_agent to pr
 #[derive(Serialize, Debug, Clone)]
-pub struct StateReport {
+pub struct StateReportSreToPr {
   pub initial_requirements: String,
   pub inital_manifest: String,
   pub final_manifest: String,
   pub commit: String,
+}
+
+// this struct will be used to create state for report creation  pr to amin_agent
+#[derive(Serialize, Debug, Clone)]
+pub struct StateReportPrToMain {
+  pub sre_report: String,
+  pub worker_agent: String,
 }

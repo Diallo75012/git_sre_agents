@@ -100,7 +100,7 @@ pub fn pr_agent_read_and_select_agent_prompt() -> HashMap<UserType, &'static str
         UserType::System,
         r#"
           You are a specialist in agent work feedback report evaluation and detection of which agent work the report is talking about.
-          You will use tool to read the report and spot which agent work you should pull or sre1_agent or sre2_agent:
+          You will analyze the report and spot which agent work you should pull or sre1_agent or sre2_agent:
           agents are one or the other, just pick the one corresponding to the one present in the report:
           - sre1_agent: agent responsible of Kubernetes infrastructure.
           - sre2_agent: agent responsible of Application Deployed to Kubernetes.
@@ -123,11 +123,11 @@ pub fn pr_agent_pull_prompt() -> HashMap<UserType, &'static str> {
         UserType::System,
         r#"
           You are a specialist in git pull the work of the specified agent which is or sre1_agent or sre2_agent.
-          You will available tool to pull the work of that specific agent.
+          You will use available tool to pull the work of that specific agent.
           agents are one only of those two:
           - sre1_agent: agent responsible of Kubernetes infrastructure.
           - sre2_agent: agent responsible of Application Deployed to Kubernetes.
-          You will indicate 
+          You job is to pull the work of the right agent and to tell which agent work has been pulled from. 
           Important:\n
           - Strictly adhere to the following any given schema for your response.\n
           - Only return a JSON object based on the schema. Do not include any extra text, comments, or fields beyond the schema.\n
@@ -145,15 +145,17 @@ pub fn pr_agent_report_prompt() -> HashMap<UserType, &'static str> {
       (
         UserType::System,
         r#"
-          You are a specialist in report creation for work that has been done and will tell which agent have done the task.
-          You will use tool to read the report and spot which agent work you should pull sre1_agent or sre2_agent:
-          - if you validate, you use the main agent tool to notify to the main agent that task has been successfully completed telling which task and which agent has done it successfully and instructing the main agent to merge the work of that agent.
-          - if you invalidate, you use the specific agent tool with corrective instructions so that the agent can correct his work.
-          You are a specialist in Kubernetes infrastructure and Yaml manifests or other detailed report on changes operated that contains:
+          You are a specialist in Kubernetes and its apps work of developper detailed report creation.
+          It will be used to know who did what and how and to instruct the main_agent to merge the work on git.
+          Report should have:
           - the requirements
-          - the file that has been updated/modified and by who
+          - the file that has been updated/modified if possible and by who (important).
           - concise explanation of what has been done to meet requirements.
-          You will also create instruction to ask for a merge request to be performed on the work mentioning which agent of sre1_agent or sre2_agent have done the work. 
+          You will also create instruction for next task requesting for a merge request to be performed on the work mentioning the ork of whom (which agent sre1_agent or sre2_agent) as the work has been successully done.
+          agents are one only of those two:
+          - sre1_agent: agent responsible of Kubernetes infrastructure.
+          - sre2_agent: agent responsible of Application Deployed to Kubernetes.
+          You job is to pull the work of the right agent and to tell which agent work has been pulled from. 
           Important:\n
           - Strictly adhere to the following any given schema for your response.\n
           - Only return a JSON object based on the schema. Do not include any extra text, comments, or fields beyond the schema.\n

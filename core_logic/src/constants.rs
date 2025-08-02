@@ -1613,7 +1613,7 @@ pub fn pr_read_model_message_formatted_hashmap_prompt(message_tranmitted: String
 }
 
 pub fn pr_read_model_settings() -> CreateModelSettingsEngineResult<agents::ModelSettings>  {
-  let tools = agent_read_file_tool()?;
+  let tools = agent_no_tool()?; // no need tool to read as we get the transmitted message holding the report to be red
   match machine::create_model_settings_engine(
     "", // to be defines (need tocheck cerebras llama4 17b or llama 70b)
     8196,

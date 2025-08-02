@@ -205,7 +205,7 @@ pub async fn run_commit(message_transmitted: String) -> Sre1AgentNodeResult<LlmR
 }
 // REPORT
 /// finally it will be creating a report so that next agent get a nice overview of what has been done
-pub async fn run_report(state: StateReport) -> Sre1AgentNodeResult<LlmResponse> {
+pub async fn run_report(state: StateReportSreToPr) -> Sre1AgentNodeResult<LlmResponse> {
 
   let endpoint = match envs_manage::get_env("LLM_API_URL") {
     Ok(url) if url.trim().is_empty() => {
@@ -306,7 +306,7 @@ pub async fn sre1_agent_node_work_orchestration(message_transmitted: String, tx:
   };
 
   // then we report and this is also used for the next agent to check if work has been done properly
-  let state = StateReport {
+  let state = StateReportSreToPr {
     // `message_transmitted` is having the initial instructions so no need to clone another schema output
   	initial_requirements: message_transmitted.clone(),
   	inital_manifest: read_initial_manifest.to_string(),
