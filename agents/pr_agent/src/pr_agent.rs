@@ -136,13 +136,13 @@ pub async fn run_pull(message_transmitted: String) -> PrAgentNodeResult<LlmRespo
     tools,
     5,
   ).await?;
-  println!("Final Answer from Sre2 Commit Agent: {}", final_answer);
+  println!("Final Answer from Pr Pull Agent: {}", final_answer);
 
   let final_answer_structured = structure_final_output_from_raw_engine(
     &endpoint,
     &model,
     &pr_agent_pull_prompt()[&UserType::System],
-    &final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_commit)".to_string()))?, // result form tool call
+    &final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_pull)".to_string()))?, // result form tool call
     &pr_agent_pull_response_format_part()?,
   ).await?;
 
@@ -188,13 +188,13 @@ pub async fn run_report(state: StateReportPrToMain) -> PrAgentNodeResult<LlmResp
     None,
     5,
   ).await?;
-  println!("Final Answer from Sre2 Report Agent: {}", final_answer);
+  println!("Final Answer from Pr Report Agent: {}", final_answer);
 
   let final_answer_structured = structure_final_output_from_raw_engine(
     &endpoint,
     &model,
     &pr_agent_report_prompt()[&UserType::System],
-    &final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_commit)".to_string()))?,
+    &final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_report)".to_string()))?,
     &pr_agent_report_response_format_part()?,
   ).await?;
 
@@ -215,7 +215,7 @@ pub async fn pr_agent_node_work_orchestration(message_transmitted: String, tx: &
   let read_output_transmitted_formatted = format!("here is the name of the agent to pull the work from: {}", read_output_to_value);
 
 
-  // then we commit
+  // then we pull
   let pull = run_pull(read_output_transmitted_formatted.clone()).await?; // Result<LlmResponse>
   let pull_output_schema = pull.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (pr_agent_node_work_orchestration:run_pull)".to_string()))?;
   let pull_output_to_value: Value = serde_json::from_str(&pull_output_schema)?;
