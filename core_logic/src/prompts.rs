@@ -72,24 +72,82 @@ pub fn human_request_agent_prompt_for_structured_output() -> String {
 }
 
 /// `main_agent`
-/// discord tool to communicate with human,  
-pub fn main_agent_prompt() -> &'static str {
-  r#"
-    You are a specialist in analyzing instruction to know if you have to communicate task to agent or human, or if you have to git merge work of agent.
-    if you have to communicate task to agent: identify the agent and use that specific agent tool to transmit the task to do.
-    if you have to merge work: use the git tool to merge the work of that specifc agent.
-    if you have to communicate task status to human: use the discord tool to send a feedback report to human on that task.
-    agents are:
-    - sre1_agent: agent responsible of Kubernetes infrastructure.
-    - sre2_agent: agent responsible of Application Deployed to Kubernetes.
-    - human: human manager to report to when task is done. 
-    Important:\n
-    - Strictly adhere to the following any given schema for your response.\n
-    - Only return a JSON object based on the schema. Do not include any extra text, comments, or fields beyond the schema.\n
-    - Place your complete answer inside the correct field of the schema.\n
-    - Do not alter the schema structure.\n
-  "#
+/// The main_agent will read the report from pr_agent and know which agent to merge the work from and then create a report for human sent through discord,  
+// Read & Select
+pub fn main_agent_read_and_select_agent_prompt() -> HashMap<UserType, &'static str> {
+  HashMap::from(
+    [
+      (
+        UserType::System,
+        r#"
+          You are a specialist in agent work feedback report evaluation and detection of which agent work the report is talking about.
+          You will analyze the report and spot which agent work you should merge sre1_agent or sre2_agent:
+          agents are one or the other, just pick the one corresponding to the one present in the report:
+          - sre1_agent: agent responsible of Kubernetes infrastructure.
+          - sre2_agent: agent responsible of Application Deployed to Kubernetes.
+          Important:\n
+          - Strictly adhere to the following any given schema for your response.\n
+          - Only return a JSON object based on the schema. Do not include any extra text, comments, or fields beyond the schema.\n
+          - Place your complete answer inside the correct field of the schema.\n
+          - Do not alter the schema structure.\n
+        "#
+      )
+    ]
+  )
 }
+
+// merge work
+pub fn main_agent_merge_prompt() -> HashMap<UserType, &'static str> {
+  HashMap::from(
+    [
+      (
+        UserType::System,
+        r#"
+          You are a specialist in git merge the work of the specified agent which is sre1_agent or sre2_agent.
+          You will use available tool to merge the work of that specific agent.
+          agents are one only of those two:
+          - sre1_agent: agent responsible of Kubernetes infrastructure.
+          - sre2_agent: agent responsible of Application Deployed to Kubernetes.
+          You job is to merge the work of the right identified agent. 
+          Important:\n
+          - Strictly adhere to the following any given schema for your response.\n
+          - Only return a JSON object based on the schema. Do not include any extra text, comments, or fields beyond the schema.\n
+          - Place your complete answer inside the correct field of the schema.\n
+          - Do not alter the schema structure.\n
+        "#
+      )
+    ]
+  )
+}
+// Report
+pub fn main_agent_report_prompt() -> HashMap<UserType, &'static str> {
+  HashMap::from(
+    [
+      (
+        UserType::System,
+        r#"
+          You are a specialist in Kubernetes and its apps work of developper detailed report creation.
+          It will be used to know who did what and how and tell human that work has been done as requirements.
+          Report should have:
+          - the requirements
+          - the file that has been updated/modified if possible and by who (important).
+          - concise explanation of what has been done to meet requirements.
+          You will also create instructions telling that human can check the files and apply those to the cluster if needed and that you ready for next requirements being always happy to help in your tone but format in the report of tasks.
+          agents are one only of those two:
+          - sre1_agent: agent responsible of Kubernetes infrastructure.
+          - sre2_agent: agent responsible of Application Deployed to Kubernetes.
+          You job is to right a nice detailed report.
+          Important:\n
+          - Strictly adhere to the following any given schema for your response.\n
+          - Only return a JSON object based on the schema. Do not include any extra text, comments, or fields beyond the schema.\n
+          - Place your complete answer inside the correct field of the schema.\n
+          - Do not alter the schema structure.\n
+        "#
+      )
+    ]
+  )
+}
+
 
 /// `pr_agent`
 // Read & Select
@@ -100,7 +158,7 @@ pub fn pr_agent_read_and_select_agent_prompt() -> HashMap<UserType, &'static str
         UserType::System,
         r#"
           You are a specialist in agent work feedback report evaluation and detection of which agent work the report is talking about.
-          You will analyze the report and spot which agent work you should pull or sre1_agent or sre2_agent:
+          You will analyze the report and spot which agent work you should pull sre1_agent or sre2_agent:
           agents are one or the other, just pick the one corresponding to the one present in the report:
           - sre1_agent: agent responsible of Kubernetes infrastructure.
           - sre2_agent: agent responsible of Application Deployed to Kubernetes.
@@ -122,7 +180,7 @@ pub fn pr_agent_pull_prompt() -> HashMap<UserType, &'static str> {
       (
         UserType::System,
         r#"
-          You are a specialist in git pull the work of the specified agent which is or sre1_agent or sre2_agent.
+          You are a specialist in git pull the work of the specified agent which is sre1_agent or sre2_agent.
           You will use available tool to pull the work of that specific agent.
           agents are one only of those two:
           - sre1_agent: agent responsible of Kubernetes infrastructure.
@@ -135,7 +193,7 @@ pub fn pr_agent_pull_prompt() -> HashMap<UserType, &'static str> {
           - Do not alter the schema structure.\n
         "#
       )
-    ]
+    ]	
   )
 }
 // Report
@@ -155,7 +213,7 @@ pub fn pr_agent_report_prompt() -> HashMap<UserType, &'static str> {
           agents are one only of those two:
           - sre1_agent: agent responsible of Kubernetes infrastructure.
           - sre2_agent: agent responsible of Application Deployed to Kubernetes.
-          You job is to pull the work of the right agent and to tell which agent work has been pulled from. 
+          You job is to write a nice report using the information that are awailable.
           Important:\n
           - Strictly adhere to the following any given schema for your response.\n
           - Only return a JSON object based on the schema. Do not include any extra text, comments, or fields beyond the schema.\n

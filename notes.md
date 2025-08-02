@@ -2970,7 +2970,10 @@ have added tool also to merge for next agent which is main_agent
 next is to do main agent and its constants and prompts and schemas
 
 
-
+have done the main agent boilerplates based on the other pr_agent and have done all prompts, schema and constants.
+now need to work on the agent node itself to puzzle all up and see how i am going to introduce the discord usage
+as it is the agent that is using it as mandatory. will see it i use a prompt/schema/tool configuration
+or just programmatically use the discord crate with the output of the main agent final report extracting it from the structure output.
 
 
 

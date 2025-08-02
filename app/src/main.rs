@@ -25,6 +25,7 @@ use human_request_agent::human_request_node::HumanRequestAnalyzerHandler;
 use sre1_worker_agent::sre1_agent::Sre1AgentHandler;
 use sre2_worker_agent::sre2_agent::Sre2AgentHandler;
 use pr_agent::pr_agent::PrAgentHandler;
+use main_agent::main_agent::MainAgentHandler;
 
 /// function wrapper of the `Engine`
 async fn run() -> Result<(), AppError> {
@@ -295,7 +296,7 @@ async fn run() -> Result<(), AppError> {
   // let human_request_node_response = human_request_node::start_request_analysis_and_agentic_work().await?;
   // 1. Register all agent node handlers
   let mut routes: HashMap<String, Box<dyn NodeHandler>> = HashMap::new();
-  //routes.insert("main_agent".to_string(), Box::new(MainAgentHandler));
+  routes.insert("main_agent".to_string(), Box::new(MainAgentHandler));
   routes.insert("pr_agent".to_string(), Box::new(PrAgentHandler));
   routes.insert("sre1_agent".to_string(), Box::new(Sre1AgentHandler));
   routes.insert("sre2_agent".to_string(), Box::new(Sre2AgentHandler));

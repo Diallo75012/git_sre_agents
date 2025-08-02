@@ -73,14 +73,14 @@ pub fn human_schema() -> HashMap<String, &'static SchemaFieldType> {
 }
 
 // * ** main agent Schema Args
-pub fn main_to_human_schema() -> HashMap<String, &'static SchemaFieldType> {
-  HashMap::from([("report".to_string(), &SchemaFieldType::String),])
+pub fn main_agent_own_task_select_agent_schema() -> HashMap<String, &'static SchemaFieldType> {
+  HashMap::from([("agent".to_string(), &SchemaFieldType::String),])
 }
-pub fn main_own_task_schema() -> HashMap<String, &'static SchemaFieldType> {
-  HashMap::from([("merge".to_string(), &SchemaFieldType::Bool),("who".to_string(), &SchemaFieldType::String),])
+pub fn main_agent_own_task_merge_schema() -> HashMap<String, &'static SchemaFieldType> {
+  HashMap::from([("agent".to_string(), &SchemaFieldType::String),])
 }
-pub fn main_to_sre_schema() -> HashMap<String, &'static SchemaFieldType> {
-  HashMap::from([("who".to_string(), &SchemaFieldType::String),("instructions".to_string(), &SchemaFieldType::String),])
+pub fn main_agent_report_to_main_agent_schema() -> HashMap<String, &'static SchemaFieldType> {
+  HashMap::from([("report".to_string(), &SchemaFieldType::String),("instructions".to_string(), &SchemaFieldType::String),])
 }
 
 // * ** pr agent Schema Args
@@ -121,11 +121,6 @@ pub fn sre2_own_task_write_files_schema() -> HashMap<String, &'static SchemaFiel
 pub fn sre2_own_task_commit_schema() -> HashMap<String, &'static SchemaFieldType> {
   HashMap::from([("commit".to_string(), &SchemaFieldType::Bool),])
 }
-
-// * ** pr agent
-
-// * ** main agent Schema Args
-
 
 
 
@@ -322,8 +317,49 @@ pub fn pr_report_agent_schema() -> GetSchemaEngineResult<agents::Schema> {
   )
 }
 
-
 // * ** main agent StructOut & Schema
+// READ & SELECT
+pub fn main_read_agent_schema() -> GetSchemaEngineResult<agents::Schema> {
+  let main_own_task_read_files_schema = main_agent_own_task_select_agent_schema();
+  let main_read_field_dict = SchemaFieldDetails::create_schema_field(
+    //&SchemaFieldDetails::new(&SchemaFieldType::String),
+    &main_own_task_read_files_schema
+  );
+  Ok(
+    Schema::new(
+      &main_read_field_dict,
+      Some(&vec!("agent".to_string())),
+    )
+  )
+}
+// MERGE
+pub fn main_merge_agent_schema() -> GetSchemaEngineResult<agents::Schema> {
+  let main_own_task_merge_schema = main_agent_own_task_merge_schema();
+  let main_merge_field_dict = SchemaFieldDetails::create_schema_field(
+    //&SchemaFieldDetails::new(&SchemaFieldType::String),
+    &main_own_task_merge_schema
+  );
+  Ok(
+    Schema::new(
+      &main_merge_field_dict,
+      Some(&vec!("agent".to_string())),
+    )
+  )
+}
+// REPORT
+pub fn main_report_agent_schema() -> GetSchemaEngineResult<agents::Schema> {
+  let main_own_task_report_schema = main_agent_report_to_main_agent_schema();
+  let main_report_field_dict = SchemaFieldDetails::create_schema_field(
+    //&SchemaFieldDetails::new(&SchemaFieldType::String),
+    &main_own_task_report_schema
+  );
+  Ok(
+    Schema::new(
+      &main_report_field_dict,
+      Some(&vec!("report".to_string(), "instruction".to_string())),
+    )
+  )
+}
 
 
 
@@ -498,7 +534,45 @@ pub fn pr_agent_report_response_format_part() -> ResponseFormatPartOfPayloadResu
 }
 
 // * ** main agent Response Format
-
+// READ
+pub fn main_agent_read_response_format_part() -> ResponseFormatPartOfPayloadResult<HashMap<String, serde_json::Value>> {
+  let unwrapped_main_read_agent_schema = main_read_agent_schema()?;
+  match machine::response_format_part_of_payload_engine(
+    "main_agent_read_schema".to_string(),
+    true, // param_strict
+    unwrapped_main_read_agent_schema,
+    agents::json_schema(), // or json_object()
+  ) {
+    Ok(payload_response_format_part) => Ok(payload_response_format_part),
+    Err(e) => Err(AppError::ResponseFormatPart(format!("Constant response format built error: {}", e))), // to be propagating error of engine  	
+  } // Result<HashMap<String, serde_json::Value>> -> HashMap<String, serde_json::Value>
+}
+// MERGE
+pub fn main_agent_merge_response_format_part() -> ResponseFormatPartOfPayloadResult<HashMap<String, serde_json::Value>> {
+  let unwrapped_main_merge_agent_schema = main_merge_agent_schema()?;
+  match machine::response_format_part_of_payload_engine(
+    "pr_agent_commit_schema".to_string(),
+    true, // param_strict
+    unwrapped_main_merge_agent_schema,
+    agents::json_schema(), // or json_object()
+  ) {
+    Ok(payload_response_format_part) => Ok(payload_response_format_part),
+    Err(e) => Err(AppError::ResponseFormatPart(format!("Constant response format built error: {}", e))), // to be propagating error of engine  	
+  } // Result<HashMap<String, serde_json::Value>> -> HashMap<String, serde_json::Value>
+}
+// REPORT
+pub fn main_agent_report_response_format_part() -> ResponseFormatPartOfPayloadResult<HashMap<String, serde_json::Value>> {
+  let unwrapped_main_report_agent_schema = main_report_agent_schema()?;
+  match machine::response_format_part_of_payload_engine(
+    "main_agent_report_schema".to_string(),
+    true, // param_strict
+    unwrapped_main_report_agent_schema,
+    agents::json_schema(), // or json_object()
+  ) {
+    Ok(payload_response_format_part) => Ok(payload_response_format_part),
+    Err(e) => Err(AppError::ResponseFormatPart(format!("Constant response format built error: {}", e))), // to be propagating error of engine  	
+  } // Result<HashMap<String, serde_json::Value>> -> HashMap<String, serde_json::Value>
+}
 
 
 
@@ -1346,6 +1420,132 @@ pub fn pr_agent_report() -> CreateAgentEngineResult<agents::Agent> {
 
 
 // * ** main agent Agent
+// READ
+// GetPromptUserAndContentEngineResult already create for `request analyzer agent`
+fn main_read_user_type_and_content() -> GetPromptUserAndContentEngineResult<(agents::UserType, String)> {
+  match machine::get_prompt_user_and_content_engine(
+    &prompts::main_agent_read_and_select_agent_prompt()
+  ) {
+    Ok((type_user, content)) => {
+      println!("prompt type of user: {:?}", type_user);
+      Ok((type_user, content))
+    },
+    Err(e) => Err(AppError::GetPromptUserContentEngine(format!("Constant get user type and prompt fetching error: {}", e))), // to be propagating error of engine 	
+  }
+}
+// PromptMachineResult already created for `request analyzer agent`
+pub fn main_read_agent_prompt() -> PromptMachineResult<agents::MessagesSent> {
+  let main_read_user_type_and_content = main_read_user_type_and_content()?;
+  let main_read_user_type = main_read_user_type_and_content.0;
+  let main_read_content = main_read_user_type_and_content.1;
+  match machine::machine_prompt(
+    &main_read_user_type,
+    &main_read_content
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::PromptMachine(format!("Constant agent prompt creation error: {}", e))), // to be propagating error of engine
+  }
+}
+// CreateAgentEngineResult already crated for `request analyzer agent
+pub fn main_agent_read() -> CreateAgentEngineResult<agents::Agent> {
+  let main_agent_read_prompt = main_read_agent_prompt()?;
+  let main_agent_read_schema = main_read_agent_schema()?;
+  let main_model_settings = main_read_model_settings()?;
+
+  match machine::create_agent_engine(
+    agents::AgentRole::Pr,
+    &json!(HashMap::<String, Value>::new()),
+    &main_agent_read_prompt,
+    &main_agent_read_schema,
+    agents::TaskCompletion::Idle,
+    &main_model_settings,
+  ) {
+    Ok(new_agent) => Ok(new_agent),
+    Err(e) => Err(AppError::AgentEngine(format!("Constant agent creation error: {}", e))), // to be propagating error of engine   	
+  }
+}
+// MERGE
+fn main_merge_user_type_and_content() -> GetPromptUserAndContentEngineResult<(agents::UserType, String)> {
+  match machine::get_prompt_user_and_content_engine(
+    &prompts::main_agent_merge_prompt()
+  ) {
+    Ok((type_user, content)) => {
+      println!("prompt type of user: {:?}", type_user);
+      Ok((type_user, content))
+    },
+    Err(e) => Err(AppError::GetPromptUserContentEngine(format!("Constant get user type and prompt fetching error: {}", e))), // to be propagating error of engine 	
+  }
+}
+pub fn main_merge_agent_prompt() -> PromptMachineResult<agents::MessagesSent> {
+  let main_merge_user_type_and_content = main_merge_user_type_and_content()?;
+  let main_merge_user_type = main_merge_user_type_and_content.0;
+  let main_merge_content = main_merge_user_type_and_content.1;
+  match machine::machine_prompt(
+    &main_merge_user_type,
+    &main_merge_content
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::PromptMachine(format!("Constant agent prompt creation error: {}", e))), // to be propagating error of engine
+  }
+}
+pub fn main_agent_merge() -> CreateAgentEngineResult<agents::Agent> {
+  let main_agent_merge_prompt = main_merge_agent_prompt()?;
+  let main_agent_merge_schema = main_merge_agent_schema()?;
+  let main_merge_model_settings = main_merge_model_settings()?;
+
+  match machine::create_agent_engine(
+    agents::AgentRole::Pr,
+    &json!(HashMap::<String, Value>::new()),
+    &main_agent_merge_prompt,
+    &main_agent_merge_schema,
+    agents::TaskCompletion::Idle,
+    &main_merge_model_settings,
+  ) {
+    Ok(new_agent) => Ok(new_agent),
+    Err(e) => Err(AppError::AgentEngine(format!("Constant agent creation error: {}", e))), // to be propagating error of engine   	
+  }
+}
+// REPORT
+fn main_report_user_type_and_content() -> GetPromptUserAndContentEngineResult<(agents::UserType, String)> {
+  match machine::get_prompt_user_and_content_engine(
+    &prompts::main_agent_report_prompt()
+  ) {
+    Ok((type_user, content)) => {
+      println!("prompt type of user: {:?}", type_user);
+      Ok((type_user, content))
+    },
+    Err(e) => Err(AppError::GetPromptUserContentEngine(format!("Constant get user type and prompt fetching error: {}", e))), // to be propagating error of engine 	
+  }
+}
+pub fn main_report_agent_prompt() -> PromptMachineResult<agents::MessagesSent> {
+  let main_report_user_type_and_content = main_report_user_type_and_content()?;
+  let main_report_user_type = main_report_user_type_and_content.0;
+  let main_report_content = main_report_user_type_and_content.1;
+  match machine::machine_prompt(
+    &main_report_user_type,
+    &main_report_content
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::PromptMachine(format!("Constant agent prompt creation error: {}", e))), // to be propagating error of engine
+  }
+}
+pub fn main_agent_report() -> CreateAgentEngineResult<agents::Agent> {
+  let main_agent_report_prompt = main_report_agent_prompt()?;
+  let main_agent_report_schema = main_report_agent_schema()?;
+  let main_report_model_settings = main_report_model_settings()?;
+
+  match machine::create_agent_engine(
+    agents::AgentRole::Pr,
+    &json!(HashMap::<String, Value>::new()),
+    &main_agent_report_prompt,
+    &main_agent_report_schema,
+    agents::TaskCompletion::Idle,
+    &main_report_model_settings,
+  ) {
+    Ok(new_agent) => Ok(new_agent),
+    Err(e) => Err(AppError::AgentEngine(format!("Constant agent creation error: {}", e))), // to be propagating error of engine   	
+  }
+}
 
 
 
@@ -1679,9 +1879,86 @@ pub fn pr_report_model_settings() -> CreateModelSettingsEngineResult<agents::Mod
 }
 
 
-
 // * ** main agent modelsettings
+// READ
+pub fn main_read_model_message_formatted_hashmap_prompt(message_tranmitted: String) -> MessagesFormatEngineResult<HashMap<String, String>> {
+  let main_agent_read = pr_agent_read()?;
+  let main_agent_prompt_with_message_transmitted = format!("{}\nHere are the instructions received: {}", &main_agent_read.prompt.content, message_tranmitted);
+  match machine::messages_format_engine(
+    // `user_type` and `content` are field from the struct `MessagesSent` of `request_analyzer_agent.prompt`
+    &agents::UserType::System,
+    &main_agent_prompt_with_message_transmitted,
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::MessagesFormatEngine(format!("Constant message formatted prompt to hashmap error: {}", e))), // to be propagating error of engine    
+  }
+}
 
+pub fn main_read_model_settings() -> CreateModelSettingsEngineResult<agents::ModelSettings>  {
+  let tools = agent_no_tool()?; // no need tool to read as we get the transmitted message holding the report to be red
+  match machine::create_model_settings_engine(
+    "", // to be defines (need tocheck cerebras llama4 17b or llama 70b)
+    8196,
+    0,
+    &tools.tools,
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::CreateModelSettingsEngine(format!("Constant modelsettings creation error: {}", e))), // to be propagating error of engine 
+  }
+}
+// MERGE
+pub fn main_merge_model_message_formatted_hashmap_prompt(message_tranmitted: String) -> MessagesFormatEngineResult<HashMap<String, String>> {
+  let main_agent_merge = main_agent_merge()?;
+  let main_agent_prompt_with_message_transmitted = format!("{}\nHere are the instructions received: {}", &main_agent_merge.prompt.content, message_tranmitted);
+  match machine::messages_format_engine(
+    // `user_type` and `content` are field from the struct `MessagesSent` of `request_analyzer_agent.prompt`
+    &agents::UserType::System,
+    &main_agent_prompt_with_message_transmitted,
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::MessagesFormatEngine(format!("Constant message formatted prompt to hashmap error: {}", e))), // to be propagating error of engine    
+  }
+}
+
+pub fn main_merge_model_settings() -> CreateModelSettingsEngineResult<agents::ModelSettings>  {
+  let tools = agent_git_merge_work_tool()?;
+  match machine::create_model_settings_engine(
+    "", // to be defines (need tocheck cerebras llama4 17b or llama 70b)
+    8196,
+    0,
+    &tools.tools,
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::CreateModelSettingsEngine(format!("Constant modelsettings creation error: {}", e))), // to be propagating error of engine 
+  }
+}
+// REPORT
+pub fn main_report_model_message_formatted_hashmap_prompt(message_tranmitted: String) -> MessagesFormatEngineResult<HashMap<String, String>> {
+  let main_agent_report = main_agent_report()?;
+  let main_agent_prompt_with_message_transmitted = format!("{}\nHere are the instructions received: {}", &main_agent_report.prompt.content, message_tranmitted);
+  match machine::messages_format_engine(
+    // `user_type` and `content` are field from the struct `MessagesSent` of `request_analyzer_agent.prompt`
+    &agents::UserType::System,
+    &main_agent_prompt_with_message_transmitted,
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::MessagesFormatEngine(format!("Constant message formatted prompt to hashmap error: {}", e))), // to be propagating error of engine    
+  }
+}
+
+pub fn main_report_model_settings() -> CreateModelSettingsEngineResult<agents::ModelSettings>  {
+  // no tools for this sub-agent model settings
+  let tools = agent_no_tool()?;
+  match machine::create_model_settings_engine(
+    "", // to be defines (need tocheck cerebras llama4 17b or llama 70b)
+    8196,
+    0,
+    &tools.tools,
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::CreateModelSettingsEngine(format!("Constant modelsettings creation error: {}", e))), // to be propagating error of engine 
+  }
+}
 
 
 
@@ -1919,5 +2196,56 @@ pub fn pr_report_payload_no_tool(message_tranmitted: String) -> CreatePayloadEng
   }
 }
 
-
 // * ** main agent payloads
+// READ
+pub fn main_read_payload_tool(message_tranmitted: String) -> CreatePayloadEngineResult<Value> {
+  let main_read_model_message_formatted_hashmap_prompt = main_read_model_message_formatted_hashmap_prompt(message_tranmitted)?;
+  let tools = agent_read_file_tool()?;
+  match machine::create_payload_engine(
+    //&model_llama4_scout_17b(), // // to be defines (need tocheck cerebras llama4 17b or llama 70b). probably `env vars`
+    //&model_llama3_3_70b(),
+    &model_qwen3_32b(),
+    &[main_read_model_message_formatted_hashmap_prompt], // &[HashMap<String, String>],
+    Some(agents::ChoiceTool::Auto), // ChoiceTool::Required as we want to make sure it read the files using the tool
+    Some(&tools.tools), // Option<&[HashMap<String, Value>]>,
+    None,
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::PayloadEngine(format!("Constant payload creation error: {}", e))), // to be propagating error of engine 
+  }
+}
+// MERGE
+pub fn main_merge_payload_tool(message_tranmitted: String) -> CreatePayloadEngineResult<Value> {
+  let main_merge_model_message_formatted_hashmap_prompt = main_merge_model_message_formatted_hashmap_prompt(message_tranmitted)?;
+  let tools = agent_git_merge_work_tool()?;
+  match machine::create_payload_engine(
+    //&model_llama4_scout_17b(), // // to be defines (need tocheck cerebras llama4 17b or llama 70b). probably `env vars`
+    //&model_llama3_3_70b(),
+    &model_qwen3_32b(),
+    &[main_merge_model_message_formatted_hashmap_prompt], // &[HashMap<String, String>],
+    Some(agents::ChoiceTool::Auto), // ChoiceTool::Required as we want to make sure it read the files using the tool
+    Some(&tools.tools), // Option<&[HashMap<String, Value>]>,
+    None,
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::PayloadEngine(format!("Constant payload creation error: {}", e))), // to be propagating error of engine 
+  }
+}
+// REPORT
+// different as no tools involved int his one
+pub fn main_report_payload_no_tool(message_tranmitted: String) -> CreatePayloadEngineResult<Value> {
+  let model_message_formatted_hashmap_prompt = main_report_model_message_formatted_hashmap_prompt(message_tranmitted)?;
+  let main_agent_report_response_format_part = main_agent_report_response_format_part()?;
+  match machine::create_payload_engine(
+    //&model_llama4_scout_17b(), // // to be defines (need tocheck cerebras llama4 17b or llama 70b). probably `env vars`
+    //&model_llama3_3_70b(),
+    &model_qwen3_32b(),
+    &[model_message_formatted_hashmap_prompt], // &[HashMap<String, String>],
+    Some(agents::ChoiceTool::Required), // ChoiceTool::Required as we want to make sure it read the files using the tool
+    None,
+    Some(&main_agent_report_response_format_part),
+  ) {
+    Ok(prompt) => Ok(prompt),
+    Err(e) => Err(AppError::PayloadEngine(format!("Constant payload creation error: {}", e))), // to be propagating error of engine 
+  }
+}

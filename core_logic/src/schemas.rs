@@ -17,29 +17,28 @@ pub fn human_request_agent_schema() -> HashMap<&'static str, &'static str> {
 }
 
 /// `main_agent`schemas
+/* ** main_agent detect sre_agent work from pr_report ** */
+pub fn main_agent_own_task_select_agent_schema() -> HashMap<&'static str, &'static str> {
+  HashMap::from(
+    [
+      ("agent", r#"who's agent work you have identified that it is from: answer or "sre1_agent" or "sre2_agent". make sure it is valid JSON str."#),
+    ]
+  )
+}
 /* ** main agent > human  ** */
-pub fn main_agent_to_human_schema() -> HashMap<&'static str, &'static str> {
+pub fn main_agent_report_schema() -> HashMap<&'static str, &'static str> {
   HashMap::from(
     [
-  	  ("report", "answer in report way about the task completion, which agent has done the job and why you think it is validated, otherwise why it has failed. make sure it is valid JSON str."),
+  	  ("report", r#"answer in report way about the task details and name the agent that has done the work and tell that the team stays available for any other request and end politely saying "Always Ready From Shibuya!". make sure it is valid JSON str."#),
+      ("instructions", r#"answer "sre1_agent" or "sre2_agent" with instructing to merge the work of that agent. make sure it is valid JSON str."#),
     ]
   )
 }
-/* ** main agent own task  ** */
-pub fn main_agent_own_task_schema() -> HashMap<&'static str, &'static str> {
+/* ** main agent own task merge work of specific agent ** */
+pub fn main_agent_merge_schema() -> HashMap<&'static str, &'static str> {
   HashMap::from(
     [
-      ("merge", "answer 'true' if you have to merge agent work otherwise 'false'. make sure it is valid JSON str."),
-      ("who", "who's agent work you need to merge to main branch using git merge tool. answer 'sre1_agent', 'sre2_agent'. make sure it is valid JSON str."),
-    ]
-  )
-}
-/* ** main agent > sre agents  ** */
-pub fn main_agent_to_sre_agent_schema() -> HashMap<&'static str, &'static str> {
-  HashMap::from(
-    [
-      ("who", "who you are the instructions for: answer 'sre1_agent', 'sre2_agent'. make sure it is valid JSON str."),
-      ("instructions", "express in a concise way what instructions needs to be done. make sure it is valid JSON str."),
+      ("agent", r#"name of agent whose work has been merged to main branch. answer or "sre1_agent" or "sre2_agent". make sure it is valid JSON str."#),
     ]
   )
 }
@@ -76,7 +75,7 @@ pub fn pr_agent_report_to_main_agent_schema() -> HashMap<&'static str, &'static 
   HashMap::from(
     [
       ("report", "answer in report way when job is done detailing what you have done and why you believe that the task has been successfully done. make sure it is valid JSON str."),
-      ("instructions", r#"answer "sre1_agent" or "sre2_agent" instructing to merge the work of that agent. make sure it is valid JSON str."#),
+      ("instructions", r#"answer "sre1_agent" or "sre2_agent" with instructing to merge the work of that agent. make sure it is valid JSON str."#),
     ]
   )
 }
