@@ -14,6 +14,7 @@ use core_logic::{
   agents::*,
   machine::*,
   prompts::*,
+  schema::*,
   constants::*,
   dispatcher::*,
 };
@@ -85,6 +86,13 @@ pub async fn run_read_and_select(message_transmitted: String) -> PrAgentNodeResu
  
   println!("Final Answer from Pr Agent `Read` Agent: {}", final_answer);
 
+  // we format the new prompt adding the schema with our helper function coming `schema.rs`
+  let string_schema = get_schema_fields(&pr_agent_own_task_select_agent_schema());
+  let final_answer_plus_string_schema = format!(
+    "{}. {}.",
+    final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_rea_and_select)".to_string()))?, // result form tool call
+    string_schema,
+  );
   
   // 8.we get the structured output desired for from the tool call response and make another api call for that
   // let model_message_formatted_hashmap_prompt = model_message_formatted_hashmap_prompt()?;
@@ -92,7 +100,7 @@ pub async fn run_read_and_select(message_transmitted: String) -> PrAgentNodeResu
     &endpoint,
     &model,
     &pr_agent_read_and_select_agent_prompt()[&UserType::System],
-    &final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_read)".to_string()))?, // result form tool call
+    &string_schema,
     &pr_agent_read_response_format_part()?,
   ).await?;
 
@@ -138,11 +146,19 @@ pub async fn run_pull(message_transmitted: String) -> PrAgentNodeResult<LlmRespo
   ).await?;
   println!("Final Answer from Pr Pull Agent: {}", final_answer);
 
+  // we format the new prompt adding the schema with our helper function coming `schema.rs`
+  let string_schema = get_schema_fields(&pr_agent_own_task_pull_schema());
+  let final_answer_plus_string_schema = format!(
+    "{}. {}.",
+    final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_pull)".to_string()))?, // result form tool call
+    string_schema,
+  );
+
   let final_answer_structured = structure_final_output_from_raw_engine(
     &endpoint,
     &model,
     &pr_agent_pull_prompt()[&UserType::System],
-    &final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_pull)".to_string()))?, // result form tool call
+    &string_schema, // result form tool call
     &pr_agent_pull_response_format_part()?,
   ).await?;
 
@@ -190,11 +206,19 @@ pub async fn run_report(state: StateReportPrToMain) -> PrAgentNodeResult<LlmResp
   ).await?;
   println!("Final Answer from Pr Report Agent: {}", final_answer);
 
+  // we format the new prompt adding the schema with our helper function coming `schema.rs`
+  let string_schema = get_schema_fields(&pr_agent_report_to_main_agent_schema());
+  let final_answer_plus_string_schema = format!(
+    "{}. {}.",
+    final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_report)".to_string()))?, // result form tool call
+    string_schema,
+  );
+
   let final_answer_structured = structure_final_output_from_raw_engine(
     &endpoint,
     &model,
     &pr_agent_report_prompt()[&UserType::System],
-    &final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_report)".to_string()))?,
+    &string_schema,
     &pr_agent_report_response_format_part()?,
   ).await?;
 

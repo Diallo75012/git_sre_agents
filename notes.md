@@ -2538,13 +2538,13 @@ pub static ref REQUEST_ANALYZER_AGENT: Agent = build_request_analyzer_agent();
   If used often in dynamic calls, you may want to wrap all payload inputs in a `PayloadBuilder` struct for ergonomic chaining and performance.
 
 # Next
-- [ ] create the chain/flow of action if this or if that.... like conditional edges
+- [x] create the chain/flow of action if this or if that.... like conditional edges
 - try to use answered directly and not write to files if possible passing through states updates in place
   so that the app can work without going in user files by writing, but reading is fine as we will need it for the git repos.
 - use env vars for the git repo path
-- [ ] have an object or text that maps each files with a little description of what is that manifest used for
+- [x] have an object or text that maps each files with a little description of what is that manifest used for
       so that agent can choose the right file to read. we could actually put that in the prompt so that no need to have the step `identify files` for sre
-- [ ] have a function tool that reads the desired file and another that writes llm response from schema `json manifest` and `not yaml` rendered
+- [x] have a function tool that reads the desired file and another that writes llm response from schema `yaml`
 - [x] make all first constants so that we can start reuse and see if the flow planned work well when creting nodes.
   combinaison of `engines/constant` and maybe `machines/struct impl` if needed as well
 - [x] finish our first node `human requests` as we have already planned how to construct the api call. need now to code the story.
@@ -2987,3 +2987,15 @@ have found some errors:
   but don't see how i do that at the end.
 - need to see the prompts as well as human_request has two prompt one for tool call and the other for structured output call as we can't call both together
   that is why in the nodes there is two api calls on for the tool loop and the other for the structured output from that tool call result
+
+havedecided instead to get rid of the end agent as errors have been very extended and custom for each step of the process and they are explanatory
+enough to find where ther error is from if any occurs.
+Will have just to add in the main agent a `discord step` in the `sub-agent processes` and get the report sent to discord using the tool.
+then the agent will end and the process will be returned to `main.rs`
+```chatGPT
+The dispatcher stops automatically when:
+No more tx.send() calls happen
+All tx clones are dropped
+The message queue is empty
+This is the cleanest and most idiomatic way in Rust to end a mpsc-driven message loop.
+```

@@ -135,9 +135,6 @@ pub enum AppError {
   /// agent node error
   #[error("Agent Node Error: {0}")]
   AgentNode(String),
-  /// end node error
-  #[error("End Node Error: {0}")]
-  EndNode(String),
 
   /* Channel transmission errors */
   /// channel send error

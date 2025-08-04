@@ -21,6 +21,7 @@ use core_logic::{
   },
   machine::*,
   prompts::*,
+  schema::*,
   constants::*,
   dispatcher::*,
 };
@@ -95,14 +96,20 @@ pub async fn run() -> HumanRequestAnalysisNodeResult<LlmResponse> {
  
   println!("Final Answer from Request Analyzer Agent: {}", final_answer);
 
-  
+  // we format the new prompt adding the schema with our helper function coming `schema.rs`
+  let string_schema = get_schema_fields(&human_request_agent_schema());
+  let final_answer_plus_string_schema = format!(
+    "{}. {}.",
+    final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer".to_string()))?, // result form tool call
+    string_schema,
+  );
   // 8.we get the structured output desired for from the tool call response and make another api call for that
   // let model_message_formatted_hashmap_prompt = model_message_formatted_hashmap_prompt()?;
   let final_answer_structured = structure_final_output_from_raw_engine(
     &endpoint,
     &model,
     &human_request_agent_prompt_for_structured_output(), // maybe here use instead of picking the prompt directly get the constant created `model_message_formatted_hashmap_prompt()?;`
-    &final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer".to_string()))?, // result form tool call
+    &final_answer_plus_string_schema,
     &request_analyzer_response_format_part()?,
   ).await?;
 
@@ -184,6 +191,7 @@ pub async fn start_request_analysis_and_agentic_work(tx: mpsc::Sender<RoutedMess
   Ok(())
 }
 
+// HUMAN_REQUEST_ANALYZER_AGENT NODE WORK TRANSMISSION
 pub struct HumanRequestAnalyzerHandler;
 
 #[async_trait]

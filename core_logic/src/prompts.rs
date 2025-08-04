@@ -426,24 +426,3 @@ pub fn sre2_agent_report_prompt() -> HashMap<UserType, &'static str> {
     ]
   )
 }
-
-/// `end_agent`
-// detect error end or just end normally
-pub fn end_agent_prompt() -> HashMap<UserType, &'static str> {
-  HashMap::from(
-    [
-      (
-        UserType::System,
-        r#"
-          You are a specialist in agentic workflows and manage the last node to detect if the process flow have ended with an error or not.
-          You will analyze provided information and conclude if there is or error not.
-          Important:\n
-          - Strictly adhere to the following any given schema for your response.\n
-          - Only return a JSON object based on the schema. Do not include any extra text, comments, or fields beyond the schema.\n
-          - Place your complete answer inside the correct field of the schema.\n
-          - Do not alter the schema structure.\n
-        "#
-      )
-    ]
-  )
-}

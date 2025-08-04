@@ -3,6 +3,16 @@
 //! we will use the `create_schemas_engine()` and inject the different agents `HashMap<String, &SchemaFieldType::String>`
 use std::collections::HashMap;
 
+
+
+pub fn get_schema_fields(schema_func: &HashMap<&'static str, &'static str>) -> String {
+  let mut schema_prompt = "answer JSON schema field details:".to_string();
+  for (k,v) in schema_func.iter() {
+    schema_prompt.push_str(&format!("{}:{}", k, v))
+  }
+  schema_prompt
+}
+
 /* ** Agents Initial Base Schemas ** */
 /// `human request agent`schemas
 /// this one will just get tasks and affect to the right agent
@@ -25,6 +35,14 @@ pub fn main_agent_own_task_select_agent_schema() -> HashMap<&'static str, &'stat
     ]
   )
 }
+/* ** main agent own task merge work of specific agent ** */
+pub fn main_agent_merge_schema() -> HashMap<&'static str, &'static str> {
+  HashMap::from(
+    [
+      ("agent", r#"name of agent whose work has been merged to main branch. answer or "sre1_agent" or "sre2_agent". make sure it is valid JSON str."#),
+    ]
+  )
+}
 /* ** main agent > human  ** */
 pub fn main_agent_report_schema() -> HashMap<&'static str, &'static str> {
   HashMap::from(
@@ -34,14 +52,7 @@ pub fn main_agent_report_schema() -> HashMap<&'static str, &'static str> {
     ]
   )
 }
-/* ** main agent own task merge work of specific agent ** */
-pub fn main_agent_merge_schema() -> HashMap<&'static str, &'static str> {
-  HashMap::from(
-    [
-      ("agent", r#"name of agent whose work has been merged to main branch. answer or "sre1_agent" or "sre2_agent". make sure it is valid JSON str."#),
-    ]
-  )
-}
+
 
 // `pr_agent`schemas
 /* ** pr agent > sre agent  ** */
@@ -155,16 +166,6 @@ pub fn sre2_agent_own_task_commit_schema() -> HashMap<&'static str, &'static str
     [
       ("commit", "strictly only answer 'true' if commit has been performed succefully otherwise answer 'false'. make sure it is valid JSON str."),
       ("message", r#"very concise commit message that you have used to validate work done if commit true otherwise and empty string "". make sure it is valid JSON str."#),
-    ]
-  )
-}
-
-/// `end_agent`schemas
-/* **  other agents > end agent > detection error or not to end gracefully error/or/not ** */
-pub fn end_agent_schema() -> HashMap<&'static str, &'static str> {
-  HashMap::from(
-    [
-      ("error", r#"answer "true" if your analysis of the information provided concludes that there is an error otherwise answer "false". make sure it is valid JSON str."#),
     ]
   )
 }

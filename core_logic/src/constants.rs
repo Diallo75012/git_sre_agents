@@ -122,10 +122,6 @@ pub fn sre2_own_task_commit_schema() -> HashMap<String, &'static SchemaFieldType
   HashMap::from([("commit".to_string(), &SchemaFieldType::Bool),])
 }
 
-// * ** end agent Schema Args 
-pub fn end_schema() -> HashMap<String, &'static SchemaFieldType> {
-  HashMap::from([("report".to_string(), &SchemaFieldType::String), ("instructions".to_string(), &SchemaFieldType::String),])
-}
 
 
 /* ** StructOut Full & Schema ** */

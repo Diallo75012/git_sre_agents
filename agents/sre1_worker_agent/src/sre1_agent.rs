@@ -14,6 +14,7 @@ use core_logic::{
   agents::*,
   machine::*,
   prompts::*,
+  schema::*,
   constants::*,
   dispatcher::*,
 };
@@ -89,6 +90,13 @@ pub async fn run_read(message_transmitted: String) -> Sre1AgentNodeResult<LlmRes
  
   println!("Final Answer from Sre1 Agent `Read` Agent: {}", final_answer);
 
+  // we format the new prompt adding the schema with our helper function coming `schema.rs`
+  let string_schema = get_schema_fields(&sre1_agent_own_task_read_files_schema());
+  let final_answer_plus_string_schema = format!(
+    "{}. {}.",
+    final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_read)".to_string()))?, // result form tool call
+    string_schema,
+  );
   
   // 8.we get the structured output desired for from the tool call response and make another api call for that
   // let model_message_formatted_hashmap_prompt = model_message_formatted_hashmap_prompt()?;
@@ -96,7 +104,7 @@ pub async fn run_read(message_transmitted: String) -> Sre1AgentNodeResult<LlmRes
     &endpoint,
     &model,
     &sre1_agent_read_prompt()[&UserType::System],
-    &final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_read)".to_string()))?, // result form tool call
+    &string_schema,
     &sre1_agent_read_response_format_part()?,
   ).await?;
 
@@ -142,11 +150,19 @@ pub async fn run_write(message_transmitted: String) -> Sre1AgentNodeResult<LlmRe
   ).await?;
   println!("Final Answer from Sre1 Agent `Write` Agent: {}", final_answer);
 
+  // we format the new prompt adding the schema with our helper function coming `schema.rs`
+  let string_schema = get_schema_fields(&sre1_agent_own_task_write_files_schema());
+  let final_answer_plus_string_schema = format!(
+    "{}. {}.",
+    final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_write)".to_string()))?, // result form tool call
+    string_schema,
+  );
+
   let final_answer_structured = structure_final_output_from_raw_engine(
     &endpoint,
     &model,
     &sre1_agent_write_prompt()[&UserType::System],
-    &final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_write)".to_string()))?, // result form tool call
+    &string_schema,
     &sre1_agent_write_response_format_part()?,
   ).await?;
 
@@ -192,11 +208,19 @@ pub async fn run_commit(message_transmitted: String) -> Sre1AgentNodeResult<LlmR
   ).await?;
   println!("Final Answer from Sre1 Commit Agent: {}", final_answer);
 
+  // we format the new prompt adding the schema with our helper function coming `schema.rs`
+  let string_schema = get_schema_fields(&sre1_agent_own_task_commit_schema());
+  let final_answer_plus_string_schema = format!(
+    "{}. {}.",
+    final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_commit)".to_string()))?, // result form tool call
+    string_schema,
+  );
+
   let final_answer_structured = structure_final_output_from_raw_engine(
     &endpoint,
     &model,
     &sre1_agent_commit_prompt()[&UserType::System],
-    &final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_commit)".to_string()))?, // result form tool call
+    &string_schema,
     &sre1_agent_commit_response_format_part()?,
   ).await?;
 
@@ -244,11 +268,19 @@ pub async fn run_report(state: StateReportSreToPr) -> Sre1AgentNodeResult<LlmRes
   ).await?;
   println!("Final Answer from Sre1 Report Agent: {}", final_answer);
 
+  // we format the new prompt adding the schema with our helper function coming `schema.rs`
+  let string_schema = get_schema_fields(&sre1_agent_to_pr_agent_schema());
+  let final_answer_plus_string_schema = format!(
+    "{}. {}.",
+    final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_report)".to_string()))?, // result form tool call
+    string_schema,
+  );
+
   let final_answer_structured = structure_final_output_from_raw_engine(
     &endpoint,
     &model,
     &sre1_agent_report_prompt()[&UserType::System],
-    &final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_commit)".to_string()))?,
+    &string_schema,
     &sre1_agent_report_response_format_part()?,
   ).await?;
 

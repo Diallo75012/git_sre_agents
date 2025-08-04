@@ -680,10 +680,10 @@ pub async fn structure_final_output_from_raw_engine(
     endpoint: &str,
     model: &str,
     structured_prompt: &str, // i.e. “Format the result below in JSON...”
-    result_from_node1: &str,
+    result_from_node1_plus_string_schema: &str,
     response_format: &HashMap<String, Value>,
 ) -> StructureFinalOutputFromRawEngineResult<LlmResponse> {
-  let combined_prompt = format!("{}\n\nResult:\n{}", structured_prompt, result_from_node1);
+  let combined_prompt = format!("{}\n\nResult:\n{}", structured_prompt, result_from_node1_plus_string_schema);
 
   let message = HashMap::from([
     ("role".to_string(), "user".to_string()),
