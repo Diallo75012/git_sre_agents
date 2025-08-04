@@ -13,6 +13,8 @@ members = [
   "core_logic",
   # main app entrypoint binary
   "app",
+  # end agent
+  "agents/end_agent",
 ]
 
 [workspace.dependencies]

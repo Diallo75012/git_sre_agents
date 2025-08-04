@@ -1,4 +1,4 @@
-//! here we will have node `sre2_agent` centered
+//! here we will have node `main_agent` centered
 //! this will hold the node logic using prompts specific and structured output schema specific to any mini-node
 //! we have broken down the agents task into smaller ones easier to digest and compatible with local llm limitations
 //! so 'conditional edges' will be in the bigger function that coordinated the nodes

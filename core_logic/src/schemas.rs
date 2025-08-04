@@ -158,3 +158,13 @@ pub fn sre2_agent_own_task_commit_schema() -> HashMap<&'static str, &'static str
     ]
   )
 }
+
+/// `end_agent`schemas
+/* **  other agents > end agent > detection error or not to end gracefully error/or/not ** */
+pub fn end_agent_schema() -> HashMap<&'static str, &'static str> {
+  HashMap::from(
+    [
+      ("error", r#"answer "true" if your analysis of the information provided concludes that there is an error otherwise answer "false". make sure it is valid JSON str."#),
+    ]
+  )
+}

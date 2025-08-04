@@ -2969,12 +2969,21 @@ have finish creating the pr agent and the tool to pull work and have added env v
 have added tool also to merge for next agent which is main_agent
 next is to do main agent and its constants and prompts and schemas
 
-
+_________________________________________________________________________________
 have done the main agent boilerplates based on the other pr_agent and have done all prompts, schema and constants.
 now need to work on the agent node itself to puzzle all up and see how i am going to introduce the discord usage
 as it is the agent that is using it as mandatory. will see it i use a prompt/schema/tool configuration
 or just programmatically use the discord crate with the output of the main agent final report extracting it from the structure output.
 
+we have done the boilerplate of the node main_agent but need to see if we add an extra node for graceful end app and also to discord notify: discord_agent
+maybe will call it the `end_agent` and have it handle all errors or have other nodes route to that `end_agent` when having errors
+so have decided to use that end agent and will work on that next so that the graph is done.
 
 
-      
+have found some errors:
+- schema description is not taken into account in the code, need to check how i made the request analyzer consider that as i don't see it
+- this will mean that i might need to have double payload for all...let's see...
+- need to see how to `recv()` the last graph message when all is done in the thread as i `await()` on `recv` inside the dispatcher between threads
+  but don't see how i do that at the end.
+- need to see the prompts as well as human_request has two prompt one for tool call and the other for structured output call as we can't call both together
+  that is why in the nodes there is two api calls on for the tool loop and the other for the structured output from that tool call result

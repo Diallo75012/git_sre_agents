@@ -122,7 +122,10 @@ pub fn sre2_own_task_commit_schema() -> HashMap<String, &'static SchemaFieldType
   HashMap::from([("commit".to_string(), &SchemaFieldType::Bool),])
 }
 
-
+// * ** end agent Schema Args 
+pub fn end_schema() -> HashMap<String, &'static SchemaFieldType> {
+  HashMap::from([("report".to_string(), &SchemaFieldType::String), ("instructions".to_string(), &SchemaFieldType::String),])
+}
 
 
 /* ** StructOut Full & Schema ** */
@@ -133,7 +136,7 @@ type CreateSchemaEngineResult<T> = std::result::Result<T, AppError>;
 pub fn all_schemas_structout_constant() -> CreateSchemaEngineResult<agents::StructOut> {
   match machine::create_schemas_engine(
     human_schema(), // the only needed for that was created in early stage but plan changed but keep it as first agent still uses it
-    main_to_sre_schema(),
+    main_agent_own_task_select_agent_schema(),
     pr_agent_own_task_select_agent_schema(),
     sre1_report_to_pr_schema(),
     sre2_report_to_pr_schema(),
