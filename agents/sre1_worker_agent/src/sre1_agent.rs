@@ -14,9 +14,10 @@ use core_logic::{
   agents::*,
   machine::*,
   prompts::*,
-  schema::*,
+  schemas::*,
   constants::*,
   dispatcher::*,
+  write_debug_log::*,
 };
 use tokio::sync::mpsc;
 use async_trait::async_trait;
@@ -91,7 +92,7 @@ pub async fn run_read(message_transmitted: String) -> Sre1AgentNodeResult<LlmRes
   println!("Final Answer from Sre1 Agent `Read` Agent: {}", final_answer);
 
   // we format the new prompt adding the schema with our helper function coming `schema.rs`
-  let string_schema = get_schema_fields(&sre1_agent_own_task_read_files_schema());
+  let string_schema = get_schema_fields(&core_logic::schemas::sre1_agent_own_task_read_files_schema());
   let final_answer_plus_string_schema = format!(
     "{}. {}.",
     final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_read)".to_string()))?, // result form tool call
@@ -103,8 +104,8 @@ pub async fn run_read(message_transmitted: String) -> Sre1AgentNodeResult<LlmRes
   let final_answer_structured = structure_final_output_from_raw_engine(
     &endpoint,
     &model,
-    &sre1_agent_read_prompt()[&UserType::System],
-    &string_schema,
+    sre1_agent_read_prompt()[&UserType::System],
+    &final_answer_plus_string_schema,
     &sre1_agent_read_response_format_part()?,
   ).await?;
 
@@ -151,7 +152,7 @@ pub async fn run_write(message_transmitted: String) -> Sre1AgentNodeResult<LlmRe
   println!("Final Answer from Sre1 Agent `Write` Agent: {}", final_answer);
 
   // we format the new prompt adding the schema with our helper function coming `schema.rs`
-  let string_schema = get_schema_fields(&sre1_agent_own_task_write_files_schema());
+  let string_schema = get_schema_fields(&core_logic::schemas::sre1_agent_own_task_write_files_schema());
   let final_answer_plus_string_schema = format!(
     "{}. {}.",
     final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_write)".to_string()))?, // result form tool call
@@ -161,8 +162,8 @@ pub async fn run_write(message_transmitted: String) -> Sre1AgentNodeResult<LlmRe
   let final_answer_structured = structure_final_output_from_raw_engine(
     &endpoint,
     &model,
-    &sre1_agent_write_prompt()[&UserType::System],
-    &string_schema,
+    sre1_agent_write_prompt()[&UserType::System],
+    &final_answer_plus_string_schema,
     &sre1_agent_write_response_format_part()?,
   ).await?;
 
@@ -209,7 +210,7 @@ pub async fn run_commit(message_transmitted: String) -> Sre1AgentNodeResult<LlmR
   println!("Final Answer from Sre1 Commit Agent: {}", final_answer);
 
   // we format the new prompt adding the schema with our helper function coming `schema.rs`
-  let string_schema = get_schema_fields(&sre1_agent_own_task_commit_schema());
+  let string_schema = get_schema_fields(&core_logic::schemas::sre1_agent_own_task_commit_schema());
   let final_answer_plus_string_schema = format!(
     "{}. {}.",
     final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_commit)".to_string()))?, // result form tool call
@@ -219,8 +220,8 @@ pub async fn run_commit(message_transmitted: String) -> Sre1AgentNodeResult<LlmR
   let final_answer_structured = structure_final_output_from_raw_engine(
     &endpoint,
     &model,
-    &sre1_agent_commit_prompt()[&UserType::System],
-    &string_schema,
+    sre1_agent_commit_prompt()[&UserType::System],
+    &final_answer_plus_string_schema,
     &sre1_agent_commit_response_format_part()?,
   ).await?;
 
@@ -269,7 +270,7 @@ pub async fn run_report(state: StateReportSreToPr) -> Sre1AgentNodeResult<LlmRes
   println!("Final Answer from Sre1 Report Agent: {}", final_answer);
 
   // we format the new prompt adding the schema with our helper function coming `schema.rs`
-  let string_schema = get_schema_fields(&sre1_agent_to_pr_agent_schema());
+  let string_schema = get_schema_fields(&core_logic::schemas::sre1_agent_to_pr_agent_schema());
   let final_answer_plus_string_schema = format!(
     "{}. {}.",
     final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_report)".to_string()))?, // result form tool call
@@ -279,8 +280,8 @@ pub async fn run_report(state: StateReportSreToPr) -> Sre1AgentNodeResult<LlmRes
   let final_answer_structured = structure_final_output_from_raw_engine(
     &endpoint,
     &model,
-    &sre1_agent_report_prompt()[&UserType::System],
-    &string_schema,
+    sre1_agent_report_prompt()[&UserType::System],
+    &final_answer_plus_string_schema,
     &sre1_agent_report_response_format_part()?,
   ).await?;
 
@@ -291,6 +292,10 @@ pub async fn run_report(state: StateReportSreToPr) -> Sre1AgentNodeResult<LlmRes
 
 // SRE1_AGENT NODE WORK ORCHESTRATION
 pub async fn sre1_agent_node_work_orchestration(message_transmitted: String, tx: &mpsc::Sender<RoutedMessage>) -> Sre1AgentNodeResult<()> {
+  // log
+  write_step_cmd_debug("\n\nSRE1 AGENT NODE:\n");
+  write_step_cmd_debug(&message_transmitted);
+
   // we read
   let read = run_read(message_transmitted.clone()).await?;
   // get the content schema
@@ -307,6 +312,10 @@ pub async fn sre1_agent_node_work_orchestration(message_transmitted: String, tx:
     Some(s) => s.trim(),
     None => "",
   };
+
+  // logs of read mini agent output
+  write_step_cmd_debug("\nREAD:\n");
+  write_step_cmd_debug(&read_output_schema);
 
   // then we write
   let write = run_write(read_output_transmitted_formatted.clone()).await?; // Result<LlmResponse>
@@ -337,6 +346,10 @@ pub async fn sre1_agent_node_work_orchestration(message_transmitted: String, tx:
     None => "",
   };
 
+  // logs of commit mini agent output
+  write_step_cmd_debug("\nCOMMIT:\n");
+  write_step_cmd_debug(&commit_output_schema);
+
   // then we report and this is also used for the next agent to check if work has been done properly
   let state = StateReportSreToPr {
     // `message_transmitted` is having the initial instructions so no need to clone another schema output
@@ -352,6 +365,10 @@ pub async fn sre1_agent_node_work_orchestration(message_transmitted: String, tx:
   let report_output_to_value: Value = serde_json::from_str(&report_output_schema)?;
   let report_output_transmitted_formatted = format!("work report and instructions: {}", report_output_to_value);
 
+  // logs of report mini agent output
+  write_step_cmd_debug("\nREPORT:\n");
+  write_step_cmd_debug(&report_output_schema);
+
   // we transmit
   // we will send to transmitter which under the hood will use dispatcher to start the right agent (`pr_agent`)
   // match transmitter("pr_agent", &json!(report_output_transmitted_formatted)).await {
@@ -362,6 +379,9 @@ pub async fn sre1_agent_node_work_orchestration(message_transmitted: String, tx:
     next_node: "pr_agent".to_string(),
     message: json!({ "instructions": report_output_transmitted_formatted}),
   };
+  // we log what is sent to next node
+  write_step_cmd_debug("\nTX_SEND ->\n");
+  write_step_cmd_debug(&json!(next.clone()).to_string());
   tx.clone().send(next).await?;
 
   Ok(())

@@ -6,6 +6,7 @@ use reqwest::{
 };
 use serde_json::json;
 use crate::errors::AppError;
+use crate::write_debug_log::*;
 
 pub async fn notify_human(message: &str, url: &str) -> Result<String, AppError> {
   /// Create JSON payload: this assumes Cerebras expects a field like `content`
@@ -34,6 +35,11 @@ pub async fn notify_human(message: &str, url: &str) -> Result<String, AppError> 
       .await
       .map_err(|e| AppError::Notify(e.to_string()))?;
     /// if the message reaches the discord category, discord doesn't return any message but just a 204 status_code
+
+    // we log what is sent to Discord
+    write_step_cmd_debug("\nDISCORD NOTIFICATION SENT ->\n");
+    write_step_cmd_debug(&body);
+
     Ok(body)
 
 }

@@ -2999,3 +2999,8 @@ All tx clones are dropped
 The message queue is empty
 This is the cleanest and most idiomatic way in Rust to end a mpsc-driven message loop.
 ```
+
+graph is fully done! we need to run it now and work on logic and prompt engineering and also fix errors
+and also fix the messages transmitted between agents as we lose track on the initial intent
+but this need to be transmitted no matter what until the end almost
+so we might actually save it to environment or write it to a file.. we will see

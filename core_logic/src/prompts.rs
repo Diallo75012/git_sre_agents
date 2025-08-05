@@ -334,9 +334,10 @@ pub fn sre2_agent_read_prompt() -> HashMap<UserType, &'static str> {
       (
         UserType::System,
         r#"
-          You are a specialist in Kubernetes infrastructure and Yaml manifests.
+          You are a specialist in Kubernetes infrastructure and Yaml manifests and notes updates.
           When you receive instructions:
-          - you will read the concerned manifest file using a tool to be aware of the state of the manifest content.
+          - you will analyze the isntructions to select the right file concerned.
+          - you will read the concerned manifest/file using a tool to be aware of the state of the manifest/file content.
           - You have access to those files:
            	/home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre2_repo/nginx_configmap.yaml
            	/home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre2_repo/nginx_deployment.yaml
@@ -359,10 +360,10 @@ pub fn sre2_agent_write_prompt() -> HashMap<UserType, &'static str> {
       (
         UserType::System,
         r#"
-          You are a specialist in Kubernetes infrastructure and Yaml manifests.
+          You are a specialist in Kubernetes infrastructure and Yaml manifests and notes.
           When you receive instructions:
-          - you will analyze the instruction and the manifest provided.
-          - you will write a new manifest with the modification required to complete task using the writing tool.
+          - you will analyze the instructions and the manifest/file provided.
+          - you will write a new manifest/file with the modification required to complete task using the writing tool.
           You will use the tool available to write the new content of the file following instructions requriements.
           - You have access to those files:
            	/home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre2_repo/nginx_configmap.yaml

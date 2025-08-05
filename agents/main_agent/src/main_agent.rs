@@ -14,9 +14,11 @@ use core_logic::{
   agents::*,
   machine::*,
   prompts::*,
-  schema::*,
+  schemas::*,
   constants::*,
   dispatcher::*,
+  discord_notifier::*,
+  write_debug_log::*,
 };
 use tokio::sync::mpsc;
 use async_trait::async_trait;
@@ -87,7 +89,7 @@ pub async fn run_read_and_select(message_transmitted: String) -> MainAgentNodeRe
   println!("Final Answer from Main Agent `Read` Agent: {}", final_answer);
 
   // we format the new prompt adding the schema with our helper function coming `schema.rs`
-  let string_schema = get_schema_fields(&main_agent_own_task_select_agent_schema());
+  let string_schema = get_schema_fields(&core_logic::schemas::main_agent_own_task_select_agent_schema());
   let final_answer_plus_string_schema = format!(
     "{}. {}.",
     final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_read_and_select)".to_string()))?, // result form tool call
@@ -99,8 +101,8 @@ pub async fn run_read_and_select(message_transmitted: String) -> MainAgentNodeRe
   let final_answer_structured = structure_final_output_from_raw_engine(
     &endpoint,
     &model,
-    &pr_agent_read_and_select_agent_prompt()[&UserType::System],
-    &string_schema,
+    pr_agent_read_and_select_agent_prompt()[&UserType::System],
+    &final_answer_plus_string_schema,
     &pr_agent_read_response_format_part()?,
   ).await?;
 
@@ -132,8 +134,8 @@ pub async fn run_merge(message_transmitted: String) -> MainAgentNodeResult<LlmRe
   let main_agent_merge = main_agent_merge()?;
 
   let mut history = MessageHistory::default();
-  let tools = main_agent_pull.llm.tools.as_ref().map(|v| v.as_slice());
-  let mut payload = main_pull_payload_tool(message_transmitted)?;
+  let tools = main_agent_merge.llm.tools.as_ref().map(|v| v.as_slice());
+  let mut payload = main_merge_payload_tool(message_transmitted)?;
 
   let final_answer = tool_loop_until_final_answer_engine(
     &endpoint,
@@ -147,7 +149,7 @@ pub async fn run_merge(message_transmitted: String) -> MainAgentNodeResult<LlmRe
   println!("Final Answer from Main Merge Agent: {}", final_answer);
 
   // we format the new prompt adding the schema with our helper function coming `schema.rs`
-  let string_schema = get_schema_fields(&main_agent_merge_schema());
+  let string_schema = get_schema_fields(&core_logic::schemas::main_agent_merge_schema());
   let final_answer_plus_string_schema = format!(
     "{}. {}.",
     final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_merge)".to_string()))?, // result form tool call
@@ -157,9 +159,9 @@ pub async fn run_merge(message_transmitted: String) -> MainAgentNodeResult<LlmRe
   let final_answer_structured = structure_final_output_from_raw_engine(
     &endpoint,
     &model,
-    &main_agent_merge_prompt()[&UserType::System],
-    &string_schema,
-    &main_agent_pull_response_format_part()?,
+    main_agent_merge_prompt()[&UserType::System],
+    &final_answer_plus_string_schema,
+    &main_agent_merge_response_format_part()?,
   ).await?;
 
   Ok(final_answer_structured) 
@@ -167,7 +169,7 @@ pub async fn run_merge(message_transmitted: String) -> MainAgentNodeResult<LlmRe
 }
 // REPORT
 /// finally it will be creating a report so that next agent get a nice overview of what has been done
-pub async fn run_report(state: StateReportPrToMain) -> PrAgentNodeResult<LlmResponse> {
+pub async fn run_report(state: StateReportPrToMain) -> MainAgentNodeResult<LlmResponse> {
 
   let endpoint = match envs_manage::get_env("LLM_API_URL") {
     Ok(url) if url.trim().is_empty() => {
@@ -207,7 +209,7 @@ pub async fn run_report(state: StateReportPrToMain) -> PrAgentNodeResult<LlmResp
   println!("Final Answer from Main Report Agent: {}", final_answer);
 
   // we format the new prompt adding the schema with our helper function coming `schema.rs`
-  let string_schema = get_schema_fields(&main_agent_report_schema());
+  let string_schema = get_schema_fields(&core_logic::schemas::main_agent_report_schema());
   let final_answer_plus_string_schema = format!(
     "{}. {}.",
     final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (run_report)".to_string()))?, // result form tool call
@@ -217,8 +219,8 @@ pub async fn run_report(state: StateReportPrToMain) -> PrAgentNodeResult<LlmResp
   let final_answer_structured = structure_final_output_from_raw_engine(
     &endpoint,
     &model,
-    &main_agent_report_prompt()[&UserType::System],
-    &string_schema,
+    main_agent_report_prompt()[&UserType::System],
+    &final_answer_plus_string_schema,
     &pr_agent_report_response_format_part()?,
   ).await?;
 
@@ -226,13 +228,12 @@ pub async fn run_report(state: StateReportPrToMain) -> PrAgentNodeResult<LlmResp
 
 }
 
+// MAIN_AGENT NODE WORK ORCHESTRATION + DISCORD NOTIFICATION (from last sub-agent report output. Then dto `tx.send()` which will end thread channel)
+pub async fn main_agent_node_work_orchestration(message_transmitted: String, _tx: &mpsc::Sender<RoutedMessage>) -> MainAgentNodeResult<()> {
+  // log
+  write_step_cmd_debug("\n\nMAIN AGENT NODE:\n");
+  write_step_cmd_debug(&message_transmitted);
 
-// DISCORD NOTIFY
-
-
-
-// PR_AGENT NODE WORK ORCHESTRATION
-pub async fn main_agent_node_work_orchestration(message_transmitted: String, tx: &mpsc::Sender<RoutedMessage>) -> PrAgentNodeResult<()> {
   // we read
   let read = run_read_and_select(message_transmitted.clone()).await?;
   // get the content schema
@@ -240,18 +241,25 @@ pub async fn main_agent_node_work_orchestration(message_transmitted: String, tx:
   // convert to `serde_json::Value`
   let read_output_to_value: Value = serde_json::from_str(&read_output_schema)?;
   // we create the format message to transmit dumping the schema in
-  let read_output_transmitted_formatted = format!("here is the name of the agent to pull the work from: {}", read_output_to_value);
+  let read_output_transmitted_formatted = format!("here is the name of the agent to merge the work from: {}", read_output_to_value);
 
+  // logs of read mini agent output
+  write_step_cmd_debug("\nREAD\n");
+  write_step_cmd_debug(&read_output_schema);
 
   // then we merge
   let merge = run_merge(read_output_transmitted_formatted.clone()).await?; // Result<LlmResponse>
   let merge_output_schema = merge.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (main_agent_node_work_orchestration:run_merge)".to_string()))?;
   let merge_output_to_value: Value = serde_json::from_str(&merge_output_schema)?;
-  let merge_output_transmitted_formatted = format!("pull done and agent work pull is: {}", read_output_to_value);
+  //let merge_output_transmitted_formatted = format!("merge done and agent work merged is: {}", read_output_to_value);
   let merge_agent = match merge_output_to_value.get("agent").and_then(|v| v.as_str()) {
     Some(s) => s.trim(),
     None => "",
   };
+
+  // logs of merge mini agent output
+  write_step_cmd_debug("\nMERGE\n");
+  write_step_cmd_debug(&merge_output_schema);
 
   // then we report and this is also used for the next agent to check if work has been done properly
   let state = StateReportPrToMain {
@@ -264,9 +272,46 @@ pub async fn main_agent_node_work_orchestration(message_transmitted: String, tx:
   let report = run_report(state).await?; // Result<LlmResponse>
   let report_output_schema = report.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (main_agent_node_work_orchestration: run_report)".to_string()))?;
   let report_output_to_value: Value = serde_json::from_str(&report_output_schema)?;
-  let report_output_transmitted_formatted = format!("work report and instructions: {}", report_output_to_value);
+  let report_output_transmitted_formatted = format!("work report from Creditizens Git Agent Team: {}", report_output_to_value);
+
+  // logs of report mini agent output
+  write_step_cmd_debug("\nREPORT\n");
+  write_step_cmd_debug(&report_output_schema);
 
   // Discord Notify
+  // get env var for the url of the discord webhook building it up with those: `DISCORD_WH_URL`, `DISCORD_WH_CATEGORY`, `DISCORD_WH_ID`
+  let discord_wh_url = match envs_manage::get_env("DISCORD_WH_URL") {
+    Ok(url) if url.trim().is_empty() => {
+      return Err(AppError::Env("DISCORD_WH_URL is set but empty".to_string()))
+    },
+    Ok(url) => url,
+    Err(e) => {
+      return Err(AppError::Env(format!("DISCORD_WH_URL is set but empty: {}", e)))
+    },
+  };
+  let discord_wh_category = match envs_manage::get_env("DISCORD_WH_CATEGORY") {
+    Ok(url) if url.trim().is_empty() => {
+      return Err(AppError::Env("DISCORD_WH_CATEGORY is set but empty".to_string()))
+    },
+    Ok(url) => url,
+    Err(e) => {
+      return Err(AppError::Env(format!("DISCORD_WH_CATEGORY is set but empty: {}", e)))
+    },
+  };
+  let discord_wh_id = match envs_manage::get_env("DISCORD_WH_ID") {
+    Ok(url) if url.trim().is_empty() => {
+      return Err(AppError::Env("DISCORD_WH_ID is set but empty".to_string()))
+    },
+    Ok(url) => url,
+    Err(e) => {
+      return Err(AppError::Env(format!("DISCORD_WH_ID is set but empty: {}", e)))
+    },
+  };
+  let discord_url = format!("{}/{}/{}", discord_wh_url, discord_wh_category, discord_wh_id); 
+  // now we can send the end report to the discord group for the human dev to be notified and task completion
+  // now it will propagate the error if any issue (it is an `async` function call so we need to `await`)
+  notify_human(&report_output_transmitted_formatted, &discord_url).await?;
+
 
   // we transmit
   // we will send to transmitter which under the hood will use dispatcher to start the right agent (`pr_agent`)

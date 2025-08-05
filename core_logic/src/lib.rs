@@ -14,3 +14,4 @@ pub mod commits;
 pub mod dispatcher;
 pub mod pull;
 pub mod merge;
+pub mod write_debug_log;

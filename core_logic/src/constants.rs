@@ -69,7 +69,10 @@ pub fn model_llama3_3_70b() -> String {
 
 // * ** Request Analyzer Schema Args
 pub fn human_schema() -> HashMap<String, &'static SchemaFieldType> {
-  HashMap::from([("sre1_agent".to_string(), &SchemaFieldType::String),("sre2_agent".to_string(), &SchemaFieldType::String),])
+  HashMap::from([
+    ("sre1_agent".to_string(), &SchemaFieldType::String),
+    ("sre2_agent".to_string(), &SchemaFieldType::String),
+  ])
 }
 
 // * ** main agent Schema Args
@@ -80,7 +83,10 @@ pub fn main_agent_own_task_merge_schema() -> HashMap<String, &'static SchemaFiel
   HashMap::from([("agent".to_string(), &SchemaFieldType::String),])
 }
 pub fn main_agent_report_to_main_agent_schema() -> HashMap<String, &'static SchemaFieldType> {
-  HashMap::from([("report".to_string(), &SchemaFieldType::String),("instructions".to_string(), &SchemaFieldType::String),])
+  HashMap::from([
+    ("report".to_string(), &SchemaFieldType::String),
+    ("instructions".to_string(), &SchemaFieldType::String),
+  ])
 }
 
 // * ** pr agent Schema Args
@@ -91,18 +97,31 @@ pub fn pr_agent_own_task_pull_schema() -> HashMap<String, &'static SchemaFieldTy
   HashMap::from([("agent".to_string(), &SchemaFieldType::String),])
 }
 pub fn pr_agent_report_to_main_agent_schema() -> HashMap<String, &'static SchemaFieldType> {
-  HashMap::from([("report".to_string(), &SchemaFieldType::String),("instructions".to_string(), &SchemaFieldType::String),])
+  HashMap::from([
+    ("report".to_string(), &SchemaFieldType::String),
+    ("instructions".to_string(), &SchemaFieldType::String),
+  ])
 }
 
 // * ** sre1 agent Schema Args
 pub fn sre1_report_to_pr_schema() -> HashMap<String, &'static SchemaFieldType> {
-  HashMap::from([("report".to_string(), &SchemaFieldType::String), ("instructions".to_string(), &SchemaFieldType::String),])
+  HashMap::from([
+    ("report".to_string(), &SchemaFieldType::String),
+    ("instructions".to_string(), &SchemaFieldType::String),
+  ])
 }
 pub fn sre1_own_task_read_files_schema() -> HashMap<String, &'static SchemaFieldType> {
-  HashMap::from([("instructions".to_string(), &SchemaFieldType::String),("manifest".to_string(), &SchemaFieldType::String), ("file".to_string(), &SchemaFieldType::String),])
+  HashMap::from([
+    ("instructions".to_string(), &SchemaFieldType::String),
+    ("manifest".to_string(), &SchemaFieldType::String),
+    ("file".to_string(), &SchemaFieldType::String),
+  ])
 }
 pub fn sre1_own_task_write_files_schema() -> HashMap<String, &'static SchemaFieldType> {
-  HashMap::from([("manifest".to_string(), &SchemaFieldType::String),("file".to_string(), &SchemaFieldType::String),])
+  HashMap::from([
+    ("manifest".to_string(), &SchemaFieldType::String),
+    ("file".to_string(), &SchemaFieldType::String),
+  ])
 }
 pub fn sre1_own_task_commit_schema() -> HashMap<String, &'static SchemaFieldType> {
   HashMap::from([("commit".to_string(), &SchemaFieldType::Bool),])
@@ -110,13 +129,23 @@ pub fn sre1_own_task_commit_schema() -> HashMap<String, &'static SchemaFieldType
 
 // * ** sre2 agent Schema Args 
 pub fn sre2_report_to_pr_schema() -> HashMap<String, &'static SchemaFieldType> {
-  HashMap::from([("report".to_string(), &SchemaFieldType::String), ("instructions".to_string(), &SchemaFieldType::String),])
+  HashMap::from([
+    ("report".to_string(), &SchemaFieldType::String),
+    ("instructions".to_string(), &SchemaFieldType::String),
+  ])
 }
 pub fn sre2_own_task_read_files_schema() -> HashMap<String, &'static SchemaFieldType> {
-  HashMap::from([("instructions".to_string(), &SchemaFieldType::String),("manifest".to_string(), &SchemaFieldType::String), ("file".to_string(), &SchemaFieldType::String),])
+  HashMap::from([
+    ("instructions".to_string(), &SchemaFieldType::String),
+    ("manifest".to_string(), &SchemaFieldType::String),
+    ("file".to_string(), &SchemaFieldType::String),
+  ])
 }
 pub fn sre2_own_task_write_files_schema() -> HashMap<String, &'static SchemaFieldType> {
-  HashMap::from([("manifest".to_string(), &SchemaFieldType::String),("file".to_string(), &SchemaFieldType::String),])
+  HashMap::from([
+    ("manifest".to_string(), &SchemaFieldType::String),
+    ("file".to_string(), &SchemaFieldType::String),
+  ])
 }
 pub fn sre2_own_task_commit_schema() -> HashMap<String, &'static SchemaFieldType> {
   HashMap::from([("commit".to_string(), &SchemaFieldType::Bool),])
@@ -167,7 +196,7 @@ pub fn sre1_read_agent_schema() -> GetSchemaEngineResult<agents::Schema> {
   Ok(
     Schema::new(
       &sre1_read_field_dict,
-      Some(&vec!("read".to_string(), "manifest".to_string(), "name".to_string())),
+      Some(&vec!("instructions".to_string(), "manifest".to_string(), "file".to_string())),
     )
   )
 }
@@ -209,7 +238,7 @@ pub fn sre1_report_agent_schema() -> GetSchemaEngineResult<agents::Schema> {
   Ok(
     Schema::new(
       &sre1_report_field_dict,
-      Some(&vec!("report".to_string(), "instruction".to_string())),
+      Some(&vec!("report".to_string(), "instructions".to_string())),
     )
   )
 }
@@ -225,7 +254,7 @@ pub fn sre2_read_agent_schema() -> GetSchemaEngineResult<agents::Schema> {
   Ok(
     Schema::new(
       &sre2_read_field_dict,
-      Some(&vec!("read".to_string(), "manifest".to_string(), "name".to_string())),
+      Some(&vec!("instructions".to_string(), "manifest".to_string(), "file".to_string())),
     )
   )
 }
@@ -267,7 +296,7 @@ pub fn sre2_report_agent_schema() -> GetSchemaEngineResult<agents::Schema> {
   Ok(
     Schema::new(
       &sre2_report_field_dict,
-      Some(&vec!("report".to_string(), "instruction".to_string())),
+      Some(&vec!("report".to_string(), "instructions".to_string())),
     )
   )
 }
@@ -311,7 +340,7 @@ pub fn pr_report_agent_schema() -> GetSchemaEngineResult<agents::Schema> {
   Ok(
     Schema::new(
       &pr_report_field_dict,
-      Some(&vec!("report".to_string(), "instruction".to_string())),
+      Some(&vec!("report".to_string(), "instructions".to_string())),
     )
   )
 }
@@ -355,7 +384,7 @@ pub fn main_report_agent_schema() -> GetSchemaEngineResult<agents::Schema> {
   Ok(
     Schema::new(
       &main_report_field_dict,
-      Some(&vec!("report".to_string(), "instruction".to_string())),
+      Some(&vec!("report".to_string(), "instructions".to_string())),
     )
   )
 }
@@ -607,7 +636,7 @@ pub fn read_file_tool(file_path: &str) -> String {
 /// # Arguments
 ///
 /// * `file_path` - The path of where is the file located to be able to write its content
-/// * `yaml_manifest_content` - The content of the manifest in YAML format with good indentation and line returns, well formatted
+/// * `file_content` - The content of the file with good indentation and line returns, well formatted
 ///
 /// # Returns
 ///
@@ -617,10 +646,15 @@ pub fn read_file_tool(file_path: &str) -> String {
 /// ```
 /// let write_yaml_file = write_file_tool("/project_git_repos/agents_side/creditizens_sre1_repo/manifest.yaml");
 /// ```
-pub fn write_file_tool(file_path: &str, yaml_manifest_content: &str) -> String {
-  let file_content = match write_file::file_write(file_path, yaml_manifest_content) {
+pub fn write_file_tool(file_path: &str, file_content: &str) -> String {
+  let file_content = match write_file::file_write(file_path, file_content) {
   	Ok(text) => text,
-  	Err(e) => format!("An error Occured while trying to write in file this: {}\n At path {}: {}", yaml_manifest_content, file_path, e),
+  	Err(e) => format!(
+  	  "An error Occured while trying to write in file this: {}\n At path {}: {}",
+  	  file_content,
+  	  file_path,
+  	  e
+  	),
   };
   file_content
 }
@@ -647,7 +681,11 @@ pub async fn git_commit_work_tool(file_path: &str, commit_message: &str) -> Stri
   // `git add ., git commit -m "<commit message>"`
   let commit_outcome = match commits::commit_work(file_path, commit_message).await {
   	Ok(text) => text,
-  	Err(e) => format!("An error Occured while trying to commit work for the file path {}: {}", file_path, e),
+  	Err(e) => format!(
+  	  "An error Occured while trying to commit work for the file path {}: {}",
+  	  file_path,
+  	  e
+  	),
   };
   commit_outcome
 }
@@ -749,17 +787,17 @@ pub fn agent_write_file_tool() -> CreateToolEngineResult<agents::Tools> {
           ("type".to_string(), "string".to_string()),
           (
             "description".to_string(),
-            r#"This tool writes files when provided with full content to be written in the manifest. Arguments `file_path` - The path of where is the manifest file that has been updated according to instructions and `commit_message` - The content of the commit message about the ork that has been done. Returns `String` - confirmation of successfull commit of work or an error."#.to_string()
+            r#"This tool writes files when provided with full content to be written in the manifest. Arguments `file_path` - The path of where is the manifest file that has been updated according to instructions and `file_content` - The content of the file with good indentation and line returns, well formatted. Returns `String` - confirmation of successfull file written or an error."#.to_string()
           ),
         ]
       ),
       HashMap::from(
         [
-          ("name".to_string(), "commit_message".to_string()),
+          ("name".to_string(), "file_content".to_string()),
           ("type".to_string(), "string".to_string()),
           (
            "description".to_string(),
-            r#"This tool writes files by providing the full content to be written in the manifest. Arguments `file_path` - The path of where is the manifest file that has been updated according to instructions and `commit_message` - The content of the commit message about the ork that has been done. Returns `String` - confirmation of successfull commit of work or an error."#.to_string()
+            r#"This tool writes files when provided with full content to be written in the manifest. Arguments `file_path` - The path of where is the manifest file that has been updated according to instructions and `file_content` - The content of the file with good indentation and line returns, well formatted. Returns `String` - confirmation of successfull file written or an error."#.to_string()
           ),
         ]
       )

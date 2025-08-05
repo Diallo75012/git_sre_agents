@@ -26,7 +26,6 @@ use sre1_worker_agent::sre1_agent::Sre1AgentHandler;
 use sre2_worker_agent::sre2_agent::Sre2AgentHandler;
 use pr_agent::pr_agent::PrAgentHandler;
 use main_agent::main_agent::MainAgentHandler;
-use end_agent::end_agent::EndAgentHandler; // this agent node is to be added in the folder structure
 
 /// function wrapper of the `Engine`
 async fn run() -> Result<(), AppError> {
@@ -297,7 +296,6 @@ async fn run() -> Result<(), AppError> {
   // let human_request_node_response = human_request_node::start_request_analysis_and_agentic_work().await?;
   // 1. Register all agent node handlers
   let mut routes: HashMap<String, Box<dyn NodeHandler>> = HashMap::new();
-  routes.insert("end_agent".to_string(), Box::new(EndAgentHandler));
   routes.insert("main_agent".to_string(), Box::new(MainAgentHandler));
   routes.insert("pr_agent".to_string(), Box::new(PrAgentHandler));
   routes.insert("sre1_agent".to_string(), Box::new(Sre1AgentHandler));
@@ -316,8 +314,11 @@ async fn run() -> Result<(), AppError> {
 
   // 4. Wait for dispatcher to complete (normally it runs forever unless error)
   match dispatcher_handle.await {
+    // normal end all good!
     Ok(Ok(done)) => println!("Dispatcher finished: {}", done),
+    // normal end propagating any error to here (propably need to check if it is app or api other end)
     Ok(Err(e)) => eprintln!("Dispatcher error: {:?}", e),
+    // not normal end with error unexpected that we would need to work on
     Err(e) => eprintln!("Join error: {:?}", e),
   }
 

@@ -21,9 +21,10 @@ use core_logic::{
   },
   machine::*,
   prompts::*,
-  schema::*,
+  schemas::*,
   constants::*,
   dispatcher::*,
+  write_debug_log::*,
 };
 use tokio::sync::mpsc;
 use async_trait::async_trait;
@@ -97,7 +98,7 @@ pub async fn run() -> HumanRequestAnalysisNodeResult<LlmResponse> {
   println!("Final Answer from Request Analyzer Agent: {}", final_answer);
 
   // we format the new prompt adding the schema with our helper function coming `schema.rs`
-  let string_schema = get_schema_fields(&human_request_agent_schema());
+  let string_schema = get_schema_fields(&core_logic::schemas::human_request_agent_schema());
   let final_answer_plus_string_schema = format!(
     "{}. {}.",
     final_answer.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer".to_string()))?, // result form tool call
@@ -119,11 +120,16 @@ pub async fn run() -> HumanRequestAnalysisNodeResult<LlmResponse> {
 
 /// this is the function that is specific to this node which will transmit to next node/step
 pub async fn start_request_analysis_and_agentic_work(tx: mpsc::Sender<RoutedMessage>) -> HumanRequestAnalysisNodeResult<()> {
+  // logs
+  write_step_cmd_debug("\n\n\nHUMAN REQUEST ANALYZER NODE:\n");
+
   let human_request_node_response = run().await?; // return Llmresponse
   // we potentially will get affectation of work to one of the sre agents...
   let sre_agent_potential = human_request_node_response.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse llm response".to_string()))?;
   let sre_agent_access_field: Value = serde_json::from_str(&sre_agent_potential)?;
   println!("human request node response: {}", human_request_node_response);
+  // writing some log with the response of the human request analyzer
+  write_step_cmd_debug(&sre_agent_potential);
   // println!(
   //   "human request node response (sre1_agent): {}",
   //   sre_agent_access_field["sre1_agent"],
@@ -169,6 +175,10 @@ pub async fn start_request_analysis_and_agentic_work(tx: mpsc::Sender<RoutedMess
       next_node: "sre1_agent".to_string(),
       message: json!({ "instructions": sre_agent_access_field["sre1_agent"]}),
     };
+    // we log what is sent to next node
+    write_step_cmd_debug("\nTX_SEND ->\n");
+    write_step_cmd_debug(&json!(next.clone()).to_string());
+    // we send to dispatcher that is going to match ont he right node using its `handle()` fn
     tx.send(next).await?;
 
   // sre2_agent route
@@ -183,9 +193,14 @@ pub async fn start_request_analysis_and_agentic_work(tx: mpsc::Sender<RoutedMess
       next_node: "sre2_agent".to_string(),
       message: json!({ "instructions": sre_agent_access_field["sre2_agent"]}),
     };
+    // we log what is sent to next node
+    write_step_cmd_debug("\nTX_SEND ->\n");
+    write_step_cmd_debug(&json!(next.clone()).to_string());
     tx.send(next).await?;
   } else {
     "An Error Occured Both sre1_agent and sre2_agent are empty".to_string();
+    // we log the error
+    write_step_cmd_debug("An Error Occured Both sre1_agent and sre2_agent are empty");
     println!("An Error Occured Both sre1_agent and sre2_agent are empty")
   };
   Ok(())

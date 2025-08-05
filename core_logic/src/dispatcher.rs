@@ -79,11 +79,17 @@ pub async fn start_dispatcher(
   routes: HashMap<String, Box<dyn NodeHandler>>,
   tx: mpsc::Sender<RoutedMessage>,
 ) -> Result<String, AppError> {
+  // this is a loop which will evaluate whatever comes to it to route to the right node
+  //so here we `recv()` messages. keep in mind "multiple producer single consumer" `mpsc`
+  // our `rx` is always the same receiver but each node would sent its `tx` transmitter evaluated in this loop
   while let Some(RoutedMessage { next_node, message }) = rx.recv().await {
     match routes.get(&next_node) {
       Some(handler) => {
         // Clone tx so handler can send next message if needed
         let tx_clone = tx.clone();
+        // each route has a `handle()` trait attached
+        // trait is a signature function that can be shared but whatever is inside is specific
+        // to each nodes, this is how we can play with it
         handler.handle(message, tx_clone).await?;
       }
       None => {
@@ -91,6 +97,8 @@ pub async fn start_dispatcher(
       }
     }
   }
+  // when the queue will be emptied out it would just stop the `thread` channel and the app would be able
+  // to gracefully finish
   Ok("Dispatcher finished".to_string())
 }
 
