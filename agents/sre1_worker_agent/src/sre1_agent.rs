@@ -363,7 +363,11 @@ pub async fn sre1_agent_node_work_orchestration(message_transmitted: String, tx:
   let report = run_report(state).await?; // Result<LlmResponse>
   let report_output_schema = report.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (sre1_agent_node_work_orchestration: run_report)".to_string()))?;
   let report_output_to_value: Value = serde_json::from_str(&report_output_schema)?;
-  let report_output_transmitted_formatted = format!("work report and instructions: {}", report_output_to_value);
+  let report_output_transmitted_formatted = format!(
+    r#"Initial instruction were "{}" and it went well we got this report on the work: {}"#,
+    message_transmitted,
+    report_output_to_value
+  );
 
   // logs of report mini agent output
   write_step_cmd_debug("\nREPORT:\n");

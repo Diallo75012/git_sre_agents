@@ -3004,3 +3004,8 @@ graph is fully done! we need to run it now and work on logic and prompt engineer
 and also fix the messages transmitted between agents as we lose track on the initial intent
 but this need to be transmitted no matter what until the end almost
 so we might actually save it to environment or write it to a file.. we will see
+
+could run agent to the end, llama models are tired the qwen32b is best and logic model and tool use more consistant,
+now need to fix the git tools logic has it doesn't relly do the git commands so need to check why.
+Discord notification is done well with last report.
+some small fix here and there.

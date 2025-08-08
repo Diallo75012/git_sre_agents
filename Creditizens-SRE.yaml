@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: default
+data:
+  index.html: |
+    <html>
+      <head>
+        <title>Creditizens SRE</title>
+      </head>
+      <body>
+        <h1>Creditizens SRE All Good!</h1>
+      </body>
+    </html>

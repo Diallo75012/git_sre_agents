@@ -265,7 +265,7 @@ pub async fn pr_agent_node_work_orchestration(message_transmitted: String, tx: &
   // then we report and this is also used for the next agent to check if work has been done properly
   let state = StateReportPrToMain {
     // `message_transmitted` is having the report made by the agent sent to the pr agent so no need to clone another schema output
-  	sre_report: message_transmitted, // not cloned here we just consume it as not needed anymore
+  	sre_report: message_transmitted.clone(),
   	worker_agent: pull_agent.to_string()
   };
   
@@ -273,7 +273,11 @@ pub async fn pr_agent_node_work_orchestration(message_transmitted: String, tx: &
   let report = run_report(state).await?; // Result<LlmResponse>
   let report_output_schema = report.choices[0].message.content.clone().ok_or(AppError::StructureFinalOutputFromRaw("couldn't parse final answer (pr_agent_node_work_orchestration: run_report)".to_string()))?;
   let report_output_to_value: Value = serde_json::from_str(&report_output_schema)?;
-  let report_output_transmitted_formatted = format!("work report and instructions: {}", report_output_to_value);
+  let report_output_transmitted_formatted = format!(
+    "history of previous agent work: {}, the git pull request has been validated and this is the report and instructions from now: {}",
+    message_transmitted,
+    report_output_to_value
+  );
 
   // logs of report mini agent output
   write_step_cmd_debug("\nREPORT:\n");

@@ -17,9 +17,9 @@ BAK.*
 *BAK*
 
 # logs
-.log
-*.log
-*log*
+#.log
+#*.log
+#*log*
 
 # cache
 cache
@@ -43,6 +43,5 @@ dump.rdb
 dump.*
 
 
-# Added by cargo
-
+# target binaries
 /target
