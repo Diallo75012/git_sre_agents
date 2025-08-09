@@ -3009,3 +3009,9 @@ could run agent to the end, llama models are tired the qwen32b is best and logic
 now need to fix the git tools logic has it doesn't relly do the git commands so need to check why.
 Discord notification is done well with last report.
 some small fix here and there.
+
+have ran it again and fixed some git command but i don't know why but the git commands don't seem to be working, need to investigate
+and also need to improve the prompts as agent still think that it is free to create its own file names. need to be more strict and tell 
+that only the file fromt he list can be used.
+when i see the logs seems like that the agent is not using the tools at all as i don't wee the log written to file for those tools.
+

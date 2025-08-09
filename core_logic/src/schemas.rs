@@ -107,8 +107,8 @@ pub fn sre1_agent_own_task_read_files_schema() -> HashMap<&'static str, &'static
   HashMap::from(
     [
       ("instructions", "string of the instructions and explanation of what have to change in the manifest that you are aware of in order to meet requirements. make sure it is valid JSON str."),
-      ("manifest", "content of Kubernetes manifests respecting Yaml indentation and line return that you have red and identified has necessary to modify to perform task requirements converted to Json Kubernetes manifest. Or text only if note file. make sure it is valid JSON str."),
-      ("file", "strictly only the string path of the manifest you have identified has corresponding to the targetted task and that you have red. make sure it is valid JSON str."),  	
+      ("manifest", r#"answer "" or if it is Kubernetes manifest write here onle the content of Kubernetes manifests respecting Yaml indentation and line return that you have red and identified has necessary to modify to perform task requirements converted to Json Kubernetes manifest. Or text only if note file. make sure it is valid JSON str."#),
+      ("file", "strictly only the string path of the manifest or file you have identified has corresponding to the targetted task and that you have red and that you have been instructed to work on by deduction. make sure it is valid JSON str."),  	
     ]
   )
 }

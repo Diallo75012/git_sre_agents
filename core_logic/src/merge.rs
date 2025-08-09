@@ -5,6 +5,7 @@
 use crate::errors::AppError;
 use tokio::process::Command;
 use crate::envs_manage;
+use crate::write_debug_log::*;
 
 /// Env Vars For the agent branches to be pulled simulating pull request and the main branch for the last merge
 /// also added the upstream repo name so that it is easy to pull using that name
@@ -49,19 +50,29 @@ pub fn main_repo_path() -> String {
 /// this function will be called by the tool that pull or merge work depending on the agent called
 type MergeWorkResult<T> = std::result::Result<T, AppError>;
 pub async fn merge_work(agent: &str) -> MergeWorkResult<String> {
+  // logs of merging work
+  write_step_cmd_debug("\nMERGING WORK\n");
 
   match agent {
   	"sre1_agent" => {
+  	  // log sre1_agent
+  	  write_step_cmd_debug("\nSRE1_AGENT work merged\n");
+  	  
       let path = main_repo_path();
+      let main_branch = main_branch();
   	  let branch = sre1_branch_main();
 
       // Create command
       let command = format!(
-        r#"git -C {p} merge {b} --allow-unrelated-histories --no-edit"#,
+        r#"git -C {p} checkout {m} && git -C {p} merge {b} --allow-unrelated-histories --no-edit"#,
         p=path,
-        b=branch
+        b=branch,
+        m=main_branch
       );
 
+      // logs of command
+      write_step_cmd_debug(&format!("command merge is: {}", command));
+      
       // Spawn the command as a child process
       let child_result = Command::new("bash")
         .arg("-c")
@@ -75,28 +86,44 @@ pub async fn merge_work(agent: &str) -> MergeWorkResult<String> {
           if output.status.success() {
             let stdout = String::from_utf8_lossy(&output.stdout).to_string();
             println!("Merge command stdout: {}", stdout);
+            // logs of stdout
+            write_step_cmd_debug(&format!("command stdout: {}", stdout));
             Ok(stdout)
           } else {
             // doc for `from_utf8_lossy`: https://doc.rust-lang.org/std/string/struct.String.html#method.from_utf8_lossy
             let stderr = String::from_utf8_lossy(&output.stderr).to_string();
             println!("Merge command stderr: {}", stderr);
+            // logs of stderr
+            write_step_cmd_debug(&format!("command stderr: {}", stderr));
             Err(AppError::MergeCommandError(format!("Git command failed: {}", stderr)))
           }
         }
-        Err(e) => Err(AppError::MergeCommandError(format!("Failed to run command: {}", e))),
+        Err(e) => {
+          // logs of error
+          write_step_cmd_debug(&format!("command error: {}", e));
+          Err(AppError::MergeCommandError(format!("Failed to run command: {}", e)))
+        }
       }
   	},
 
   	"sre2_agent" => {
+  	  // log sre1_agent
+  	  write_step_cmd_debug("\nSRE1_AGENT work merged\n");
+
       let path = main_repo_path();
+      let main_branch = main_branch();
   	  let branch = sre2_branch_main();
 
       // Create command
       let command = format!(
-        r#"git -C {p} merge {b} --allow-unrelated-histories --no-edit"#,
+        r#"git -C {p} checkout {m} && git -C {p} merge {b} --allow-unrelated-histories --no-edit"#,
         p=path,
-        b=branch
+        b=branch,
+        m=main_branch
       );
+
+      // logs of command
+      write_step_cmd_debug(&format!("command merge is: {}", command));
 
       // Spawn the command as a child process
       let child_result = Command::new("bash")
@@ -111,15 +138,23 @@ pub async fn merge_work(agent: &str) -> MergeWorkResult<String> {
           if output.status.success() {
             let stdout = String::from_utf8_lossy(&output.stdout).to_string();
             println!("Merge command stdout: {}", stdout);
+            // logs of stdout
+            write_step_cmd_debug(&format!("command stdout: {}", stdout));
             Ok(stdout)
           } else {
             // doc for `from_utf8_lossy`: https://doc.rust-lang.org/std/string/struct.String.html#method.from_utf8_lossy
             let stderr = String::from_utf8_lossy(&output.stderr).to_string();
             println!("Merge command stderr: {}", stderr);
+            // logs of stderr
+            write_step_cmd_debug(&format!("command stderr: {}", stderr));
             Err(AppError::MergeCommandError(format!("Git command failed: {}", stderr)))
           }
         }
-        Err(e) => Err(AppError::MergeCommandError(format!("Failed to run command: {}", e))),
+        Err(e) => {
+          // logs of error
+          write_step_cmd_debug(&format!("command error: {}", e));
+          Err(AppError::MergeCommandError(format!("Failed to run command: {}", e)))
+        }
       }
   	},
   	_ => Err(AppError::MergeCommandError("Merge Agent Work Error: nothing matching any agent: sre1_agent, sre2_agent...".to_string()))

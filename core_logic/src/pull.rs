@@ -5,18 +5,10 @@
 use crate::errors::AppError;
 use tokio::process::Command;
 use crate::envs_manage;
+use crate::write_debug_log::*;
 
 /// Env Vars For the agent branches to be pulled simulating pull request and the main branch for the last merge
 /// also added the upstream repo name so that it is easy to pull using that name
-pub fn main_branch() -> String {
-  match envs_manage::get_env("MAIN_BRANCH") {
-    Ok(url) => url,
-    Err(e) => {
-      AppError::Env(format!("MAIN_BRANCH env var issue: {}", e));
-      "".to_string()
-    },
-  } 
-}
 pub fn sre1_branch_main() -> String {
   match envs_manage::get_env("SRE1_BRANCH_MAIN") {
     Ok(url) => url,
@@ -68,9 +60,14 @@ pub fn main_repo_path() -> String {
 /// this function will be called by the tool that pull or merge work depending on the agent called
 type PullWorkResult<T> = std::result::Result<T, AppError>;
 pub async fn pull_work(agent: &str) -> PullWorkResult<String> {
-
+  // logs of pulling work
+  write_step_cmd_debug("\nPULLING WORK\n");
+  
   match agent {
   	"sre1_agent" => {
+      // log sre1_agent
+  	  write_step_cmd_debug("\nSRE1_AGENT work pulled\n");
+  	  
       let path = main_repo_path();
   	  let branch = sre1_branch_main();
   	  let upstream_repo = sre1_upstream_repo_main();
@@ -83,6 +80,9 @@ pub async fn pull_work(agent: &str) -> PullWorkResult<String> {
         u=upstream_repo
       );
 
+      // logs of command
+      write_step_cmd_debug(&format!("command pull is: {}", command));
+
       // Spawn the command as a child process
       let child_result = Command::new("bash")
         .arg("-c")
@@ -96,19 +96,30 @@ pub async fn pull_work(agent: &str) -> PullWorkResult<String> {
           if output.status.success() {
             let stdout = String::from_utf8_lossy(&output.stdout).to_string();
             println!("Pull command stdout: {}", stdout);
+            // logs of stdout
+            write_step_cmd_debug(&format!("command stdout: {}", stdout));
             Ok(stdout)
           } else {
             // doc for `from_utf8_lossy`: https://doc.rust-lang.org/std/string/struct.String.html#method.from_utf8_lossy
             let stderr = String::from_utf8_lossy(&output.stderr).to_string();
             println!("Pull command stderr: {}", stderr);
+            // logs of stderr
+            write_step_cmd_debug(&format!("command stderr: {}", stderr));
             Err(AppError::PullCommandError(format!("Git command failed: {}", stderr)))
           }
         }
-        Err(e) => Err(AppError::PullCommandError(format!("Failed to run command: {}", e))),
+        Err(e) => {
+          // logs of error
+          write_step_cmd_debug(&format!("command error: {}", e));
+          Err(AppError::PullCommandError(format!("Failed to run command: {}", e)))
+        }
       }  	  
   	},
 
   	"sre2_agent" => {
+      // log sre2_agent
+  	  write_step_cmd_debug("\nSRE2_AGENT work pulled\n");
+
       let path = main_repo_path();
   	  let branch = sre2_branch_main();
   	  let upstream_repo = sre2_upstream_repo_main();
@@ -121,6 +132,9 @@ pub async fn pull_work(agent: &str) -> PullWorkResult<String> {
         u=upstream_repo
       );
 
+      // logs of command
+      write_step_cmd_debug(&format!("command pull is: {}", command));
+ 
       // Spawn the command as a child process
       let child_result = Command::new("bash")
         .arg("-c")
@@ -142,7 +156,11 @@ pub async fn pull_work(agent: &str) -> PullWorkResult<String> {
             Err(AppError::PullCommandError(format!("Git command failed: {}", stderr)))
           }
         }
-        Err(e) => Err(AppError::PullCommandError(format!("Failed to run command: {}", e))),
+        Err(e) => {
+          // logs of error
+          write_step_cmd_debug(&format!("command error: {}", e));
+          Err(AppError::PullCommandError(format!("Failed to run command: {}", e)))
+        }
       } 
   	},
   	_ => Err(AppError::PullCommandError("Pull Agent Work Error: nothing matching any agent: sre1_agent, sre2_agent, main_agent...".to_string()))

@@ -260,10 +260,10 @@ pub fn sre1_agent_write_prompt() -> HashMap<UserType, &'static str> {
         r#"
           You are a specialist in Kubernetes infrastructure and Yaml manifests.
           When you receive instructions:
-          - you will analyze the instruction and the manifest provided.
-          - you will write a new manifest with the modification required to complete task using the writing tool.
+          - you will analyze the instruction and the file provided.
+          - you will write the right file using the path given and choosing the right one with the modification required to complete task using the writing tool.
           You will use the tool available to write the new content of the file following instructions requriements.
-          - You have access to those files:
+          - You have access to those files (choose from those):
             /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_configmap.yaml
             /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_deployment.yaml
             /home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre1_repo/prometheus_service.yaml
@@ -363,9 +363,9 @@ pub fn sre2_agent_write_prompt() -> HashMap<UserType, &'static str> {
           You are a specialist in Kubernetes infrastructure and Yaml manifests and notes.
           When you receive instructions:
           - you will analyze the instructions and the manifest/file provided.
-          - you will write a new manifest/file with the modification required to complete task using the writing tool.
-          You will use the tool available to write the new content of the file following instructions requriements.
-          - You have access to those files:
+          - you will write the right file using the path given and choosing the right one with the modification required to complete task using the writing tool.
+          - You will use the tool available to write the new content of the file following instructions requriements.
+          - You have access to those files (choose from those):
            	/home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre2_repo/nginx_configmap.yaml
            	/home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre2_repo/nginx_deployment.yaml
            	/home/creditizens/dev-git-agent-team/project_git_repos/agents_side/creditizens_sre2_repo/nginx_service.yaml
