@@ -1,0 +1,1 @@
+searchState.loadedDescShard("pr_agent", 0, "PR Agent\nhere we will have node <code>sre2_agent</code> centered this will hold …\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.\nthen it will be able to pull work\nThe <code>pr agent</code> will pass through different steps read sre …\nfinally it will be creating a report so that next agent …")

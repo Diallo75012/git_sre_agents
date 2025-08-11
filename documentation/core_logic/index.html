@@ -1,0 +1,138 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Core"><title>core_logic - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../static.files/rustdoc-916cea96.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="core_logic" data-themes="" data-resource-suffix="" data-rustdoc-version="1.87.0 (17067e9ac 2025-05-09)" data-channel="1.87.0" data-search-js="search-e7298875.js" data-settings-js="settings-d72f25bb.js" ><script src="../static.files/storage-82c7156e.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-fb8c74a8.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-044be391.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../core_logic/index.html">core_<wbr>logic</a><span class="version">0.1.0</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section id="rustdoc-toc"><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#core" title="Core">Core</a></li><li><a href="#machine-functions-that-will-be-the-engines-that-would-pull-all-of-those-enum-structs-implementation" title="Machine Functions that will be the engines that would pull all of those `enum`, `structs`, `implementation`">Machine Functions that will be the engines that would pull all of those <code>enum</code>, <code>structs</code>, <code>implementation</code></a></li><li><a href="#contruction-machines" title="Contruction Machines">Contruction Machines</a></li><li><a href="#agent-machines" title="Agent Machines">Agent Machines</a></li><li><a href="#response-machines" title="Response Machines">Response Machines</a></li><li><a href="#loop-control-strategy" title="Loop Control Strategy">Loop Control Strategy</a></li><li><a href="#some-rules" title="Some Rules">Some Rules</a></li><li><a href="#planned-response-machines" title="Planned Response Machines">Planned Response Machines</a></li><li><a href="#diagram-high-level-execution" title="Diagram High Level Execution">Diagram High Level Execution</a></li></ul><h3><a href="#modules">Crate Items</a></h3><ul class="block"><li><a href="#modules" title="Modules">Modules</a></li></ul></section><div id="rustdoc-modnav"></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Crate <span>core_logic</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../src/core_logic/lib.rs.html#1-17">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="core"><a class="doc-anchor" href="#core">§</a>Core</h2><h2 id="machine-functions-that-will-be-the-engines-that-would-pull-all-of-those-enum-structs-implementation"><a class="doc-anchor" href="#machine-functions-that-will-be-the-engines-that-would-pull-all-of-those-enum-structs-implementation">§</a>Machine Functions that will be the engines that would pull all of those <code>enum</code>, <code>structs</code>, <code>implementation</code></h2>
+<p>Higher level view</p>
+<div class="example-wrap"><pre class="language-text"><code>[Input: AgentPrompt + Role + ToolChoice + SchemaFields]
+                   │
+                   ▼
+         ┌─────────────────────┐
+         │  machine_agent()    │◄────────────────┐
+         │  (calls machines:)  │                 │
+         │  ├── machine_prompt()                 │
+         │  ├── machine_model_settings()         │
+         │  ├── machine_struct_output()          │
+         │  └── machine_tools() (optional)       │
+         └─────────┬───────────┘                 │
+                   ▼                             │
+         [Constructed Agent Struct]              │
+                   │                             │
+                   ▼                             │
+         ┌────────────────────────────┐          │
+         │  machine_api_call()        │──────────┤
+         │  (send Agent to LLM)       │          │
+         └─────────────┬──────────────┘          │
+                       ▼                         │
+         ┌────────────────────────────┐          │
+         │  machine_api_response()    │          │
+         │  ├─ Check if tool call     │          │
+         │  ├─ Save tool_call_id      │          │
+         │  ├─ Append to MessageHistory │        │
+         │  └─ Call tools if needed   │          │
+         └─────────────┬──────────────┘          │
+                       ▼                         │
+                [Next message] ──────────────────┘
+                       │
+                       ▼
+           Loop until: no tool call OR list exhausted</code></pre></div><h2 id="contruction-machines"><a class="doc-anchor" href="#contruction-machines">§</a>Contruction Machines</h2><div><table><thead><tr><th>Machine</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>machine_prompt(...)</code></td><td>Returns <code>MessagesSent</code> from role &amp; prompt string</td></tr>
+<tr><td><code>machine_struct_output(...)</code></td><td>Builds <code>Schema</code>, stores into <code>StructOut</code> (using <code>SchemaFieldDetails</code>)</td></tr>
+<tr><td><code>machine_tools(...)</code></td><td>Returns <code>Vec&lt;HashMap&lt;String, serde_json::Value&gt;&gt;</code> from tool descriptors</td></tr>
+<tr><td><code>machine_model_settings(...)</code></td><td>Combines tool_choice, tool list, prompts → <code>ModelSettings</code></td></tr>
+<tr><td><code>machine_agent(...)</code></td><td>Final wrapper: assembles all into a complete <code>Agent</code></td></tr>
+</tbody></table>
+</div><h2 id="agent-machines"><a class="doc-anchor" href="#agent-machines">§</a>Agent Machines</h2><div><table><thead><tr><th>Field</th><th>Generated By</th></tr></thead><tbody>
+<tr><td><code>role</code></td><td>input</td></tr>
+<tr><td><code>message</code></td><td>input</td></tr>
+<tr><td><code>prompt</code></td><td><code>machine_prompt()</code></td></tr>
+<tr><td><code>structured_output</code></td><td><code>machine_struct_output()</code></td></tr>
+<tr><td><code>task_state</code></td><td>default</td></tr>
+<tr><td><code>llm</code></td><td><code>machine_model_settings()</code></td></tr>
+</tbody></table>
+</div><h2 id="response-machines"><a class="doc-anchor" href="#response-machines">§</a>Response Machines</h2><div><table><thead><tr><th>Machine</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>machine_api_call(agent)</code></td><td>Sends current <code>Agent</code> as payload, receives response</td></tr>
+<tr><td><code>machine_api_response(...)</code></td><td>Parses <code>LlmResponse</code>, detects tool calls, extracts tool_call_id</td></tr>
+<tr><td><code>machine_tool_loop(...)</code></td><td>Executes loop until tool is no longer called or tool list is exhausted</td></tr>
+<tr><td><code>machine_context_update(...)</code></td><td>Trims and appends latest messages to <code>MessageHistory</code> (limit to N msgs)</td></tr>
+<tr><td><code>machine_final_answer(...)</code></td><td>Synthesizes all tool answers and final LLM answer</td></tr>
+</tbody></table>
+</div><h2 id="loop-control-strategy"><a class="doc-anchor" href="#loop-control-strategy">§</a>Loop Control Strategy</h2>
+<p>Depicted like almost how the funciton would look like</p>
+<ul>
+<li>Use Agent.llm.tool_choice to determine if tools should be tried.</li>
+<li>After every API call:
+<ul>
+<li>Use ResponseFormat.schema to match structured output</li>
+<li>If tool_calls present:
+<ul>
+<li>Save to MessageHistory</li>
+<li>Create new message with tool_call_id</li>
+<li>Call API again</li>
+<li>Repeat until no tool is suggested</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="some-rules"><a class="doc-anchor" href="#some-rules">§</a>Some Rules</h2>
+<ul>
+<li>Limit Messages: MessageHistory should be pruned with .truncate() or .split_off() if over limit</li>
+<li>Flexible Tool Choice: use enum ChoiceTool::Auto | Required | None to decide per agent</li>
+</ul>
+<h2 id="planned-response-machines"><a class="doc-anchor" href="#planned-response-machines">§</a>Planned Response Machines</h2><div><table><thead><tr><th>Machine Name</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>machine_api_call</code></td><td>Sends the constructed agent as JSON payload to the Cerebras endpoint</td></tr>
+<tr><td><code>machine_api_response</code></td><td>Parses <code>LlmResponse</code>, checks for <code>tool_calls</code></td></tr>
+<tr><td><code>machine_tool_loop</code></td><td>Reconstructs the message with tool_call result and loops until done</td></tr>
+<tr><td><code>machine_context_update</code></td><td>Manages a limited message history (e.g. last 3 messages)</td></tr>
+<tr><td><code>machine_final_answer</code></td><td>Extracts or synthesizes the final assistant message</td></tr>
+</tbody></table>
+</div><h2 id="diagram-high-level-execution"><a class="doc-anchor" href="#diagram-high-level-execution">§</a>Diagram High Level Execution</h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code>         +------------------+
+         | machine_agent()  |
+         +--------+---------+
+                  |
+                  v
+         +--------+---------+
+         | machine_api_call |
+         +--------+---------+
+                  |
+                  v
+         +--------+---------+
+         | machine_api_response (check tool_calls)
+         +--------+---------+
+                  |
+      +-----------+-------------+
+      |                         |
+   tool_call<span class="question-mark">?                 </span>none
+      |                         |
+      v                         v</code></pre></div>
+<p>+—––+––––+         +——+––––+
+| machine_tool_loop |     | machine_final_answer |
++—––+––––+         +——+––––+
+|
++—––v––––+
+| machine_context_update |
++————————+</p>
+</div></details><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><dl class="item-table"><dt><a class="mod" href="agents/index.html" title="mod core_logic::agents">agents</a></dt><dd>this is where all agent structs are defined and their function implementation
+<code>derive</code> <code>Serialize</code>, <code>Deserialize</code> when needing to load data and make a JSON, TOML, YAML…
+<code>derive</code> <code>Debug</code> when developing to be able to pritn using <code>{:?}</code>, Recommended to keep in Production for logs. tracing, assertions, panic messages…
+<code>derive</code> <code>Clone</code> if having types that need that to be able to use <code>.clone()</code> like <code>String</code> and <code>Vec</code>
+<code>derive</code> <code>Copy</code> for copy types (on stack) like <code>String</code>, <code>i32</code>… need to have <code>Clone</code> as well and can then not use <code>.clone()</code> and reuse same field, no <code>&amp;</code>
+<code>derive</code> <code>Eq</code> for full total equality useful for <code>sets</code>, <code>maps</code>. also floats can’t be totally equal like <code>f32</code> or other floats as flaoting numbers can differ a bit (not fully total precision)
+<code>derive</code> <code>PartialEq</code> for use of <code>==</code> and <code>!=</code> for those <code>struct</code> <code>field</code>
+<code>derive</code> <code>Default</code> to initialize <code>struct</code> with initial values so no need implementation of <code>.new()</code> for the <code>struct</code></dd><dt><a class="mod" href="commits/index.html" title="mod core_logic::commits">commits</a></dt><dd>this is to commit work it will <code>git add1 and </code>git commit` with a explanatory message</dd><dt><a class="mod" href="constants/index.html" title="mod core_logic::constants">constants</a></dt><dd>Here we will have all the constant that will be built and created
+those will have same lifetime as the application and would be used,
+specially the fields of those in order to have all needed to make dynamic API calls
+there will be constant engines needed for the app to work:</dd><dt><a class="mod" href="discord_notifier/index.html" title="mod core_logic::discord_notifier">discord_<wbr>notifier</a></dt><dt><a class="mod" href="dispatcher/index.html" title="mod core_logic::dispatcher">dispatcher</a></dt><dt><a class="mod" href="envs_manage/index.html" title="mod core_logic::envs_manage">envs_<wbr>manage</a></dt><dd>This crate is for the env vars management
+we use <code>dotenvy</code> and load <code>.env</code> vars with <code>dotenv().ok()</code>
+after all envrionment variables are saved in memory for the lifetime of the app
+We use <code>std::env</code> to set environment variables which are saved in memory for the lifetime of the app
+It is different from <code>Python</code> as here <code>.env</code> file is not altered,
+in <code>Rust</code> the <code>.env</code> is not overriden, it is all happenning in memory</dd><dt><a class="mod" href="errors/index.html" title="mod core_logic::errors">errors</a></dt><dt><a class="mod" href="file_reader/index.html" title="mod core_logic::file_reader">file_<wbr>reader</a></dt><dd>this is where we are going to handle file prompts
+that will be read by agent and any other files
+source: <a href="https://doc.rust-lang.org/book/ch12-02-reading-a-file.html">reading files in <code>rust</code></a></dd><dt><a class="mod" href="headers/index.html" title="mod core_logic::headers">headers</a></dt><dd>For Production Standard We need <code>Secrets</code> to be just built at runtime when needed
+and ‘NOT’ be stored in any <code>CONST</code> or <code>static</code> var as it would have the same lifetime as the app
+creating some security issues and having the credential leak, or appear in traces…etc…</dd><dt><a class="mod" href="machine/index.html" title="mod core_logic::machine">machine</a></dt><dd><code>machines</code> contructors that will be using all our implemented struct methods
+<code>engines</code> that will be using those <code>machines</code> constructor or/and methods implemented in structs to build bigger picture objects
+this is to make it easy to call any part of the app needed.
+we need to create more custom errors so that it makes life easy to know at which part does the error has been triggers in our machines/engines flow</dd><dt><a class="mod" href="merge/index.html" title="mod core_logic::merge">merge</a></dt><dd>this is to pull work it will <code>git checkout and </code>git pull<code>the work of the correct agent using these commands format: </code>git checkout PR_Feature_AgentX<code> </code>git pull agentX agentX_feature –no-edit`</dd><dt><a class="mod" href="prompts/index.html" title="mod core_logic::prompts">prompts</a></dt><dd>All prompts for our different agents. Those are only the initial prompts tasks which might be reused several times.
+we will use <code>format!()</code> macro, when calling this prompt content and make the content dynamic
+this will be feeding the <code>content</code> argument of <code>engine_prompt()</code></dd><dt><a class="mod" href="pull/index.html" title="mod core_logic::pull">pull</a></dt><dd>this is to pull work it will <code>git checkout and </code>git pull<code>the work of the correct agent using these commands format: </code>git checkout PR_Feature_AgentX<code> </code>git pull agentX agentX_feature –no-edit`</dd><dt><a class="mod" href="schemas/index.html" title="mod core_logic::schemas">schemas</a></dt><dd>here will be all the different schemas like we do in <code>Python</code>
+we will use the <code>create_schemas_engine()</code> and inject the different agents <code>HashMap&lt;String, &amp;SchemaFieldType::String&gt;</code></dd><dt><a class="mod" href="write_debug_log/index.html" title="mod core_logic::write_debug_log">write_<wbr>debug_<wbr>log</a></dt><dt><a class="mod" href="write_file/index.html" title="mod core_logic::write_file">write_<wbr>file</a></dt></dl></section></div></main></body></html>

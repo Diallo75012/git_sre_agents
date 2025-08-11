@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["human_request_node"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["sre1_agent"]};

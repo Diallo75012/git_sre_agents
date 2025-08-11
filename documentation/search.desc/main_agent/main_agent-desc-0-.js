@@ -1,0 +1,1 @@
+searchState.loadedDescShard("main_agent", 0, "Main Agent\nhere we will have node <code>main_agent</code> centered this will hold …\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.\nthen it will be able to merge work\nThe <code>main agent</code> will pass through different steps read pr …\nfinally it will be creating a report so that next agent …")

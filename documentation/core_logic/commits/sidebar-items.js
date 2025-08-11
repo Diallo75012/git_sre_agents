@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["commit_work","sre1_branch_own_repo","sre1_repo_path","sre2_branch_own_repo","sre2_repo_path"]};
