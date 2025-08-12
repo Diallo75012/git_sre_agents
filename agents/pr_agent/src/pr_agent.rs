@@ -52,10 +52,11 @@ pub async fn run_read_and_select(message_transmitted: String) -> PrAgentNodeResu
   };
   
   // 2. coming from `constants.rs` and need to check if not equal to `""`
+  // Those are models for the structured output call
   // can be: `model_llama4_scout_17b`, `model_qwen3_32b()`, `model_llama3_3_70b()`
   //let model = model_llama4_scout_17b();
   let model = model_llama3_3_70b();
-  //let model = model_qwen3_32b();
+  // let model = model_qwen3_32b();
   // debugging print for model
   println!("model: {:?}", model);
   
@@ -121,9 +122,10 @@ pub async fn run_pull(message_transmitted: String) -> PrAgentNodeResult<LlmRespo
       return Err(AppError::Env(format!("LLM_API_URL is set but empty: {}", e)))
     },
   };
-  
+
+  // Those are models for the structured output call
   let model = model_llama3_3_70b();
-  //let model = model_qwen3_32b();
+  // let model = model_qwen3_32b();
   println!("model: {:?}", model);
   
   if model.trim().is_empty() {
@@ -179,9 +181,10 @@ pub async fn run_report(state: StateReportPrToMain) -> PrAgentNodeResult<LlmResp
       return Err(AppError::Env(format!("LLM_API_URL is set but empty: {}", e)))
     },
   };
-  
+
+  // Those are models for the structured output call
   let model = model_llama3_3_70b();
-  //let model = model_qwen3_32b();
+  // let model = model_qwen3_32b();
   println!("model: {:?}", model);
   
   if model.trim().is_empty() {

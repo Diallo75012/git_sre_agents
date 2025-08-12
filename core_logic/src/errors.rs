@@ -148,6 +148,9 @@ pub enum AppError {
   UnknownNode(String),
 
   /* Commands Errors */
+  /// Async Tool command error
+  #[error("Async Tool Error: {0}")]
+  AsyncToolError(String),
   /// commit command error
   #[error("Commit Command Error: {0}")]
   CommitCommandError(String),

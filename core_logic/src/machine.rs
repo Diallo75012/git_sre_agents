@@ -206,7 +206,7 @@ pub fn machine_final_answer(llm_response: &LlmResponse) -> Option<String> {
 
 /// This function receives the name and arguments of the tool call and dispatches the appropriate logic.
 /// The return type is a JSON value that will be added to the message history.
-pub fn execute_tools_machine(tool_name: &str, arguments: &Value) -> Result<Value, AppError> {
+pub async fn execute_tools_machine(tool_name: &str, arguments: &Value) -> Result<Value, AppError> {
     let parsed_args: Value = match arguments {
         Value::String(json_str) => from_str(json_str).map_err(|e| {
             AppError::ExecuteToolEngine(format!("Failed to parse arguments JSON string: {}", e))
@@ -215,8 +215,10 @@ pub fn execute_tools_machine(tool_name: &str, arguments: &Value) -> Result<Value
     };
 
     match tool_name {
+        // tool name from constant `* ** tool engine ** *` corresponding function 
         "read_file_tool" => {
             let file_path = parsed_args
+                // tool imput argument from constant `* ** tool engine ** *` corresponding function
                 .get("file_path")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| {
@@ -253,6 +255,66 @@ pub fn execute_tools_machine(tool_name: &str, arguments: &Value) -> Result<Value
 
             Ok(json!({ "output": final_file_content }))
         }
+        "git_commit_work_tool" => {
+            let file_path = parsed_args
+                .get("file_path")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| {
+                    AppError::ExecuteToolEngine(
+                        "Missing `file_path` argument for `git_commit_work_tool`".into(),
+                    )
+                })?;
+            let commit_message = parsed_args
+                .get("commit_message")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| {
+                    AppError::ExecuteToolEngine(
+                        "Missing `file_content` argument for `git_commit_work_tool`".into(),
+                    )
+                })?;
+
+            // this returns a `Future` as it is an `Async` "fn" therefore need to await
+            let final_file_content = match constants::git_commit_work_tool(file_path, commit_message).await {
+            	Ok(text) => text,
+            	Err(e) => format!("git commit work tool error: {}", e)
+            }; // it is returning a `String`
+
+            Ok(json!({ "output": final_file_content }))
+        }
+        "git_pull_work_tool" => {
+            let agent = parsed_args
+                .get("agent")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| {
+                    AppError::ExecuteToolEngine(
+                        "Missing `file_path` argument for `git_pull_work_tool`".into(),
+                    )
+                })?;
+
+            let final_file_content = match constants::git_pull_work_tool(agent).await {
+            	Ok(text) => text,
+            	Err(e) => format!("git pull work tool error: {}", e)
+            }; // it is returning a `String`
+
+            Ok(json!({ "output": final_file_content }))
+        }
+        "git_merge_work_tool" => {
+             let agent = parsed_args
+                 .get("agent")
+                 .and_then(|v| v.as_str())
+                 .ok_or_else(|| {
+                     AppError::ExecuteToolEngine(
+                         "Missing `file_path` argument for `git_merge_work_tool`".into(),
+                     )
+                 })?;
+ 
+            let final_file_content = match constants::git_merge_work_tool(agent).await {
+            	Ok(text) => text,
+            	Err(e) => format!("git nerge work tool error: {}", e)
+            }; // it is returning a `String`
+
+             Ok(json!({ "output": final_file_content }))
+         }
         /* can extend this match arm for more tools as we build them */
         _ => Err(AppError::ExecuteToolEngine(format!(
             "Unknown tool name: {}",
@@ -570,7 +632,7 @@ pub async fn tool_or_not_loop_api_call_engine(
 
             let tool_name = &tool_call.function.name;
             let arguments = &tool_call.function.arguments;
-            let tool_output = execute_tools_machine(tool_name, arguments)?;
+            let tool_output = execute_tools_machine(tool_name, arguments).await?;
 
             let tool_response =
                 MessageToAppend::new("tool", &tool_output.to_string(), &tool_call.id);
@@ -659,7 +721,7 @@ pub async fn tool_loop_until_final_answer_engine(
             println!("Tool Call: {}", json!(tool_call));
 
             let tool_output =
-                execute_tools_machine(&tool_call.function.name, &tool_call.function.arguments)?;
+                execute_tools_machine(&tool_call.function.name, &tool_call.function.arguments).await?;
 
             let tool_response =
                 MessageToAppend::new("tool", &tool_output.to_string(), &tool_call.id);

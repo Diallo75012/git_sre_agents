@@ -40,7 +40,7 @@ pub fn main_agent_own_task_select_agent_schema() -> HashMap<&'static str, &'stat
 pub fn main_agent_merge_schema() -> HashMap<&'static str, &'static str> {
     HashMap::from([(
         "agent",
-        r#"name of agent whose work has been merged to main branch. answer or "sre1_agent" or "sre2_agent". make sure it is valid JSON str."#,
+        r#"answer "sre1_agent" if the work merged is from sre1_agent otherwise answer "sre2_agent". make sure it is valid JSON str."#,
     )])
 }
 /* ** main agent > human  ** */

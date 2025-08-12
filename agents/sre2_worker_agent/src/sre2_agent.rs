@@ -42,10 +42,11 @@ pub async fn run_read(message_transmitted: String) -> Sre2AgentNodeResult<LlmRes
     };
 
     // 2. coming from `constants.rs` and need to check if not equal to `""`
+    // Those are models for the structured output call
     // can be: `model_llama4_scout_17b`, `model_qwen3_32b()`, `model_llama3_3_70b()`
     //let model = model_llama4_scout_17b();
     let model = model_llama3_3_70b();
-    //let model = model_qwen3_32b();
+    // let model = model_qwen3_32b();
     // debugging print for model
     println!("model: {:?}", model);
 
@@ -130,8 +131,9 @@ pub async fn run_write(message_transmitted: String) -> Sre2AgentNodeResult<LlmRe
         }
     };
 
+    // Those are models for the structured output call
     let model = model_llama3_3_70b();
-    //let model = model_qwen3_32b();
+    // let model = model_qwen3_32b();
     println!("model: {:?}", model);
 
     if model.trim().is_empty() {
@@ -202,8 +204,9 @@ pub async fn run_commit(message_transmitted: String) -> Sre2AgentNodeResult<LlmR
         }
     };
 
+    // Those are models for the structured output call
     let model = model_llama3_3_70b();
-    //let model = model_qwen3_32b();
+    // let model = model_qwen3_32b();
     println!("model: {:?}", model);
 
     if model.trim().is_empty() {
@@ -271,8 +274,9 @@ pub async fn run_report(state: StateReportSreToPr) -> Sre2AgentNodeResult<LlmRes
         }
     };
 
+    // Those are models for the structured output call
     let model = model_llama3_3_70b();
-    //let model = model_qwen3_32b();
+    // let model = model_qwen3_32b();
     println!("model: {:?}", model);
 
     if model.trim().is_empty() {

@@ -64,7 +64,7 @@ pub async fn commit_work(file_path: &str, commit_message: &str) -> CommitWorkRes
       &format!(
         r#"git -C {repo_path} checkout {branch} && git -C {repo_path} add {f} && git -C {repo_path} commit -m "{c}""#,
         repo_path=sre1_repo_path,
-        f=filename,
+        f=filename.trim(),
         c=commit_message,
         branch=sre1_branch
       )
@@ -74,7 +74,7 @@ pub async fn commit_work(file_path: &str, commit_message: &str) -> CommitWorkRes
       &format!(
         r#"git -C {repo_path} checkout {branch} && git -C {repo_path} add {f} && git -C {repo_path} commit -m "{c}""#,
         repo_path=sre2_repo_path,
-        f=filename,
+        f=filename.trim(),
         c=commit_message,
         branch=sre2_branch
       )

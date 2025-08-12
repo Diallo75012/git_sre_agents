@@ -3015,3 +3015,6 @@ and also need to improve the prompts as agent still think that it is free to cre
 that only the file fromt he list can be used.
 when i see the logs seems like that the agent is not using the tools at all as i don't wee the log written to file for those tools.
 
+forgot to register the new tools in the `machines.rs` function that is registering all tool
+and doing a pattern matching on those. and this is why the agents had this error:
+`could not find tool {tool name}`....

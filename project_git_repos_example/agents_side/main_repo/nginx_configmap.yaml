@@ -1,0 +1,12 @@
+# nginx configmap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-custom-html
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html>
+    <head><title>Creditizens SRE</title></head>
+    <body><h1>Creditizens SRE All Good!</h1></body>
+    </html>

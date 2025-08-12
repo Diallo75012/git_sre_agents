@@ -607,6 +607,8 @@ pub fn main_agent_report_response_format_part() -> ResponseFormatPartOfPayloadRe
 
 /* ** Tools ** */
 
+type AsyncToolResult<T> = std::result::Result<T, AppError>;
+
 // different `tools` with they `Rust` `docstring` like for `Python` tools
 /// `read_file_tool` 
 /// This tool reads files by providing the full content of the file to be analyzed
@@ -675,19 +677,22 @@ pub fn write_file_tool(file_path: &str, file_content: &str) -> String {
 /// ```
 /// let sre_agent_commit = sre_agent_git_tool("/project_git_repos/agents_side/creditizens_sre1_repo/manifest.yaml", "the service has been updated according to instructions");
 /// ```
-pub async fn git_commit_work_tool(file_path: &str, commit_message: &str) -> String {
+pub async fn git_commit_work_tool(file_path: &str, commit_message: &str) -> AsyncToolResult<String> {
   // we need to here use the streaming functions in order to run command, it can be inside the commit_work function that would handle the threads
   // or it could be done from here.. but better have one function doing the job so that all agents can use it
   // `git add ., git commit -m "<commit message>"`
-  let commit_outcome = match commits::commit_work(file_path, commit_message).await {
-  	Ok(text) => text,
-  	Err(e) => format!(
-  	  "An error Occured while trying to commit work for the file path {}: {}",
-  	  file_path,
-  	  e
-  	),
-  };
-  commit_outcome
+  match commits::commit_work(file_path, commit_message).await {
+  	Ok(text) => Ok(text),
+  	Err(e) => Err(
+  	  AppError::AsyncToolError(
+  	    format!(
+  	  	  "An error Occured while trying to commit work for the file path {}: {}",
+          file_path,
+          e
+        )
+      )
+    ),
+  }
 }
 
 /// `git_pull__work_tool` 
@@ -705,12 +710,19 @@ pub async fn git_commit_work_tool(file_path: &str, commit_message: &str) -> Stri
 /// ```
 /// let pr_agent_pull = pr_agent_git_tool("sre1_agent");
 /// ```
-pub async fn git_pull_work_tool(agent: &str,) -> String {
-  let pull_outcome = match pull::pull_work(agent).await {
-  	Ok(text) => text,
-  	Err(e) => format!("An error Occured while trying to pull work of agent {}: {}", agent, e),
-  };
-  pull_outcome
+pub async fn git_pull_work_tool(agent: &str) -> AsyncToolResult<String> {
+  match pull::pull_work(agent).await {
+  	Ok(text) => Ok(text),
+  	Err(e) => Err(
+  	  AppError::AsyncToolError(
+  	    format!(
+  	      "An error Occured while trying to pull work of agent {}: {}",
+  	      agent,
+  	      e
+  	    )
+      )
+    ),
+  }
 }
 
 /// `git_merge_work_tool` 
@@ -728,12 +740,19 @@ pub async fn git_pull_work_tool(agent: &str,) -> String {
 /// ```
 /// let pr_agent_merge = pr_agent_git_tool("sre1_agent");
 /// ```
-pub async fn git_merge_work_tool(agent: &str,) -> String {
-  let merge_outcome = match merge::merge_work(agent).await {
-  	Ok(text) => text,
-  	Err(e) => format!("An error Occured while trying to merge work of agent {}: {}", agent, e),
-  };
-  merge_outcome
+pub async fn git_merge_work_tool(agent: &str) -> AsyncToolResult<String> {
+  match merge::merge_work(agent).await {
+  	Ok(text) => Ok(text),
+  	Err(e) => Err(
+  	  AppError::AsyncToolError(
+  	    format!(
+  	      "An error Occured while trying to merge work of agent {}: {}",
+  	      agent,
+  	      e
+  	    )
+      )
+    ),
+  }
 }
 
 
@@ -2009,8 +2028,8 @@ pub fn request_analyzer_payload_no_tool() -> CreatePayloadEngineResult<Value> {
   let request_analyzer_response_format_part = request_analyzer_response_format_part()?;
   match machine::create_payload_engine(
     //&model_llama4_scout_17b(), // // to be defines (need tocheck cerebras llama4 17b or llama 70b). probably `env vars`
-    //&model_llama3_3_70b(),
-    &model_qwen3_32b(),
+    &model_llama3_3_70b(),
+    //&model_qwen3_32b(),
     &[model_message_formatted_hashmap_prompt], // &[HashMap<String, String>],
     Some(agents::ChoiceTool::Required), // ChoiceTool::Required as we want to make sure it read the files using the tool
     None,
